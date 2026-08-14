@@ -1,9 +1,36 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { toDateKey } from "@/lib/date-utils";
-import RevenueChart from "./revenue-chart";
+import BookingBreakdownChart from "./booking-breakdown-chart";
+import DayOfWeekChart from "./day-of-week-chart";
+
+const WEEKDAY_FULL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const NAV_CARDS = [
+  {
+    href: "/admin/bookings",
+    title: "Bookings",
+    desc: "View and manage customer bookings",
+    icon: (
+      <path d="M6 3h9l3 3v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm2 7h8M8 13h8M8 16h5" />
+    ),
+  },
+  {
+    href: "/admin/customers",
+    title: "Customers",
+    desc: "See everyone who has booked and their history",
+    icon: (
+      <path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 0a4 4 0 0 0 3-6.65M20 20v-1a4 4 0 0 0-3-3.85" />
+    ),
+  },
+  {
+    href: "/admin/analytics",
+    title: "Analytics",
+    desc: "Revenue trends and recent transaction history",
+    icon: (
+      <path d="M3 12h4l3 8 4-16 3 8h4" />
+    ),
+  },
   {
     href: "/admin/services",
     title: "Services",
@@ -19,19 +46,25 @@ const NAV_CARDS = [
     icon: <path d="m5 13 4 4L19 7" />,
   },
   {
+    href: "/admin/categories",
+    title: "Categories",
+    desc: "Manage wash & detailing service categories",
+    icon: <path d="M4 6h16M4 12h16M4 18h7" />,
+  },
+  {
+    href: "/admin/vehicle-types",
+    title: "Vehicle Types",
+    desc: "Manage the vehicle options customers choose from",
+    icon: (
+      <path d="M3 13.5 5 8a2 2 0 0 1 2-1.5h10A2 2 0 0 1 19 8l2 5.5M3 13.5V18a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-4.5M3 13.5h18M7 16.5h.01M17 16.5h.01" />
+    ),
+  },
+  {
     href: "/admin/calendar",
     title: "Calendar",
     desc: "Block off days the car wash is closed",
     icon: (
       <path d="M7 3v3M17 3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" />
-    ),
-  },
-  {
-    href: "/admin/bookings",
-    title: "Bookings",
-    desc: "View and manage customer bookings",
-    icon: (
-      <path d="M6 3h9l3 3v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm2 7h8M8 13h8M8 16h5" />
     ),
   },
 ];
@@ -45,7 +78,14 @@ export default async function AdminDashboardPage() {
     { count: upcomingBookings },
     { count: closedDays },
     { data: revenueBookings },
-    { data: recentTransactions },
+    { data: breakdownBookings },
+    { count: totalBookingsCount },
+    { data: customerEmails },
+    { count: totalServicesCount },
+    { count: totalAddOnsCount },
+    { count: totalCategoriesCount },
+    { count: totalVehicleTypesCount },
+    { count: totalBlockedDatesCount },
   ] = await Promise.all([
     supabase
       .from("services")
@@ -66,15 +106,56 @@ export default async function AdminDashboardPage() {
       .neq("status", "cancelled"),
     supabase
       .from("bookings")
-      .select("id, customer_name, booking_date, price, status, services(name)")
-      .order("created_at", { ascending: false })
-      .limit(8),
+      .select("booking_date, services(name)")
+      .neq("status", "cancelled"),
+    supabase.from("bookings").select("*", { count: "exact", head: true }),
+    supabase.from("bookings").select("customer_email"),
+    supabase.from("services").select("*", { count: "exact", head: true }),
+    supabase.from("inclusions").select("*", { count: "exact", head: true }),
+    supabase.from("service_categories").select("*", { count: "exact", head: true }),
+    supabase.from("vehicle_types").select("*", { count: "exact", head: true }),
+    supabase.from("blocked_dates").select("*", { count: "exact", head: true }),
   ]);
 
   const totalRevenue = (revenueBookings ?? []).reduce(
     (sum, b) => sum + (b.price ?? 0),
     0,
   );
+
+  const totalCustomersCount = new Set(
+    (customerEmails ?? []).map((c) => c.customer_email.trim().toLowerCase()),
+  ).size;
+
+  const navCounts: Record<string, number> = {
+    "/admin/bookings": totalBookingsCount ?? 0,
+    "/admin/customers": totalCustomersCount,
+    "/admin/services": totalServicesCount ?? 0,
+    "/admin/add-ons": totalAddOnsCount ?? 0,
+    "/admin/categories": totalCategoriesCount ?? 0,
+    "/admin/vehicle-types": totalVehicleTypesCount ?? 0,
+    "/admin/calendar": totalBlockedDatesCount ?? 0,
+  };
+
+  const breakdownCounts = new Map<string, number>();
+  for (const b of breakdownBookings ?? []) {
+    const name =
+      (b.services as unknown as { name: string } | null)?.name ?? "Unknown";
+    breakdownCounts.set(name, (breakdownCounts.get(name) ?? 0) + 1);
+  }
+  const breakdownData = Array.from(breakdownCounts.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+
+  const dayCounts = new Array(7).fill(0);
+  for (const b of breakdownBookings ?? []) {
+    const [y, m, d] = b.booking_date.split("-").map(Number);
+    const dayIndex = new Date(y, m - 1, d).getDay();
+    dayCounts[dayIndex] += 1;
+  }
+  const dayOfWeekData = WEEKDAY_FULL.map((day, i) => ({
+    day,
+    count: dayCounts[i],
+  }));
 
   const stats = [
     {
@@ -144,72 +225,6 @@ export default async function AdminDashboardPage() {
         ))}
       </div>
 
-      <RevenueChart bookings={revenueBookings ?? []} />
-
-      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between px-5 pt-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-            Recent Transactions
-          </h2>
-          <Link
-            href="/admin/bookings"
-            className="text-sm font-medium text-brand-600 hover:underline"
-          >
-            View all
-          </Link>
-        </div>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              <tr>
-                <th className="px-5 py-2">Date</th>
-                <th className="px-5 py-2">Customer</th>
-                <th className="px-5 py-2">Service</th>
-                <th className="px-5 py-2">Amount</th>
-                <th className="px-5 py-2">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {(recentTransactions ?? []).map((t) => (
-                <tr key={t.id} className="hover:bg-gray-50/60">
-                  <td className="px-5 py-3 text-gray-600">{t.booking_date}</td>
-                  <td className="px-5 py-3 font-medium text-gray-900">
-                    {t.customer_name}
-                  </td>
-                  <td className="px-5 py-3 text-gray-600">
-                    {(t.services as unknown as { name: string } | null)?.name ?? "—"}
-                  </td>
-                  <td className="px-5 py-3 text-gray-900">
-                    {t.price != null ? `$${t.price.toFixed(2)}` : "—"}
-                  </td>
-                  <td className="px-5 py-3">
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                        t.status === "completed"
-                          ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-200"
-                          : t.status === "cancelled"
-                            ? "bg-gray-100 text-gray-500 ring-1 ring-inset ring-gray-200"
-                            : "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200"
-                      }`}
-                    >
-                      {t.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {(recentTransactions ?? []).length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-5 py-8 text-center text-gray-400">
-                    No transactions yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="h-5" />
-      </div>
-
       <div>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
           Manage
@@ -219,8 +234,13 @@ export default async function AdminDashboardPage() {
             <Link
               key={c.href}
               href={c.href}
-              className="group rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-colors hover:border-brand-300 hover:shadow-md"
+              className="group relative rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-colors hover:border-brand-300 hover:shadow-md"
             >
+              {navCounts[c.href] != null && (
+                <span className="absolute right-4 top-4 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600 group-hover:bg-brand-50 group-hover:text-brand-700">
+                  {navCounts[c.href]}
+                </span>
+              )}
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 group-hover:bg-brand-50 group-hover:text-brand-600">
                 <svg
                   width="18"
@@ -240,6 +260,11 @@ export default async function AdminDashboardPage() {
             </Link>
           ))}
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <BookingBreakdownChart data={breakdownData} />
+        <DayOfWeekChart data={dayOfWeekData} />
       </div>
     </div>
   );
