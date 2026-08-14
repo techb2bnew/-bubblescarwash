@@ -1,0 +1,234 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { Booking, BookingStatus } from "@/lib/types";
+import { setBookingStatus } from "./actions";
+import StatusDropdown from "./status-dropdown";
+import { FilterSelect, TableToolbar } from "../_components/table-toolbar";
+import { SortHeader } from "../_components/sort-header";
+import { Pagination } from "../_components/pagination";
+
+const PAGE_SIZE = 10;
+
+const STATUS_OPTIONS = [
+  { value: "all", label: "All Statuses" },
+  { value: "confirmed", label: "Confirmed" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
+];
+
+export default function BookingsTable({ bookings }: { bookings: Booking[] }) {
+  const router = useRouter();
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [sortKey, setSortKey] = useState<string | null>("booking_date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [page, setPage] = useState(1);
+
+  async function handleStatusChange(id: string, newStatus: BookingStatus) {
+    await setBookingStatus(id, newStatus);
+    router.refresh();
+  }
+
+  function handleSort(key: string) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+    setPage(1);
+  }
+
+  const filtered = useMemo(() => {
+    let result = bookings;
+    const q = search.trim().toLowerCase();
+    if (q) {
+      result = result.filter(
+        (b) =>
+          b.customer_name.toLowerCase().includes(q) ||
+          b.customer_phone.toLowerCase().includes(q) ||
+          b.customer_email.toLowerCase().includes(q),
+      );
+    }
+    if (status !== "all") result = result.filter((b) => b.status === status);
+    if (dateFrom) result = result.filter((b) => b.booking_date >= dateFrom);
+    if (dateTo) result = result.filter((b) => b.booking_date <= dateTo);
+
+    if (sortKey) {
+      result = [...result].sort((a, b) => {
+        let av: string | number;
+        let bv: string | number;
+        if (sortKey === "customer_name") {
+          av = a.customer_name.toLowerCase();
+          bv = b.customer_name.toLowerCase();
+        } else if (sortKey === "price") {
+          av = a.price ?? 0;
+          bv = b.price ?? 0;
+        } else {
+          av = `${a.booking_date} ${a.booking_time}`;
+          bv = `${b.booking_date} ${b.booking_time}`;
+        }
+        if (av < bv) return sortDir === "asc" ? -1 : 1;
+        if (av > bv) return sortDir === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+    return result;
+  }, [bookings, search, status, dateFrom, dateTo, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const clampedPage = Math.min(page, totalPages);
+  const paged = filtered.slice(
+    (clampedPage - 1) * PAGE_SIZE,
+    clampedPage * PAGE_SIZE,
+  );
+
+  const hasActiveFilters =
+    search.trim() !== "" || status !== "all" || dateFrom !== "" || dateTo !== "";
+
+  function clearFilters() {
+    setSearch("");
+    setStatus("all");
+    setDateFrom("");
+    setDateTo("");
+    setPage(1);
+  }
+
+  return (
+    <div className="space-y-3">
+      <TableToolbar
+        search={search}
+        onSearchChange={(v) => {
+          setSearch(v);
+          setPage(1);
+        }}
+        searchPlaceholder="Search name, phone, email..."
+        hasActiveFilters={hasActiveFilters}
+        onClear={clearFilters}
+      >
+        <FilterSelect
+          label="Status"
+          value={status}
+          onChange={(v) => {
+            setStatus(v);
+            setPage(1);
+          }}
+          options={STATUS_OPTIONS}
+        />
+        <div className="flex items-center gap-1 text-sm text-gray-500">
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              setPage(1);
+            }}
+            aria-label="From date"
+            className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+          />
+          <span>–</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              setPage(1);
+            }}
+            aria-label="To date"
+            className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+          />
+        </div>
+      </TableToolbar>
+
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <tr>
+              <SortHeader
+                label="Date"
+                sortKey="booking_date"
+                currentSort={sortKey}
+                currentDir={sortDir}
+                onSort={handleSort}
+              />
+              <th className="px-4 py-3">Time</th>
+              <SortHeader
+                label="Customer"
+                sortKey="customer_name"
+                currentSort={sortKey}
+                currentDir={sortDir}
+                onSort={handleSort}
+              />
+              <th className="px-4 py-3">Contact</th>
+              <th className="px-4 py-3">Service</th>
+              <SortHeader
+                label="Amount"
+                sortKey="price"
+                currentSort={sortKey}
+                currentDir={sortDir}
+                onSort={handleSort}
+              />
+              <th className="px-4 py-3">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {paged.map((b) => (
+              <tr key={b.id} className="hover:bg-gray-50/60">
+                <td className="px-4 py-3 font-medium text-gray-900">
+                  {b.booking_date}
+                </td>
+                <td className="px-4 py-3 text-gray-600">{b.booking_time}</td>
+                <td className="px-4 py-3 text-gray-900">{b.customer_name}</td>
+                <td className="px-4 py-3 text-gray-600">
+                  <div>{b.customer_phone}</div>
+                  <div className="text-xs text-gray-400">{b.customer_email}</div>
+                </td>
+                <td className="px-4 py-3 text-gray-600">
+                  {b.services ? (
+                    <>
+                      {b.services.name}
+                      <div className="text-xs uppercase tracking-wide text-gray-400">
+                        {b.services.vehicle_type}
+                      </div>
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-4 py-3 font-medium text-gray-900">
+                  {b.price != null ? `$${b.price.toFixed(2)}` : "—"}
+                </td>
+                <td className="px-4 py-3">
+                  <StatusDropdown
+                    value={b.status}
+                    onChange={(newStatus) => handleStatusChange(b.id, newStatus)}
+                  />
+                </td>
+              </tr>
+            ))}
+            {paged.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-10 text-center text-gray-400">
+                  {bookings.length === 0
+                    ? "No bookings yet."
+                    : "No bookings match your search/filters."}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+        <Pagination
+          page={clampedPage}
+          totalPages={totalPages}
+          totalItems={filtered.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+        />
+      </div>
+    </div>
+  );
+}

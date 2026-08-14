@@ -3,6 +3,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -10,17 +11,51 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Brand palette sampled from the Bubbles Car Wash & Cafe logo (orange
+     gradient bubble). Used for buttons, links, active nav states, charts,
+     and highlights across the app. */
+  --color-brand-50: #fff3e6;
+  --color-brand-100: #ffe0bf;
+  --color-brand-200: #ffc285;
+  --color-brand-300: #ffa34d;
+  --color-brand-400: #ff8a24;
+  --color-brand-500: #f9760f;
+  --color-brand-600: #f2600a;
+  --color-brand-700: #d9480a;
+  --color-brand-800: #b53a08;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+input,
+select,
+textarea {
+  color: #111827;
+  background-color: #ffffff;
+}
+
+/*
+ * Explicit transform-based slide for the admin sidebar. Written as plain CSS
+ * (rather than Tailwind's translate-x-* utilities) because Tailwind v4 emits
+ * those via the native `translate` CSS property, which was not reliably
+ * overriding across class swaps during testing.
+ */
+.admin-sidebar {
+  left: -15rem;
+  transition: left 200ms ease-in-out;
+}
+
+.admin-sidebar.admin-sidebar-open {
+  left: 0;
+}
+
+@media (min-width: 768px) {
+  .admin-sidebar {
+    left: auto;
+  }
 }
