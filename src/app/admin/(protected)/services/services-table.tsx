@@ -195,7 +195,7 @@ export default function ServicesTable({
             {paged.map((s) => (
               <tr key={s.id} className="hover:bg-gray-50/60">
                 <td className="px-4 py-3 font-medium text-gray-900">{s.name}</td>
-                <td className="px-4 py-3 capitalize text-gray-600">
+                <td className="px-4 py-3 uppercase tracking-wide text-gray-600">
                   {categoryNameBySlug.get(s.category) ?? s.category}
                 </td>
                 <td className="px-4 py-3 uppercase tracking-wide text-gray-600">

@@ -2,7 +2,11 @@
 export type VehicleType = string;
 /** Slug of a service_categories row (e.g. "wash"). Values are admin-managed, not fixed. */
 export type ServiceCategory = string;
-export type BookingStatus = "confirmed" | "cancelled" | "completed";
+export type BookingStatus =
+  | "confirmed"
+  | "cancelled"
+  | "completed"
+  | "rescheduled";
 
 export interface VehicleTypeRow {
   id: string;
@@ -54,6 +58,14 @@ export interface AddOn {
 export interface BlockedDate {
   id: string;
   date: string;
+  reason: string | null;
+  created_at: string;
+}
+
+export interface BlockedSlot {
+  id: string;
+  date: string;
+  time: string;
   reason: string | null;
   created_at: string;
 }

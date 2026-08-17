@@ -22,7 +22,7 @@ import {
   unavailableDateStyle,
   WEEKDAY_NAMES,
 } from "@/lib/date-utils";
-import { createBooking, getBookedTimes } from "./actions";
+import { createBooking, getBookedTimes, type BookedTime } from "./actions";
 
 type Step = 1 | 2 | 3;
 
@@ -64,7 +64,7 @@ export default function BookingFlow({
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [bookedTimes, setBookedTimes] = useState<string[]>([]);
+  const [bookedTimes, setBookedTimes] = useState<BookedTime[]>([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
 
   const [name, setName] = useState("");
@@ -85,8 +85,9 @@ export default function BookingFlow({
   });
 
   const blockedByDate = useMemo(() => {
-    const set = new Set(blockedDates.map((b) => b.date));
-    return set;
+    const map = new Map<string, string | null>();
+    blockedDates.forEach((b) => map.set(b.date, b.reason));
+    return map;
   }, [blockedDates]);
 
   const weeks = useMemo(() => getMonthGrid(cursor.year, cursor.month), [cursor]);
@@ -342,6 +343,7 @@ export default function BookingFlow({
                         key={key}
                         disabled={disabled}
                         onClick={() => handleSelectDate(key)}
+                        title={isBlocked ? blockedByDate.get(key) || "Not available" : undefined}
                         style={
                           isUnavailable && inMonth ? unavailableDateStyle : undefined
                         }
@@ -371,12 +373,14 @@ export default function BookingFlow({
                     ) : (
                       <div className="grid grid-cols-2 gap-2">
                         {timeSlots.map((t) => {
-                          const taken = bookedTimes.includes(t);
+                          const bookedEntry = bookedTimes.find((bt) => bt.time === t);
+                          const taken = Boolean(bookedEntry);
                           return (
                             <button
                               key={t}
                               disabled={taken}
                               onClick={() => setSelectedTime(t)}
+                              title={taken ? bookedEntry?.reason || "Already booked" : undefined}
                               style={taken ? unavailableDateStyle : undefined}
                               className={`rounded-md border px-2 py-1.5 text-xs ${
                                 taken

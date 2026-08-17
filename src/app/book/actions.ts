@@ -2,15 +2,21 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-export async function getBookedTimes(date: string): Promise<string[]> {
+export interface BookedTime {
+  time: string;
+  reason: string | null;
+}
+
+export async function getBookedTimes(date: string): Promise<BookedTime[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_booked_times", {
     target_date: date,
   });
   if (error) throw new Error(error.message);
-  return (data ?? []).map((b: { booking_time: string }) =>
-    b.booking_time.slice(0, 5),
-  );
+  return (data ?? []).map((b: { booking_time: string; reason: string | null }) => ({
+    time: b.booking_time.slice(0, 5),
+    reason: b.reason,
+  }));
 }
 
 export interface CreateBookingInput {

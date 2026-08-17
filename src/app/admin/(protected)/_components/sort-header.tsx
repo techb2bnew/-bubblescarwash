@@ -20,7 +20,7 @@ export function SortHeader({
     <th className={`px-4 py-3 ${className}`}>
       <button
         onClick={() => onSort(sortKey)}
-        className="flex items-center gap-1 hover:text-gray-700"
+        className="flex items-center gap-1 uppercase tracking-wide hover:text-gray-700"
       >
         {label}
         <svg

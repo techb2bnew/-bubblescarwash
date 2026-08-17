@@ -14,16 +14,16 @@ const NAV_ITEMS = [
     ),
   },
   {
+    href: "/admin/analytics",
+    label: "Analytics",
+    icon: <path d="M3 12h4l3 8 4-16 3 8h4" />,
+  },
+  {
     href: "/admin/bookings",
     label: "Bookings",
     icon: (
       <path d="M6 3h9l3 3v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm2 7h8M8 13h8M8 16h5" />
     ),
-  },
-  {
-    href: "/admin/analytics",
-    label: "Analytics",
-    icon: <path d="M3 12h4l3 8 4-16 3 8h4" />,
   },
   {
     href: "/admin/customers",

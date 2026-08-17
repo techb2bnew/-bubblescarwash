@@ -13,3 +13,21 @@ export async function setBookingStatus(id: string, status: BookingStatus) {
   if (error) throw new Error(error.message);
   revalidatePath("/admin/bookings");
 }
+
+export async function rescheduleBooking(
+  id: string,
+  bookingDate: string,
+  bookingTime: string,
+) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("bookings")
+    .update({
+      booking_date: bookingDate,
+      booking_time: bookingTime,
+      status: "rescheduled",
+    })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/bookings");
+}

@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Booking, BookingStatus } from "@/lib/types";
-import { setBookingStatus } from "./actions";
+import type { BlockedDate, Booking, BookingStatus, BusinessSettings } from "@/lib/types";
+import { rescheduleBooking, setBookingStatus } from "./actions";
 import StatusDropdown from "./status-dropdown";
+import AddOnsBadge from "./add-ons-badge";
+import RescheduleModal from "./reschedule-modal";
 import { FilterSelect, TableToolbar } from "../_components/table-toolbar";
 import { SortHeader } from "../_components/sort-header";
 import { Pagination } from "../_components/pagination";
@@ -15,10 +17,21 @@ const STATUS_OPTIONS = [
   { value: "all", label: "All Statuses" },
   { value: "confirmed", label: "Confirmed" },
   { value: "completed", label: "Completed" },
+  { value: "rescheduled", label: "Rescheduled" },
   { value: "cancelled", label: "Cancelled" },
 ];
 
-export default function BookingsTable({ bookings }: { bookings: Booking[] }) {
+export default function BookingsTable({
+  bookings,
+  inclusionNames,
+  blockedDates,
+  settings,
+}: {
+  bookings: Booking[];
+  inclusionNames: Record<string, string>;
+  blockedDates: BlockedDate[];
+  settings: BusinessSettings;
+}) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
@@ -27,10 +40,27 @@ export default function BookingsTable({ bookings }: { bookings: Booking[] }) {
   const [sortKey, setSortKey] = useState<string | null>("booking_date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
+  const [rescheduling, setRescheduling] = useState<Booking | null>(null);
+
+  const bookingCountByDate = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const b of bookings) {
+      if (b.status === "cancelled") continue;
+      counts[b.booking_date] = (counts[b.booking_date] ?? 0) + 1;
+    }
+    return counts;
+  }, [bookings]);
 
   async function handleStatusChange(id: string, newStatus: BookingStatus) {
     await setBookingStatus(id, newStatus);
     router.refresh();
+  }
+
+  async function handleReschedule(date: string, time: string) {
+    if (!rescheduling) return;
+    await rescheduleBooking(rescheduling.id, date, time);
+    router.refresh();
+    setRescheduling(null);
   }
 
   function handleSort(key: string) {
@@ -165,6 +195,7 @@ export default function BookingsTable({ bookings }: { bookings: Booking[] }) {
               />
               <th className="px-4 py-3">Contact</th>
               <th className="px-4 py-3">Service</th>
+              <th className="px-4 py-3">Add-Ons</th>
               <SortHeader
                 label="Amount"
                 sortKey="price"
@@ -173,6 +204,7 @@ export default function BookingsTable({ bookings }: { bookings: Booking[] }) {
                 onSort={handleSort}
               />
               <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -199,6 +231,13 @@ export default function BookingsTable({ bookings }: { bookings: Booking[] }) {
                     "—"
                   )}
                 </td>
+                <td className="px-4 py-3">
+                  <AddOnsBadge
+                    names={(b.services?.service_inclusions ?? [])
+                      .map((si) => inclusionNames[si.inclusion_id])
+                      .filter((name): name is string => Boolean(name))}
+                  />
+                </td>
                 <td className="px-4 py-3 font-medium text-gray-900">
                   {b.price != null ? `$${b.price.toFixed(2)}` : "—"}
                 </td>
@@ -208,11 +247,20 @@ export default function BookingsTable({ bookings }: { bookings: Booking[] }) {
                     onChange={(newStatus) => handleStatusChange(b.id, newStatus)}
                   />
                 </td>
+                <td className="px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => setRescheduling(b)}
+                    className="rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:border-brand-300 hover:text-brand-700"
+                  >
+                    Reschedule
+                  </button>
+                </td>
               </tr>
             ))}
             {paged.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={9} className="px-4 py-10 text-center text-gray-400">
                   {bookings.length === 0
                     ? "No bookings yet."
                     : "No bookings match your search/filters."}
@@ -229,6 +277,17 @@ export default function BookingsTable({ bookings }: { bookings: Booking[] }) {
           onPageChange={setPage}
         />
       </div>
+
+      {rescheduling && (
+        <RescheduleModal
+          booking={rescheduling}
+          settings={settings}
+          blockedDates={blockedDates}
+          bookingCountByDate={bookingCountByDate}
+          onConfirm={handleReschedule}
+          onClose={() => setRescheduling(null)}
+        />
+      )}
     </div>
   );
 }

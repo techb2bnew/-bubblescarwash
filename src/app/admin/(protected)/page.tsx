@@ -234,14 +234,9 @@ export default async function AdminDashboardPage() {
             <Link
               key={c.href}
               href={c.href}
-              className="group relative rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-colors hover:border-brand-300 hover:shadow-md"
+              className="group flex items-center gap-4 rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-colors hover:border-brand-300 hover:shadow-md"
             >
-              {navCounts[c.href] != null && (
-                <span className="absolute right-4 top-4 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600 group-hover:bg-brand-50 group-hover:text-brand-700">
-                  {navCounts[c.href]}
-                </span>
-              )}
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 group-hover:bg-brand-50 group-hover:text-brand-600">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 group-hover:bg-brand-50 group-hover:text-brand-600">
                 <svg
                   width="18"
                   height="18"
@@ -255,8 +250,17 @@ export default async function AdminDashboardPage() {
                   {c.icon}
                 </svg>
               </span>
-              <h3 className="mt-3 font-medium text-gray-900">{c.title}</h3>
-              <p className="mt-1 text-sm text-gray-500">{c.desc}</p>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-medium text-gray-900">{c.title}</h3>
+                  {navCounts[c.href] != null && (
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600 group-hover:bg-brand-50 group-hover:text-brand-700">
+                      {navCounts[c.href]}
+                    </span>
+                  )}
+                </div>
+                <p className="truncate text-xs text-gray-500">{c.desc}</p>
+              </div>
             </Link>
           ))}
         </div>

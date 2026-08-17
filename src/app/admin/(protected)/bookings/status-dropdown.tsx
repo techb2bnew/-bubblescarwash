@@ -7,18 +7,21 @@ import type { BookingStatus } from "@/lib/types";
 const STATUS_OPTIONS: { value: BookingStatus; label: string }[] = [
   { value: "confirmed", label: "Confirmed" },
   { value: "completed", label: "Completed" },
+  { value: "rescheduled", label: "Rescheduled" },
   { value: "cancelled", label: "Cancelled" },
 ];
 
 const STATUS_STYLES: Record<BookingStatus, string> = {
   confirmed: "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200",
   completed: "bg-green-50 text-green-700 ring-1 ring-inset ring-green-200",
+  rescheduled: "bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-200",
   cancelled: "bg-gray-100 text-gray-500 ring-1 ring-inset ring-gray-200",
 };
 
 const DOT_STYLES: Record<BookingStatus, string> = {
   confirmed: "bg-blue-500",
   completed: "bg-green-500",
+  rescheduled: "bg-purple-500",
   cancelled: "bg-gray-400",
 };
 
