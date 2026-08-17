@@ -55,6 +55,7 @@ set search_path = public
 as $$
 declare
   new_id uuid;
+  v_price numeric(10, 2);
 begin
   if exists (select 1 from blocked_dates where date = p_booking_date) then
     raise exception 'This date is not available for booking.';
@@ -67,12 +68,14 @@ begin
     raise exception 'This time slot is not available for booking.';
   end if;
 
+  select price into v_price from services where id = p_service_id;
+
   insert into bookings (
     service_id, booking_date, booking_time,
-    customer_name, customer_phone, customer_email
+    customer_name, customer_phone, customer_email, price
   ) values (
     p_service_id, p_booking_date, p_booking_time,
-    p_customer_name, p_customer_phone, p_customer_email
+    p_customer_name, p_customer_phone, p_customer_email, v_price
   )
   returning id into new_id;
 
