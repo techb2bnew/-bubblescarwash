@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { BlockedDate, BusinessSettings, Service } from "@/lib/types";
+import type { BlockedDate, BookingType, BusinessSettings, Service } from "@/lib/types";
 import {
   formatTimeLabel,
   generateTimeSlots,
@@ -83,6 +83,7 @@ export default function CalendarView({
   const [bookingName, setBookingName] = useState("");
   const [bookingPhone, setBookingPhone] = useState("");
   const [bookingEmail, setBookingEmail] = useState("");
+  const [bookingType, setBookingType] = useState<BookingType>("offline");
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
 
@@ -120,6 +121,7 @@ export default function CalendarView({
       setBookingName("");
       setBookingPhone("");
       setBookingEmail("");
+      setBookingType("offline");
       setBookingError(null);
     }
     resetForNewDate();
@@ -221,6 +223,7 @@ export default function CalendarView({
         customer_name: bookingName,
         customer_phone: bookingPhone,
         customer_email: bookingEmail,
+        booking_type: bookingType,
       });
       setBookedTimes((prev) => [...prev, bookingTime]);
       setBookingServiceId("");
@@ -228,6 +231,7 @@ export default function CalendarView({
       setBookingName("");
       setBookingPhone("");
       setBookingEmail("");
+      setBookingType("offline");
       setActiveAction(null);
       router.refresh();
     } catch (err) {
@@ -446,7 +450,7 @@ export default function CalendarView({
                               style={blocked ? unavailableDateStyle : undefined}
                               className={`rounded-md border px-2 py-1.5 text-xs ${
                                 booked
-                                  ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+                                  ? "cursor-not-allowed border-blue-200 bg-blue-50 text-blue-600"
                                   : blocked
                                     ? "border-red-200 text-red-600 hover:border-red-300"
                                     : "border-gray-300 text-gray-600 hover:border-brand-300 hover:text-brand-700"
@@ -460,7 +464,7 @@ export default function CalendarView({
                     )}
                     <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
                       <span className="flex items-center gap-1">
-                        <span className="h-3 w-3 rounded border border-gray-300 bg-gray-100" />{" "}
+                        <span className="h-3 w-3 rounded border border-blue-200 bg-blue-50" />{" "}
                         Booked
                       </span>
                       <span className="flex items-center gap-1">
@@ -492,6 +496,33 @@ export default function CalendarView({
                 </button>
                 {activeAction === "booking" && (
                   <div className="mt-3 space-y-3">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                        Booking Type
+                      </label>
+                      <div className="flex gap-2">
+                        {(["offline", "online"] as const).map((type) => (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => setBookingType(type)}
+                            className={`flex-1 rounded-md border px-3 py-1.5 text-sm font-medium capitalize ${
+                              bookingType === type
+                                ? "border-brand-600 bg-brand-50 text-brand-700"
+                                : "border-gray-300 text-gray-600 hover:border-gray-400"
+                            }`}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+                      {bookingType === "offline" && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          Offline bookings (phone/walk-in) can use any time slot,
+                          even ones marked booked or blocked.
+                        </p>
+                      )}
+                    </div>
                     <div>
                       <label className="mb-1 block text-xs font-medium text-gray-600">
                         Service
@@ -551,20 +582,27 @@ export default function CalendarView({
                       ) : (
                         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                           {timeSlots.map((t) => {
-                            const taken =
-                              bookedTimes.includes(t) || blockedTimes.includes(t);
+                            const booked = bookedTimes.includes(t);
+                            const blocked = blockedTimes.includes(t);
+                            const isOffline = bookingType === "offline";
+                            const disabled = !isOffline && (booked || blocked);
                             return (
                               <button
                                 key={t}
                                 type="button"
-                                disabled={taken}
+                                disabled={disabled}
                                 onClick={() => setBookingTime(t)}
+                                style={disabled && blocked ? unavailableDateStyle : undefined}
                                 className={`rounded-md border px-2 py-1.5 text-xs ${
-                                  taken
-                                    ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+                                  disabled
+                                    ? booked
+                                      ? "cursor-not-allowed border-blue-200 bg-blue-50 text-blue-600"
+                                      : "cursor-not-allowed border-red-200 text-red-600"
                                     : bookingTime === t
                                       ? "border-brand-600 bg-brand-50 text-brand-700"
-                                      : "border-gray-300 text-gray-600 hover:border-gray-400"
+                                      : (booked || blocked) && isOffline
+                                        ? "border-amber-300 text-amber-700 hover:border-amber-400"
+                                        : "border-gray-300 text-gray-600 hover:border-gray-400"
                                 }`}
                               >
                                 {formatTimeLabel(t)}

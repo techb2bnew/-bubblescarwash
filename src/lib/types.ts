@@ -70,6 +70,8 @@ export interface BlockedSlot {
   created_at: string;
 }
 
+export type BookingType = "online" | "offline";
+
 export interface Booking {
   id: string;
   service_id: string;
@@ -79,6 +81,7 @@ export interface Booking {
   booking_date: string;
   booking_time: string;
   status: BookingStatus;
+  booking_type: BookingType;
   price: number | null;
   created_at: string;
   services?: Service;

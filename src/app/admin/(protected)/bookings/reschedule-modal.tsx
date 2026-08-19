@@ -222,16 +222,24 @@ export default function RescheduleModal({
                       t === booking.booking_time.slice(0, 5);
                     const bookedEntry = bookedTimes.find((bt) => bt.time === t);
                     const taken = Boolean(bookedEntry) && !isOwnCurrentSlot;
+                    const blocked = bookedEntry?.isBlocked ?? false;
                     return (
                       <button
                         key={t}
                         disabled={taken}
                         onClick={() => setSelectedTime(t)}
-                        title={taken ? bookedEntry?.reason || "Already booked" : undefined}
-                        style={taken ? unavailableDateStyle : undefined}
+                        title={
+                          taken
+                            ? bookedEntry?.reason ||
+                              (blocked ? "Not available" : "Already booked")
+                            : undefined
+                        }
+                        style={blocked ? unavailableDateStyle : undefined}
                         className={`rounded-md border px-2 py-1.5 text-xs ${
                           taken
-                            ? "cursor-not-allowed border-gray-200 text-gray-400"
+                            ? blocked
+                              ? "cursor-not-allowed border-red-200 text-red-600"
+                              : "cursor-not-allowed border-blue-200 bg-blue-50 text-blue-600"
                             : selectedTime === t
                               ? "border-brand-600 bg-brand-50 text-brand-700"
                               : "border-gray-300 text-gray-600 hover:border-gray-400"

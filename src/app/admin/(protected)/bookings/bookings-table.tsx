@@ -21,6 +21,12 @@ const STATUS_OPTIONS = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
+const TYPE_OPTIONS = [
+  { value: "all", label: "All Types" },
+  { value: "online", label: "Online" },
+  { value: "offline", label: "Offline" },
+];
+
 export default function BookingsTable({
   bookings,
   inclusionNames,
@@ -35,6 +41,7 @@ export default function BookingsTable({
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+  const [type, setType] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [sortKey, setSortKey] = useState<string | null>("booking_date");
@@ -49,6 +56,16 @@ export default function BookingsTable({
       counts[b.booking_date] = (counts[b.booking_date] ?? 0) + 1;
     }
     return counts;
+  }, [bookings]);
+
+  const typeCounts = useMemo(() => {
+    let online = 0;
+    let offline = 0;
+    for (const b of bookings) {
+      if (b.booking_type === "offline") offline += 1;
+      else online += 1;
+    }
+    return { online, offline };
   }, [bookings]);
 
   async function handleStatusChange(id: string, newStatus: BookingStatus) {
@@ -85,6 +102,7 @@ export default function BookingsTable({
       );
     }
     if (status !== "all") result = result.filter((b) => b.status === status);
+    if (type !== "all") result = result.filter((b) => b.booking_type === type);
     if (dateFrom) result = result.filter((b) => b.booking_date >= dateFrom);
     if (dateTo) result = result.filter((b) => b.booking_date <= dateTo);
 
@@ -108,7 +126,7 @@ export default function BookingsTable({
       });
     }
     return result;
-  }, [bookings, search, status, dateFrom, dateTo, sortKey, sortDir]);
+  }, [bookings, search, status, type, dateFrom, dateTo, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const clampedPage = Math.min(page, totalPages);
@@ -118,11 +136,16 @@ export default function BookingsTable({
   );
 
   const hasActiveFilters =
-    search.trim() !== "" || status !== "all" || dateFrom !== "" || dateTo !== "";
+    search.trim() !== "" ||
+    status !== "all" ||
+    type !== "all" ||
+    dateFrom !== "" ||
+    dateTo !== "";
 
   function clearFilters() {
     setSearch("");
     setStatus("all");
+    setType("all");
     setDateFrom("");
     setDateTo("");
     setPage(1);
@@ -130,6 +153,16 @@ export default function BookingsTable({
 
   return (
     <div className="space-y-3">
+      <div className="flex items-center gap-3 text-xs text-gray-500">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-gray-400" /> Online:{" "}
+          <span className="font-semibold text-gray-700">{typeCounts.online}</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-amber-500" /> Offline:{" "}
+          <span className="font-semibold text-gray-700">{typeCounts.offline}</span>
+        </span>
+      </div>
       <TableToolbar
         search={search}
         onSearchChange={(v) => {
@@ -148,6 +181,15 @@ export default function BookingsTable({
             setPage(1);
           }}
           options={STATUS_OPTIONS}
+        />
+        <FilterSelect
+          label="Type"
+          value={type}
+          onChange={(v) => {
+            setType(v);
+            setPage(1);
+          }}
+          options={TYPE_OPTIONS}
         />
         <div className="flex items-center gap-1 text-sm text-gray-500">
           <input
@@ -204,6 +246,7 @@ export default function BookingsTable({
                 onSort={handleSort}
               />
               <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
@@ -248,6 +291,17 @@ export default function BookingsTable({
                   />
                 </td>
                 <td className="px-4 py-3">
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                      b.booking_type === "offline"
+                        ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200"
+                        : "bg-gray-100 text-gray-600 ring-1 ring-inset ring-gray-200"
+                    }`}
+                  >
+                    {b.booking_type === "offline" ? "Offline" : "Online"}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
                   <button
                     type="button"
                     onClick={() => setRescheduling(b)}
@@ -260,7 +314,7 @@ export default function BookingsTable({
             ))}
             {paged.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={10} className="px-4 py-10 text-center text-gray-400">
                   {bookings.length === 0
                     ? "No bookings yet."
                     : "No bookings match your search/filters."}

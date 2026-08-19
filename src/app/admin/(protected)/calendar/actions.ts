@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { BlockedSlot } from "@/lib/types";
+import type { BlockedSlot, BookingType } from "@/lib/types";
 
 export async function blockDate(date: string, reason: string) {
   const supabase = await createClient();
@@ -86,19 +86,43 @@ export interface AdminBookingInput {
   customer_name: string;
   customer_phone: string;
   customer_email: string;
+  booking_type: BookingType;
 }
 
 export async function createBookingAdmin(input: AdminBookingInput) {
   const supabase = await createClient();
-  const { error } = await supabase.rpc("create_booking", {
-    p_service_id: input.service_id,
-    p_booking_date: input.booking_date,
-    p_booking_time: input.booking_time,
-    p_customer_name: input.customer_name,
-    p_customer_phone: input.customer_phone,
-    p_customer_email: input.customer_email,
-  });
-  if (error) throw new Error(error.message);
+
+  if (input.booking_type === "online") {
+    const { error } = await supabase.rpc("create_booking", {
+      p_service_id: input.service_id,
+      p_booking_date: input.booking_date,
+      p_booking_time: input.booking_time,
+      p_customer_name: input.customer_name,
+      p_customer_phone: input.customer_phone,
+      p_customer_email: input.customer_email,
+    });
+    if (error) throw new Error(error.message);
+  } else {
+    const { data: service, error: serviceError } = await supabase
+      .from("services")
+      .select("price")
+      .eq("id", input.service_id)
+      .single();
+    if (serviceError) throw new Error(serviceError.message);
+
+    const { error } = await supabase.from("bookings").insert({
+      service_id: input.service_id,
+      booking_date: input.booking_date,
+      booking_time: input.booking_time,
+      customer_name: input.customer_name,
+      customer_phone: input.customer_phone,
+      customer_email: input.customer_email,
+      price: service?.price ?? null,
+      booking_type: "offline",
+    });
+    if (error) throw new Error(error.message);
+  }
+
   revalidatePath("/admin/calendar");
   revalidatePath("/admin/bookings");
   revalidatePath("/admin");

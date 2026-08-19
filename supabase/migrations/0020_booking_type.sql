@@ -1,42 +1,20 @@
--- Different packages take different amounts of time (e.g. a 1hr wash vs a
---   
--- every availability check duration-aware:
---   - get_booked_times expands each active booking into every slot it spans
---     (using the service's duration_minutes), so both the public booking
---     calendar and the admin calendar/reschedule pickers grey out the whole
---     span, not just the start time.
---   - create_booking now rejects a new booking whenever its
---     [start, start + duration) span overlaps an existing booking's span or
---     a blocked slot, or would run past closing time — real interval math,
---     not just an exact-start-time match.
+-- Adds an online/offline tag to bookings. Every customer-made booking
+-- (through /book) is "online". Admin's manual "Create New Booking" panel
+-- can now also log an "offline" booking (phone/walk-in) — and offline
+-- bookings are exempt from the double-booking guard, since admin may
+-- deliberately want to record one on a slot the system otherwise thinks is
+-- full (e.g. extra capacity, correcting a walk-in that happened anyway).
+-- Online bookings still fully respect availability via create_booking's own
+-- overlap checks, regardless of this change.
 
-drop function if exists get_booked_times(date);
+alter table bookings
+  add column if not exists booking_type text not null default 'online'
+    check (booking_type in ('online', 'offline'));
 
-create or replace function get_booked_times(target_date date)
-returns table (booking_time time, reason text)
-language sql
-security definer
-stable
-as $$
-  with settings as (
-    select slot_interval_minutes from business_settings where id = 1
-  )
-  select gs::time, null::text
-  from bookings b
-  join services s on s.id = b.service_id
-  cross join settings
-  cross join lateral generate_series(
-    (target_date + b.booking_time)::timestamp,
-    (target_date + b.booking_time)::timestamp
-      + make_interval(mins => s.duration_minutes)
-      - make_interval(mins => settings.slot_interval_minutes),
-    make_interval(mins => settings.slot_interval_minutes)
-  ) as gs
-  where b.booking_date = target_date and b.status <> 'cancelled'
-  union
-  select time, reason from blocked_slots
-  where date = target_date;
-$$;
+drop index if exists bookings_date_time_unique;
+create unique index if not exists bookings_date_time_unique
+  on bookings (booking_date, booking_time)
+  where status <> 'cancelled' and booking_type = 'online';
 
 create or replace function create_booking(
   p_service_id uuid,
@@ -101,10 +79,10 @@ begin
 
   insert into bookings (
     service_id, booking_date, booking_time,
-    customer_name, customer_phone, customer_email, price
+    customer_name, customer_phone, customer_email, price, booking_type
   ) values (
     p_service_id, p_booking_date, p_booking_time,
-    p_customer_name, p_customer_phone, p_customer_email, v_price
+    p_customer_name, p_customer_phone, p_customer_email, v_price, 'online'
   )
   returning id into new_id;
 

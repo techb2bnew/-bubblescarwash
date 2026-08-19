@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 export interface BookedTime {
   time: string;
   reason: string | null;
+  isBlocked: boolean;
 }
 
 export async function getBookedTimes(date: string): Promise<BookedTime[]> {
@@ -13,10 +14,22 @@ export async function getBookedTimes(date: string): Promise<BookedTime[]> {
     target_date: date,
   });
   if (error) throw new Error(error.message);
-  return (data ?? []).map((b: { booking_time: string; reason: string | null }) => ({
-    time: b.booking_time.slice(0, 5),
-    reason: b.reason,
-  }));
+  return (data ?? []).map(
+    (b: { booking_time: string; reason: string | null; is_blocked: boolean }) => ({
+      time: b.booking_time.slice(0, 5),
+      reason: b.reason,
+      isBlocked: b.is_blocked,
+    }),
+  );
+}
+
+export async function countBookingsByEmail(email: string): Promise<number> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("count_bookings_by_email", {
+    p_email: email,
+  });
+  if (error) throw new Error(error.message);
+  return (data as number) ?? 0;
 }
 
 export interface CreateBookingInput {

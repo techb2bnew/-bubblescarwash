@@ -22,7 +22,14 @@ import {
   unavailableDateStyle,
   WEEKDAY_NAMES,
 } from "@/lib/date-utils";
-import { createBooking, getBookedTimes, type BookedTime } from "./actions";
+import {
+  countBookingsByEmail,
+  createBooking,
+  getBookedTimes,
+  type BookedTime,
+} from "./actions";
+
+const BOOKING_LIMIT = 5;
 
 type Step = 1 | 2 | 3;
 
@@ -66,6 +73,7 @@ export default function BookingFlow({
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [bookedTimes, setBookedTimes] = useState<BookedTime[]>([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
+  const [timesError, setTimesError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -77,6 +85,7 @@ export default function BookingFlow({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmedId, setConfirmedId] = useState<string | null>(null);
+  const [limitConfirmCount, setLimitConfirmCount] = useState<number | null>(null);
 
   const today = useMemo(() => startOfToday(), []);
   const [cursor, setCursor] = useState({
@@ -109,9 +118,18 @@ export default function BookingFlow({
   function handleSelectDate(dateKey: string) {
     setSelectedDate(dateKey);
     setSelectedTime(null);
+    setTimesError(null);
     setLoadingTimes(true);
     getBookedTimes(dateKey)
       .then(setBookedTimes)
+      .catch((err) => {
+        setBookedTimes([]);
+        setTimesError(
+          err instanceof Error
+            ? err.message
+            : "Couldn't load availability for this date. Please try again.",
+        );
+      })
       .finally(() => setLoadingTimes(false));
   }
 
@@ -133,6 +151,24 @@ export default function BookingFlow({
   }
 
   async function handleConfirm() {
+    if (!selectedService || !selectedDate || !selectedTime) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const existingCount = await countBookingsByEmail(email);
+      if (existingCount >= BOOKING_LIMIT) {
+        setLimitConfirmCount(existingCount);
+        setSubmitting(false);
+        return;
+      }
+      await submitBooking();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setSubmitting(false);
+    }
+  }
+
+  async function submitBooking() {
     if (!selectedService || !selectedDate || !selectedTime) return;
     setSubmitting(true);
     setError(null);
@@ -370,21 +406,40 @@ export default function BookingFlow({
                     </h3>
                     {loadingTimes ? (
                       <p className="text-sm text-gray-400">Loading...</p>
+                    ) : timesError ? (
+                      <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                        {timesError}
+                        <button
+                          type="button"
+                          onClick={() => handleSelectDate(selectedDate)}
+                          className="mt-2 block font-medium underline"
+                        >
+                          Try again
+                        </button>
+                      </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-2">
                         {timeSlots.map((t) => {
                           const bookedEntry = bookedTimes.find((bt) => bt.time === t);
                           const taken = Boolean(bookedEntry);
+                          const blocked = bookedEntry?.isBlocked ?? false;
                           return (
                             <button
                               key={t}
                               disabled={taken}
                               onClick={() => setSelectedTime(t)}
-                              title={taken ? bookedEntry?.reason || "Already booked" : undefined}
-                              style={taken ? unavailableDateStyle : undefined}
+                              title={
+                                taken
+                                  ? bookedEntry?.reason ||
+                                    (blocked ? "Not available" : "Already booked")
+                                  : undefined
+                              }
+                              style={blocked ? unavailableDateStyle : undefined}
                               className={`rounded-md border px-2 py-1.5 text-xs ${
                                 taken
-                                  ? "cursor-not-allowed border-gray-200 text-gray-400"
+                                  ? blocked
+                                    ? "cursor-not-allowed border-red-200 text-red-600"
+                                    : "cursor-not-allowed border-blue-200 bg-blue-50 text-blue-600"
                                   : selectedTime === t
                                     ? "border-brand-600 bg-brand-50 text-brand-700"
                                     : "border-gray-300 text-gray-600 hover:border-gray-400"
@@ -408,7 +463,9 @@ export default function BookingFlow({
 
           <div className="mt-6 flex justify-end">
             <button
-              disabled={!selectedService || !selectedDate || !selectedTime}
+              disabled={
+                !selectedService || !selectedDate || !selectedTime || Boolean(timesError)
+              }
               onClick={() => setStep(2)}
               className="rounded-md bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
             >
@@ -586,6 +643,37 @@ export default function BookingFlow({
             {selectedService?.name} on {selectedDate} at{" "}
             {selectedTime && formatTimeLabel(selectedTime)}
           </p>
+        </div>
+      )}
+
+      {limitConfirmCount !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
+            <h3 className="text-base font-semibold text-gray-900">
+              Booking limit reached
+            </h3>
+            <p className="mt-2 text-sm text-gray-600">
+              This email has already been used for {limitConfirmCount} bookings.
+              Do you still want to continue with this booking?
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setLimitConfirmCount(null)}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setLimitConfirmCount(null);
+                  submitBooking();
+                }}
+                className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+              >
+                Yes, continue
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
