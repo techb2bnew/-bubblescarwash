@@ -14,7 +14,7 @@ import { Pagination } from "../_components/pagination";
 const PAGE_SIZE = 10;
 
 const STATUS_OPTIONS = [
-  { value: "all", label: "All Statuses" },
+  { value: "all", label: "All Status" },
   { value: "confirmed", label: "Confirmed" },
   { value: "completed", label: "Completed" },
   { value: "rescheduled", label: "Rescheduled" },
