@@ -102,15 +102,14 @@ export default function HeroSlider() {
         <div className="absolute inset-0 bg-gradient-to-r from-[#0b1220]/70 via-transparent to-transparent" />
       </div>
 
-      <div className="relative mx-auto max-w-[1600px] px-6 pb-14 pt-28 sm:px-10 sm:pb-16 sm:pt-36 lg:px-12 lg:pb-20 lg:pt-44">
-        <div className="min-h-[340px] max-w-2xl sm:min-h-[300px]">
+      <div className="relative mx-auto flex max-w-[1600px] flex-col items-center px-6 pb-14 pt-28 text-center sm:px-10 sm:pb-16 sm:pt-36 lg:px-12 lg:pb-20 lg:pt-44">
+        <div className="relative min-h-[360px] w-full max-w-2xl sm:min-h-[300px]">
           {slides.map((slide, i) => (
             <div
               key={slide.src}
-              className={`transition-all duration-700 ${
-                i === active
-                  ? "relative opacity-100"
-                  : "pointer-events-none absolute inset-0 opacity-0"
+              aria-hidden={i !== active}
+              className={`absolute inset-0 flex flex-col items-center transition-opacity duration-700 ease-in-out ${
+                i === active ? "opacity-100" : "pointer-events-none opacity-0"
               }`}
             >
               <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-semibold uppercase tracking-widest text-brand-300 ring-1 ring-white/10">
@@ -124,7 +123,7 @@ export default function HeroSlider() {
           ))}
         </div>
 
-        <div className="mt-10 flex flex-wrap items-center gap-4">
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <Link
             href="/book"
             className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-9 py-5 text-lg font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-brand-600/40"
@@ -138,13 +137,13 @@ export default function HeroSlider() {
             See Packages
           </Link>
         </div>
-        <div className="mt-11 flex items-center gap-3 text-white/80">
+        <div className="mt-11 flex items-center justify-center gap-3 text-white/80">
           <StarRow />
           <span className="text-base text-gray-300">Rated by real customers on Google</span>
         </div>
 
         {/* Slide dots */}
-        <div className="mt-10 flex items-center gap-2">
+        <div className="mt-10 flex items-center justify-center gap-2">
           {slides.map((slide, i) => (
             <button
               key={slide.src}
