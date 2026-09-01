@@ -17,7 +17,7 @@ const raleway = Raleway({
   subsets: ["latin"],
   weight: ["500", "600", "700", "800"],
 });
-
+ 
 export const metadata: Metadata = {
   title: {
     default: "Bubbles Car Wash & Cafe",
