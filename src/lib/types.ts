@@ -33,6 +33,17 @@ export interface BusinessSettings {
   opening_time: string;
   closing_time: string;
   slot_interval_minutes: number;
+  default_booth_count: number;
+}
+
+export type BoothCapacityDuration = "day" | "week" | "month";
+
+export interface BoothCapacityPeriod {
+  id: string;
+  start_date: string;
+  end_date: string;
+  booth_count: number;
+  created_at: string;
 }
 
 export interface Service {
@@ -59,6 +70,7 @@ export interface BlockedDate {
   id: string;
   date: string;
   reason: string | null;
+  google_event_id: string | null;
   created_at: string;
 }
 
@@ -67,6 +79,7 @@ export interface BlockedSlot {
   date: string;
   time: string;
   reason: string | null;
+  google_event_id: string | null;
   created_at: string;
 }
 
@@ -83,6 +96,7 @@ export interface Booking {
   status: BookingStatus;
   booking_type: BookingType;
   price: number | null;
+  google_event_id: string | null;
   created_at: string;
   services?: Service;
 }

@@ -74,3 +74,19 @@ export function formatTimeLabel(time: string): string {
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${String(m).padStart(2, "0")} ${period}`;
 }
+
+export function addDaysToDateKey(dateKey: string, days: number): string {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return toDateKey(new Date(y, m - 1, d + days));
+}
+
+/** End date (inclusive) for a booth capacity period starting on startDate. */
+export function boothPeriodEndDate(
+  startDate: string,
+  duration: "day" | "week" | "month",
+): string {
+  if (duration === "day") return startDate;
+  if (duration === "week") return addDaysToDateKey(startDate, 6);
+  const [y, m, d] = startDate.split("-").map(Number);
+  return toDateKey(new Date(y, m, d - 1));
+}

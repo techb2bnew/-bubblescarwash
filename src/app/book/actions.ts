@@ -1,5 +1,6 @@
 "use server";
 
+import { onBookingCreated } from "@/lib/booking-sync";
 import { createClient } from "@/lib/supabase/server";
 
 export interface BookedTime {
@@ -53,5 +54,17 @@ export async function createBooking(input: CreateBookingInput) {
     p_customer_email: input.customer_email,
   });
   if (error) throw new Error(error.message);
-  return { id: data as string };
+
+  const bookingId = data as string;
+  await onBookingCreated({
+    bookingId,
+    serviceId: input.service_id,
+    customerName: input.customer_name,
+    customerPhone: input.customer_phone,
+    customerEmail: input.customer_email,
+    bookingDate: input.booking_date,
+    bookingTime: input.booking_time,
+  });
+
+  return { id: bookingId };
 }
