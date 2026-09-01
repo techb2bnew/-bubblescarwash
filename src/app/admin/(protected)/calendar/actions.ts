@@ -13,7 +13,7 @@ import {
 import { onBookingCreated } from "@/lib/booking-sync";
 import { createClient } from "@/lib/supabase/server";
 import type { BlockedSlot, BookingType, BoothCapacityDuration } from "@/lib/types";
-import { boothPeriodEndDate } from "@/lib/date-utils";
+import { boothPeriodEndDate, generateTimeSlots, hourBucketKey } from "@/lib/date-utils";
 
 export async function blockDate(date: string, reason: string) {
   const supabase = await createClient();
@@ -88,36 +88,38 @@ export async function getDateAvailability(
       supabase.from("blocked_slots").select("*").eq("date", date),
       supabase
         .from("business_settings")
-        .select("slot_interval_minutes")
+        .select("slot_interval_minutes, opening_time, closing_time")
         .eq("id", 1)
         .single(),
       getBoothCountForDate(date),
     ]);
 
   const intervalMinutes = settings?.slot_interval_minutes ?? 30;
-  const slotCounts = new Map<string, number>();
+  const openingTime = settings?.opening_time ?? "09:00";
+  const closingTime = settings?.closing_time ?? "17:00";
+  const hourCounts = new Map<string, number>();
 
   for (const b of bookings ?? []) {
     if ((b.booking_type as string) !== "online") continue;
     const duration =
       (b.services as unknown as { duration_minutes: number } | null)
         ?.duration_minutes ?? intervalMinutes;
-    const span = Math.max(duration, intervalMinutes);
     const [h, m] = b.booking_time.slice(0, 5).split(":").map(Number);
-    let minutes = h * 60 + m;
-    const end = minutes + span;
-    while (minutes < end) {
-      const hh = Math.floor(minutes / 60);
-      const mm = minutes % 60;
-      const key = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-      slotCounts.set(key, (slotCounts.get(key) ?? 0) + 1);
-      minutes += intervalMinutes;
+    const startMinutes = h * 60 + m;
+    const endMinutes = startMinutes + duration;
+    let hourStart = Math.floor(startMinutes / 60) * 60;
+    while (hourStart < endMinutes) {
+      const key = `${String(Math.floor(hourStart / 60)).padStart(2, "0")}:00`;
+      hourCounts.set(key, (hourCounts.get(key) ?? 0) + 1);
+      hourStart += 60;
     }
   }
 
+  const slots = generateTimeSlots(openingTime, closingTime, intervalMinutes);
   const bookedTimes: string[] = [];
   const slotUsage: { time: string; count: number }[] = [];
-  for (const [time, count] of slotCounts.entries()) {
+  for (const time of slots) {
+    const count = hourCounts.get(hourBucketKey(time)) ?? 0;
     slotUsage.push({ time, count });
     if (count >= boothCount) bookedTimes.push(time);
   }

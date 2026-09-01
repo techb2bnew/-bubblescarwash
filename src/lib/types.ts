@@ -36,7 +36,7 @@ export interface BusinessSettings {
   default_booth_count: number;
 }
 
-export type BoothCapacityDuration = "day" | "week" | "month";
+export type BoothCapacityDuration = "day" | "week" | "month" | "ongoing";
 
 export interface BoothCapacityPeriod {
   id: string;

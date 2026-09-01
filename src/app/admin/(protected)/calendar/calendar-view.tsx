@@ -14,6 +14,7 @@ import {
   formatTimeLabel,
   generateTimeSlots,
   getMonthGrid,
+  isOngoingBoothPeriod,
   isSameMonth,
   MONTH_NAMES,
   startOfToday,
@@ -196,7 +197,7 @@ export default function CalendarView({
     const count = getSlotBookingCount(time);
     const label = formatTimeLabel(time);
     if (count === 0) return label;
-    return `${label} (${count}/${boothCount})`;
+    return `${label} (${count}/${boothCount} hr)`;
   }
 
   async function handleSetBoothCapacity() {
@@ -433,7 +434,7 @@ export default function CalendarView({
           <p className="mt-0.5 text-sm text-gray-500">
             {dayIsClosed
               ? `Closed${blockedByDate.get(selected)?.reason ? ` — ${blockedByDate.get(selected)?.reason}` : ""}`
-              : `Open for bookings · ${boothCount} booth${boothCount === 1 ? "" : "s"} available per slot`}
+              : `Open for bookings · ${boothCount} booking${boothCount === 1 ? "" : "s"} allowed per hour`}
           </p>
 
           {dayIsClosed ? (
@@ -457,19 +458,19 @@ export default function CalendarView({
                   }}
                   className="flex w-full items-center justify-between text-left text-sm font-medium text-gray-800 hover:text-brand-700"
                 >
-                  <span>↳ Set Booth Capacity</span>
+                  <span>↳ Set Capacity</span>
                   <ChevronIcon open={activeAction === "booths"} />
                 </button>
                 {activeAction === "booths" && (
                   <div className="mt-3 space-y-3">
                     <p className="text-xs text-gray-500">
-                      Allow multiple bookings in the same time slot (one per booth).
-                      Currently <strong>{boothCount}</strong> booth
-                      {boothCount === 1 ? "" : "s"} active on this date.
+                      Set how many bookings can run in the same clock hour (e.g. 9:00 and
+                      9:30 share one pool). Currently <strong>{boothCount}</strong> per hour
+                      on this date.
                     </p>
                     <div>
                       <label className="mb-1 block text-xs font-medium text-gray-600">
-                        Number of booths
+                        Number of Bookings in 1 Hour
                       </label>
                       <input
                         type="number"
@@ -486,12 +487,13 @@ export default function CalendarView({
                       <label className="mb-1 block text-xs font-medium text-gray-600">
                         Apply for
                       </label>
-                      <div className="flex gap-2">
+                      <div className="grid grid-cols-2 gap-2">
                         {(
                           [
                             ["day", "1 Day"],
                             ["week", "1 Week"],
                             ["month", "1 Month"],
+                            ["ongoing", "Ongoing"],
                           ] as const
                         ).map(([value, label]) => (
                           <button
@@ -525,6 +527,11 @@ export default function CalendarView({
                           <>
                             Applies on <strong>{formatDateLong(boothStartDate)}</strong> only
                           </>
+                        ) : isOngoingBoothPeriod(boothDuration) ? (
+                          <>
+                            From <strong>{formatDateLong(boothStartDate)}</strong> onward — no end
+                            date
+                          </>
                         ) : (
                           <>
                             From <strong>{formatDateLong(boothStartDate)}</strong> until{" "}
@@ -541,7 +548,7 @@ export default function CalendarView({
                       disabled={savingBooths || !boothStartDate}
                       className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
                     >
-                      {savingBooths ? "Saving..." : "Apply Booth Capacity"}
+                      {savingBooths ? "Saving..." : "Apply Capacity"}
                     </button>
                   </div>
                 )}
