@@ -7,6 +7,7 @@ import { rescheduleBooking, setBookingStatus } from "./actions";
 import StatusDropdown from "./status-dropdown";
 import AddOnsBadge from "./add-ons-badge";
 import ExtrasBadge from "./extras-badge";
+import PaymentStatusBadge from "./payment-status-badge";
 import RescheduleModal from "./reschedule-modal";
 import { FilterSelect, TableToolbar } from "../_components/table-toolbar";
 import { SortHeader } from "../_components/sort-header";
@@ -247,6 +248,7 @@ export default function BookingsTable({
                 currentDir={sortDir}
                 onSort={handleSort}
               />
+              <th className="px-4 py-3">Payment</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Actions</th>
@@ -290,6 +292,12 @@ export default function BookingsTable({
                   {b.price != null ? `$${b.price.toFixed(2)}` : "—"}
                 </td>
                 <td className="px-4 py-3">
+                  <PaymentStatusBadge
+                    paymentStatus={b.payment_status}
+                    bookingType={b.booking_type}
+                  />
+                </td>
+                <td className="px-4 py-3">
                   <StatusDropdown
                     value={b.status}
                     onChange={(newStatus) => handleStatusChange(b.id, newStatus)}
@@ -319,7 +327,7 @@ export default function BookingsTable({
             ))}
             {paged.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={12} className="px-4 py-10 text-center text-gray-400">
                   {bookings.length === 0
                     ? "No bookings yet."
                     : "No bookings match your search/filters."}

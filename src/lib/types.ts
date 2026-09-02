@@ -106,6 +106,8 @@ export interface BlockedSlot {
 
 export type BookingType = "online" | "offline";
 
+export type PaymentStatus = "unpaid" | "pending" | "paid" | "failed" | "refunded";
+
 export interface Booking {
   id: string;
   service_id: string;
@@ -117,6 +119,9 @@ export interface Booking {
   status: BookingStatus;
   booking_type: BookingType;
   price: number | null;
+  payment_status: PaymentStatus;
+  stripe_checkout_session_id: string | null;
+  stripe_payment_intent_id: string | null;
   google_event_id: string | null;
   created_at: string;
   services?: Service;

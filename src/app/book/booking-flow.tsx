@@ -25,7 +25,7 @@ import {
 } from "@/lib/date-utils";
 import {
   countBookingsByEmail,
-  createBooking,
+  createCheckoutSession,
   getBookedTimes,
   getDateHours,
   type BookedTime,
@@ -33,23 +33,7 @@ import {
 
 const BOOKING_LIMIT = 5;
 
-type Step = 1 | 2 | 3 | 4;
-
-const PAYMENT_METHODS = [
-  { value: "card", label: "Credit Card / Apple Pay / Google Pay" },
-  { value: "afterpay", label: "Afterpay" },
-  { value: "zip", label: "Zip Pay" },
-];
-
-function formatCardNumber(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 16);
-  return (digits.match(/.{1,4}/g) ?? []).join(" ");
-}
-
-function formatExpiry(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 4);
-  return digits.length <= 2 ? digits : `${digits.slice(0, 2)}/${digits.slice(2)}`;
-}
+type Step = 1 | 2 | 3;
 
 export default function BookingFlow({
   services,
@@ -59,6 +43,7 @@ export default function BookingFlow({
   categories,
   settings,
   blockedDates,
+  paymentConfigured,
 }: {
   services: Service[];
   inclusions: AddOn[];
@@ -67,6 +52,7 @@ export default function BookingFlow({
   categories: CategoryRow[];
   settings: BusinessSettings;
   blockedDates: BlockedDate[];
+  paymentConfigured: boolean;
 }) {
   const [step, setStep] = useState<Step>(1);
   const [vehicle, setVehicle] = useState<VehicleType>(vehicleTypes[0]?.slug ?? "");
@@ -88,13 +74,8 @@ export default function BookingFlow({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS[0].value);
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvv, setCardCvv] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmedId, setConfirmedId] = useState<string | null>(null);
   const [limitConfirmCount, setLimitConfirmCount] = useState<number | null>(null);
 
   const today = useMemo(() => startOfToday(), []);
@@ -196,7 +177,7 @@ export default function BookingFlow({
     setSubmitting(true);
     setError(null);
     try {
-      const result = await createBooking({
+      const { url } = await createCheckoutSession({
         service_id: selectedService.id,
         booking_date: selectedDate,
         booking_time: `${selectedTime}:00`,
@@ -205,11 +186,10 @@ export default function BookingFlow({
         customer_email: email,
         extra_ids: selectedExtraIds,
       });
-      setConfirmedId(result.id);
-      setStep(4);
+      window.location.href = url;
+      // Intentionally leave `submitting` true — the page is navigating away.
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
       setSubmitting(false);
     }
   }
@@ -640,89 +620,29 @@ export default function BookingFlow({
             </div>
           </div>
 
-          <div className="mt-5">
-            <label className="mb-2 block text-sm font-medium text-gray-700">
-              Select Payment Method
-            </label>
-            <div className="space-y-2">
-              {PAYMENT_METHODS.map((m) => (
-                <button
-                  key={m.value}
-                  type="button"
-                  onClick={() => setPaymentMethod(m.value)}
-                  className={`flex w-full items-center gap-3 rounded-md border px-4 py-3 text-left text-sm ${
-                    paymentMethod === m.value
-                      ? "border-brand-600 bg-brand-50"
-                      : "border-gray-300 hover:border-gray-400"
-                  }`}
-                >
-                  <span
-                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
-                      paymentMethod === m.value
-                        ? "border-brand-600"
-                        : "border-gray-300"
-                    }`}
-                  >
-                    {paymentMethod === m.value && (
-                      <span className="h-2 w-2 rounded-full bg-brand-600" />
-                    )}
-                  </span>
-                  <span className="text-gray-800">{m.label}</span>
-                </button>
-              ))}
+          {paymentConfigured ? (
+            <div className="mt-5 rounded-md border border-blue-200 bg-blue-50 p-4">
+              <p className="text-sm font-medium text-blue-900">
+                Pay securely with Stripe
+              </p>
+              <p className="mt-1 text-sm text-blue-700">
+                You&apos;ll be taken to Stripe&apos;s secure checkout to pay{" "}
+                <strong>${totalPrice.toFixed(2)}</strong> by card. Your slot is
+                held for you while you pay — if payment doesn&apos;t go through,
+                it&apos;s automatically released.
+              </p>
             </div>
-
-            {paymentMethod === "card" && (
-              <div className="mt-3 grid grid-cols-2 gap-3 rounded-md border border-gray-200 bg-gray-50 p-4">
-                <div className="col-span-2">
-                  <label className="mb-1 block text-xs font-medium text-gray-600">
-                    Card Number
-                  </label>
-                  <input
-                    value={cardNumber}
-                    onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                    placeholder="1234 5678 9012 3456"
-                    inputMode="numeric"
-                    maxLength={19}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">
-                    Expiry Date
-                  </label>
-                  <input
-                    value={cardExpiry}
-                    onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
-                    placeholder="MM/YY"
-                    inputMode="numeric"
-                    maxLength={5}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">
-                    CVV
-                  </label>
-                  <input
-                    value={cardCvv}
-                    onChange={(e) =>
-                      setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 4))
-                    }
-                    placeholder="123"
-                    inputMode="numeric"
-                    maxLength={4}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-            )}
-
-            <p className="mt-2 text-xs text-gray-400">
-              Card transactions may incur a processing fee of up to 1.1%.
-              Payment is collected at the time of service, not now.
-            </p>
-          </div>
+          ) : (
+            <div className="mt-5 rounded-md border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-medium text-amber-900">
+                Online payment isn&apos;t available right now
+              </p>
+              <p className="mt-1 text-sm text-amber-700">
+                Please call us to complete this booking — we&apos;re sorry for the
+                inconvenience.
+              </p>
+            </div>
+          )}
 
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
@@ -734,36 +654,15 @@ export default function BookingFlow({
               Previous
             </button>
             <button
-              disabled={!name || !phone || !email || submitting}
+              disabled={!name || !phone || !email || submitting || !paymentConfigured}
               onClick={handleConfirm}
               className="rounded-md bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
             >
-              {submitting ? "Booking..." : "Confirm Booking"}
+              {submitting
+                ? "Redirecting to Stripe..."
+                : `Continue to Payment — $${totalPrice.toFixed(2)}`}
             </button>
           </div>
-        </div>
-      )}
-
-      {step === 4 && (
-        <div className="rounded-lg border border-green-200 bg-green-50 p-6 text-center">
-          <h2 className="text-lg font-semibold text-green-800">
-            Booking Confirmed!
-          </h2>
-          <p className="mt-2 text-sm text-green-700">
-            Booking reference: {confirmedId}
-          </p>
-          <p className="mt-1 text-sm text-green-700">
-            {selectedService?.name} on {selectedDate} at{" "}
-            {selectedTime && formatTimeLabel(selectedTime)}
-          </p>
-          {selectedExtras.length > 0 && (
-            <p className="mt-1 text-sm text-green-700">
-              + {selectedExtras.map((extra) => extra.name).join(", ")}
-            </p>
-          )}
-          <p className="mt-1 text-sm font-medium text-green-800">
-            Total: ${totalPrice.toFixed(2)}
-          </p>
         </div>
       )}
 
