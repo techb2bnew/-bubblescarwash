@@ -5,6 +5,8 @@ import { getGoogleCalendarEmbedUrl } from "@/lib/google-calendar";
 import type { BlockedDate, BusinessSettings, Service } from "@/lib/types";
 import CalendarView from "./calendar-view";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminCalendarPage() {
   await Promise.all([
     syncBlockedDatesToGoogle(),

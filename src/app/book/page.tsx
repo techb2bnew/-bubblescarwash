@@ -9,6 +9,8 @@ import type {
 } from "@/lib/types";
 import BookingFlow from "./booking-flow";
 
+export const dynamic = "force-dynamic";
+
 export default async function BookPage() {
   const supabase = await createClient();
 
