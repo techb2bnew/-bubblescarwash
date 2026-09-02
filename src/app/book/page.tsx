@@ -4,6 +4,7 @@ import type {
   BlockedDate,
   BusinessSettings,
   CategoryRow,
+  Extra,
   Service,
   VehicleTypeRow,
 } from "@/lib/types";
@@ -17,6 +18,7 @@ export default async function BookPage() {
   const [
     { data: services },
     { data: inclusions },
+    { data: extras },
     { data: settings },
     { data: blockedDates },
     { data: vehicleTypes },
@@ -28,6 +30,7 @@ export default async function BookPage() {
       .eq("active", true)
       .order("price"),
     supabase.from("inclusions").select("*").order("category").order("sort_order"),
+    supabase.from("extras").select("*").eq("active", true).order("sort_order"),
     supabase.from("business_settings").select("*").eq("id", 1).single(),
     supabase.from("blocked_dates").select("*"),
     supabase.from("vehicle_types").select("*").eq("active", true).order("sort_order"),
@@ -43,6 +46,7 @@ export default async function BookPage() {
       <BookingFlow
         services={(services as Service[]) ?? []}
         inclusions={(inclusions as AddOn[]) ?? []}
+        extras={(extras as Extra[]) ?? []}
         vehicleTypes={(vehicleTypes as VehicleTypeRow[]) ?? []}
         categories={(categories as CategoryRow[]) ?? []}
         settings={(settings as BusinessSettings) ?? {

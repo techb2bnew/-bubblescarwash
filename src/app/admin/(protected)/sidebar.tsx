@@ -59,6 +59,13 @@ const NAV_ITEMS = [
     icon: <path d="m5 13 4 4L19 7" />,
   },
   {
+    href: "/admin/extras",
+    label: "Extras",
+    icon: (
+      <path d="M20.6 12.9 12.9 20.6a2 2 0 0 1-2.8 0l-6.7-6.7a2 2 0 0 1 0-2.8L11.1 3.4A2 2 0 0 1 12.5 3H19a2 2 0 0 1 2 2v6.5a2 2 0 0 1-.6 1.4ZM8.5 8.5h.01" />
+    ),
+  },
+  {
     href: "/admin/calendar",
     label: "Calendar",
     icon: (

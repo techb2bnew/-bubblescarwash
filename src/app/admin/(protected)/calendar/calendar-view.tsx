@@ -26,14 +26,16 @@ import {
   blockDate,
   blockSlot,
   blockSlots,
+  clearDateHours,
   createBookingAdmin,
   getDateAvailability,
   setBoothCapacity,
+  setDateHours,
   unblockDate,
   unblockSlot,
 } from "./actions";
 
-type ActiveAction = "close" | "slots" | "booking" | "booths" | null;
+type ActiveAction = "close" | "slots" | "booking" | "booths" | "hours" | null;
 
 function formatDateLong(dateKey: string): string {
   const [y, m, d] = dateKey.split("-").map(Number);
@@ -89,6 +91,19 @@ export default function CalendarView({
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [savingSlot, setSavingSlot] = useState<string | null>(null);
 
+  const [dateHours, setDateHoursState] = useState<{
+    openingTime: string;
+    closingTime: string;
+    hasCustomHours: boolean;
+  }>({
+    openingTime: settings.opening_time.slice(0, 5),
+    closingTime: settings.closing_time.slice(0, 5),
+    hasCustomHours: false,
+  });
+  const [hoursStart, setHoursStart] = useState("");
+  const [hoursEnd, setHoursEnd] = useState("");
+  const [savingHours, setSavingHours] = useState(false);
+
   const [boothInputCount, setBoothInputCount] = useState(2);
   const [boothDuration, setBoothDuration] = useState<BoothCapacityDuration>("week");
   const [boothStartDate, setBoothStartDate] = useState(() => toDateKey(today));
@@ -121,11 +136,11 @@ export default function CalendarView({
   const timeSlots = useMemo(
     () =>
       generateTimeSlots(
-        settings.opening_time,
-        settings.closing_time,
+        dateHours.openingTime,
+        dateHours.closingTime,
         settings.slot_interval_minutes,
       ),
-    [settings],
+    [dateHours, settings.slot_interval_minutes],
   );
 
   const dayIsClosed = selected ? blockedByDate.has(selected) : false;
@@ -162,6 +177,11 @@ export default function CalendarView({
         setBlockedTimes(result.blockedSlots.map((s) => s.time.slice(0, 5)));
         setBoothCount(result.boothCount);
         setSlotUsage(new Map(result.slotUsage.map((s) => [s.time, s.count])));
+        setDateHoursState({
+          openingTime: result.openingTime,
+          closingTime: result.closingTime,
+          hasCustomHours: result.hasCustomHours,
+        });
       } finally {
         if (!cancelled) setLoadingSlots(false);
       }
@@ -215,6 +235,41 @@ export default function CalendarView({
       refreshAfterAction();
     } finally {
       setSavingBooths(false);
+    }
+  }
+
+  async function handleSetHours() {
+    if (!selected || !hoursStart || !hoursEnd) return;
+    setSavingHours(true);
+    try {
+      await setDateHours(selected, hoursStart, hoursEnd);
+      setDateHoursState({
+        openingTime: hoursStart,
+        closingTime: hoursEnd,
+        hasCustomHours: true,
+      });
+      setActiveAction(null);
+      refreshAfterAction();
+    } finally {
+      setSavingHours(false);
+    }
+  }
+
+  async function handleClearHours() {
+    if (!selected) return;
+    setSavingHours(true);
+    try {
+      await clearDateHours(selected);
+      const result = await getDateAvailability(selected);
+      setDateHoursState({
+        openingTime: result.openingTime,
+        closingTime: result.closingTime,
+        hasCustomHours: result.hasCustomHours,
+      });
+      setActiveAction(null);
+      refreshAfterAction();
+    } finally {
+      setSavingHours(false);
     }
   }
 
@@ -303,30 +358,26 @@ export default function CalendarView({
   }
 
   return (
-    <div className="flex flex-col items-start gap-4 xl:flex-row">
+    <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
       {useGoogleCalendar ? (
-        <div className="w-full min-w-0 flex-1 space-y-3 rounded-lg border border-gray-200 bg-white p-3">
-          
-
-          <div>
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-sm font-medium text-gray-700">Google Calendar</p>
-              <button
-                type="button"
-                onClick={refreshGoogleCalendar}
-                className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50"
-              >
-                Refresh
-              </button>
-            </div>
-            <iframe
-              key={calendarKey}
-              title="Google Calendar"
-              src={googleCalendarEmbedUrl!}
-              className="w-full rounded-md border-0"
-              style={{ height: "min(65vh, 640px)", minHeight: 420 }}
-            />
+        <div className="w-full min-w-0 flex-1 rounded-lg border border-gray-200 bg-white p-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <p className="text-sm font-medium text-gray-700">Google Calendar</p>
+            <button
+              type="button"
+              onClick={refreshGoogleCalendar}
+              className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50"
+            >
+              Refresh
+            </button>
           </div>
+          <iframe
+            key={calendarKey}
+            title="Google Calendar"
+            src={googleCalendarEmbedUrl!}
+            className="w-full rounded-md border-0"
+            style={{ height: "min(70vh, 720px)", minHeight: 480 }}
+          />
         </div>
       ) : (
       <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-4 lg:flex-none">
@@ -400,7 +451,7 @@ export default function CalendarView({
       </div>
       )}
 
-      <div className="w-full max-w-md shrink-0 rounded-lg border border-gray-200 bg-white p-4 xl:w-96">
+      <div className="w-full shrink-0 rounded-lg border border-gray-200 bg-white p-4 lg:w-96">
         {useGoogleCalendar && (
           <div className="mb-4">
             <label className="mb-1 block text-xs font-medium text-gray-600">
@@ -434,7 +485,7 @@ export default function CalendarView({
           <p className="mt-0.5 text-sm text-gray-500">
             {dayIsClosed
               ? `Closed${blockedByDate.get(selected)?.reason ? ` — ${blockedByDate.get(selected)?.reason}` : ""}`
-              : `Open for bookings · ${boothCount} booking${boothCount === 1 ? "" : "s"} allowed per hour`}
+              : `Open ${formatTimeLabel(dateHours.openingTime)}–${formatTimeLabel(dateHours.closingTime)}${dateHours.hasCustomHours ? " (custom)" : ""} · ${boothCount} booking${boothCount === 1 ? "" : "s"} allowed per hour`}
           </p>
 
           {dayIsClosed ? (
@@ -470,7 +521,7 @@ export default function CalendarView({
                     </p>
                     <div>
                       <label className="mb-1 block text-xs font-medium text-gray-600">
-                        Number of Bookings in 1 Hour
+                        Max Number of Bookings in 1 Hour
                       </label>
                       <input
                         type="number"
@@ -550,6 +601,83 @@ export default function CalendarView({
                     >
                       {savingBooths ? "Saving..." : "Apply Capacity"}
                     </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="py-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeAction !== "hours") {
+                      setHoursStart(dateHours.openingTime);
+                      setHoursEnd(dateHours.closingTime);
+                    }
+                    setActiveAction(activeAction === "hours" ? null : "hours");
+                  }}
+                  className="flex w-full items-center justify-between text-left text-sm font-medium text-gray-800 hover:text-brand-700"
+                >
+                  <span>↳ Set Hours</span>
+                  <ChevronIcon open={activeAction === "hours"} />
+                </button>
+                {activeAction === "hours" && (
+                  <div className="mt-3 space-y-3">
+                    <p className="text-xs text-gray-500">
+                      Time slots on this date will start at the opening time and
+                      end at the closing time you set below. Currently{" "}
+                      <strong>{formatTimeLabel(dateHours.openingTime)}</strong> –{" "}
+                      <strong>{formatTimeLabel(dateHours.closingTime)}</strong>
+                      {dateHours.hasCustomHours ? " (custom)" : " (default)"}.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-gray-600">
+                          Start time
+                        </label>
+                        <input
+                          type="time"
+                          value={hoursStart}
+                          onChange={(e) => setHoursStart(e.target.value)}
+                          className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-gray-600">
+                          End time
+                        </label>
+                        <input
+                          type="time"
+                          value={hoursEnd}
+                          onChange={(e) => setHoursEnd(e.target.value)}
+                          className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSetHours}
+                        disabled={savingHours || !hoursStart || !hoursEnd || hoursStart >= hoursEnd}
+                        className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                      >
+                        {savingHours ? "Saving..." : "Save Hours for This Day"}
+                      </button>
+                      {dateHours.hasCustomHours && (
+                        <button
+                          type="button"
+                          onClick={handleClearHours}
+                          disabled={savingHours}
+                          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 disabled:opacity-50"
+                        >
+                          Reset to Default
+                        </button>
+                      )}
+                    </div>
+                    {hoursStart >= hoursEnd && hoursStart && hoursEnd && (
+                      <p className="text-xs text-red-600">
+                        Start time must be before end time.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

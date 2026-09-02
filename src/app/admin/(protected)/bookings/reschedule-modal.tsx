@@ -13,7 +13,7 @@ import {
   unavailableDateStyle,
   WEEKDAY_NAMES,
 } from "@/lib/date-utils";
-import { getBookedTimes, type BookedTime } from "@/app/book/actions";
+import { getBookedTimes, getDateHours, type BookedTime } from "@/app/book/actions";
 
 export default function RescheduleModal({
   booking,
@@ -43,6 +43,10 @@ export default function RescheduleModal({
   const [loadingTimes, setLoadingTimes] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [businessHours, setBusinessHours] = useState<{
+    openingTime: string;
+    closingTime: string;
+  } | null>(null);
 
   const blockedByDate = useMemo(() => {
     const map = new Map<string, string | null>();
@@ -53,25 +57,31 @@ export default function RescheduleModal({
   const timeSlots = useMemo(
     () =>
       generateTimeSlots(
-        settings.opening_time,
-        settings.closing_time,
+        businessHours?.openingTime ?? settings.opening_time,
+        businessHours?.closingTime ?? settings.closing_time,
         settings.slot_interval_minutes,
       ),
-    [settings],
+    [businessHours, settings],
   );
 
   useEffect(() => {
     let cancelled = false;
-    async function loadBookedTimes() {
+    async function loadAvailability() {
       setLoadingTimes(true);
       try {
-        const times = await getBookedTimes(selectedDate);
-        if (!cancelled) setBookedTimes(times);
+        const [times, hours] = await Promise.all([
+          getBookedTimes(selectedDate),
+          getDateHours(selectedDate),
+        ]);
+        if (!cancelled) {
+          setBookedTimes(times);
+          setBusinessHours(hours);
+        }
       } finally {
         if (!cancelled) setLoadingTimes(false);
       }
     }
-    loadBookedTimes();
+    loadAvailability();
     return () => {
       cancelled = true;
     };

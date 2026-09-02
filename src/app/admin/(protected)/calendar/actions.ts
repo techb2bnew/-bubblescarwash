@@ -45,6 +45,9 @@ export interface DateAvailability {
   blockedSlots: BlockedSlot[];
   boothCount: number;
   slotUsage: { time: string; count: number }[];
+  openingTime: string;
+  closingTime: string;
+  hasCustomHours: boolean;
 }
 
 export async function getBoothCountForDate(date: string): Promise<number> {
@@ -74,29 +77,84 @@ export async function setBoothCapacity(
   revalidatePath("/admin/calendar");
 }
 
+export async function getDateHoursForDate(
+  date: string,
+): Promise<{ openingTime: string; closingTime: string; hasCustomHours: boolean }> {
+  const supabase = await createClient();
+  const [{ data: hours, error }, { data: override }] = await Promise.all([
+    supabase.rpc("get_business_hours", { target_date: date }).single(),
+    supabase
+      .from("date_hours_overrides")
+      .select("date")
+      .eq("date", date)
+      .maybeSingle(),
+  ]);
+  if (error) throw new Error(error.message);
+  const row = hours as { opening_time: string; closing_time: string } | null;
+  return {
+    openingTime: (row?.opening_time ?? "09:00").slice(0, 5),
+    closingTime: (row?.closing_time ?? "17:00").slice(0, 5),
+    hasCustomHours: Boolean(override),
+  };
+}
+
+export async function setDateHours(
+  date: string,
+  startTime: string,
+  endTime: string,
+) {
+  if (startTime >= endTime) {
+    throw new Error("Start time must be before end time.");
+  }
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("date_hours_overrides")
+    .upsert(
+      { date, start_time: startTime, end_time: endTime },
+      { onConflict: "date" },
+    );
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/calendar");
+}
+
+export async function clearDateHours(date: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("date_hours_overrides")
+    .delete()
+    .eq("date", date);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/calendar");
+}
+
 export async function getDateAvailability(
   date: string,
 ): Promise<DateAvailability> {
   const supabase = await createClient();
-  const [{ data: bookings }, { data: blockedSlots }, { data: settings }, boothCount] =
-    await Promise.all([
-      supabase
-        .from("bookings")
-        .select("booking_time, booking_type, services(duration_minutes)")
-        .eq("booking_date", date)
-        .neq("status", "cancelled"),
-      supabase.from("blocked_slots").select("*").eq("date", date),
-      supabase
-        .from("business_settings")
-        .select("slot_interval_minutes, opening_time, closing_time")
-        .eq("id", 1)
-        .single(),
-      getBoothCountForDate(date),
-    ]);
+  const [
+    { data: bookings },
+    { data: blockedSlots },
+    { data: settings },
+    boothCount,
+    dateHours,
+  ] = await Promise.all([
+    supabase
+      .from("bookings")
+      .select("booking_time, booking_type, services(duration_minutes)")
+      .eq("booking_date", date)
+      .neq("status", "cancelled"),
+    supabase.from("blocked_slots").select("*").eq("date", date),
+    supabase
+      .from("business_settings")
+      .select("slot_interval_minutes")
+      .eq("id", 1)
+      .single(),
+    getBoothCountForDate(date),
+    getDateHoursForDate(date),
+  ]);
 
   const intervalMinutes = settings?.slot_interval_minutes ?? 30;
-  const openingTime = settings?.opening_time ?? "09:00";
-  const closingTime = settings?.closing_time ?? "17:00";
+  const { openingTime, closingTime, hasCustomHours } = dateHours;
   const hourCounts = new Map<string, number>();
 
   for (const b of bookings ?? []) {
@@ -129,6 +187,9 @@ export async function getDateAvailability(
     blockedSlots: (blockedSlots as BlockedSlot[]) ?? [],
     boothCount,
     slotUsage,
+    openingTime,
+    closingTime,
+    hasCustomHours,
   };
 }
 

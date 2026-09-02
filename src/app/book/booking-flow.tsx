@@ -6,6 +6,7 @@ import type {
   BlockedDate,
   BusinessSettings,
   CategoryRow,
+  Extra,
   Service,
   ServiceCategory,
   VehicleType,
@@ -26,12 +27,13 @@ import {
   countBookingsByEmail,
   createBooking,
   getBookedTimes,
+  getDateHours,
   type BookedTime,
 } from "./actions";
 
 const BOOKING_LIMIT = 5;
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 
 const PAYMENT_METHODS = [
   { value: "card", label: "Credit Card / Apple Pay / Google Pay" },
@@ -52,6 +54,7 @@ function formatExpiry(value: string): string {
 export default function BookingFlow({
   services,
   inclusions,
+  extras,
   vehicleTypes,
   categories,
   settings,
@@ -59,6 +62,7 @@ export default function BookingFlow({
 }: {
   services: Service[];
   inclusions: AddOn[];
+  extras: Extra[];
   vehicleTypes: VehicleTypeRow[];
   categories: CategoryRow[];
   settings: BusinessSettings;
@@ -74,6 +78,12 @@ export default function BookingFlow({
   const [bookedTimes, setBookedTimes] = useState<BookedTime[]>([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
   const [timesError, setTimesError] = useState<string | null>(null);
+  const [businessHours, setBusinessHours] = useState<{
+    openingTime: string;
+    closingTime: string;
+  } | null>(null);
+
+  const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -115,13 +125,26 @@ export default function BookingFlow({
     );
   }
 
+  function toggleExtra(id: string) {
+    setSelectedExtraIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  const selectedExtras = extras.filter((e) => selectedExtraIds.includes(e.id));
+  const extrasTotal = selectedExtras.reduce((sum, e) => sum + e.price, 0);
+  const totalPrice = (selectedService?.price ?? 0) + extrasTotal;
+
   function handleSelectDate(dateKey: string) {
     setSelectedDate(dateKey);
     setSelectedTime(null);
     setTimesError(null);
     setLoadingTimes(true);
-    getBookedTimes(dateKey)
-      .then(setBookedTimes)
+    Promise.all([getBookedTimes(dateKey), getDateHours(dateKey)])
+      .then(([times, hours]) => {
+        setBookedTimes(times);
+        setBusinessHours(hours);
+      })
       .catch((err) => {
         setBookedTimes([]);
         setTimesError(
@@ -136,11 +159,11 @@ export default function BookingFlow({
   const timeSlots = useMemo(
     () =>
       generateTimeSlots(
-        settings.opening_time,
-        settings.closing_time,
+        businessHours?.openingTime ?? settings.opening_time,
+        businessHours?.closingTime ?? settings.closing_time,
         settings.slot_interval_minutes,
       ),
-    [settings],
+    [businessHours, settings],
   );
 
   function changeMonth(delta: number) {
@@ -180,9 +203,10 @@ export default function BookingFlow({
         customer_name: name,
         customer_phone: phone,
         customer_email: email,
+        extra_ids: selectedExtraIds,
       });
       setConfirmedId(result.id);
-      setStep(3);
+      setStep(4);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -193,7 +217,7 @@ export default function BookingFlow({
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-8 flex items-center justify-center gap-3">
-        {[1, 2].map((n) => (
+        {[1, 2, 3].map((n) => (
           <div key={n} className="flex items-center gap-3">
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
@@ -202,7 +226,11 @@ export default function BookingFlow({
             >
               {n}
             </div>
-            {n < 2 && <div className="h-px w-10 bg-gray-300" />}
+            {n < 3 && (
+              <div
+                className={`h-px w-10 ${step > n ? "bg-brand-600" : "bg-gray-300"}`}
+              />
+            )}
           </div>
         ))}
       </div>
@@ -477,6 +505,77 @@ export default function BookingFlow({
 
       {step === 2 && (
         <div>
+          <h2 className="mb-1 text-lg font-semibold text-gray-900">
+            Optional Add-ons
+          </h2>
+          <p className="mb-4 text-sm text-gray-500">
+            Add any extra services to {selectedService?.name ?? "your booking"}.
+          </p>
+
+          <div className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+            {extras.length === 0 ? (
+              <p className="p-4 text-sm text-gray-400">
+                No add-ons available right now.
+              </p>
+            ) : (
+              extras.map((extra) => {
+                const checked = selectedExtraIds.includes(extra.id);
+                return (
+                  <label
+                    key={extra.id}
+                    className="flex cursor-pointer items-start justify-between gap-4 p-4 hover:bg-gray-50"
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900">{extra.name}</p>
+                      {extra.description && (
+                        <p className="mt-0.5 text-xs text-gray-500">
+                          {extra.description}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span className="font-semibold text-brand-600">
+                        ${extra.price.toFixed(2)}
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleExtra(extra.id)}
+                        className="h-4 w-4 accent-brand-600"
+                      />
+                    </div>
+                  </label>
+                );
+              })
+            )}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between rounded-md bg-gray-50 px-4 py-3 text-sm">
+            <span className="text-gray-600">Estimated total</span>
+            <span className="font-semibold text-gray-900">
+              ${totalPrice.toFixed(2)}
+            </span>
+          </div>
+
+          <div className="mt-6 flex justify-between">
+            <button
+              onClick={() => setStep(1)}
+              className="rounded-md border border-gray-300 px-5 py-2 text-sm text-gray-600"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setStep(3)}
+              className="rounded-md bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div>
           <h2 className="mb-4 text-lg font-semibold text-gray-900">Your Details</h2>
 
           <div className="mb-4 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
@@ -485,7 +584,21 @@ export default function BookingFlow({
               {vehicleTypes.find((v) => v.slug === vehicle)?.name ?? vehicle}) — $
               {selectedService?.price.toFixed(2)}
             </div>
-            <div>
+            {selectedExtras.length > 0 && (
+              <div className="mt-1">
+                {selectedExtras.map((extra) => (
+                  <div key={extra.id} className="flex justify-between text-xs">
+                    <span>+ {extra.name}</span>
+                    <span>${extra.price.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-1 flex justify-between font-medium text-gray-900">
+              <span>Total</span>
+              <span>${totalPrice.toFixed(2)}</span>
+            </div>
+            <div className="mt-1">
               {selectedDate} at {selectedTime && formatTimeLabel(selectedTime)}
             </div>
           </div>
@@ -615,7 +728,7 @@ export default function BookingFlow({
 
           <div className="mt-6 flex justify-between">
             <button
-              onClick={() => setStep(1)}
+              onClick={() => setStep(2)}
               className="rounded-md border border-gray-300 px-5 py-2 text-sm text-gray-600"
             >
               Previous
@@ -631,7 +744,7 @@ export default function BookingFlow({
         </div>
       )}
 
-      {step === 3 && (
+      {step === 4 && (
         <div className="rounded-lg border border-green-200 bg-green-50 p-6 text-center">
           <h2 className="text-lg font-semibold text-green-800">
             Booking Confirmed!
@@ -642,6 +755,14 @@ export default function BookingFlow({
           <p className="mt-1 text-sm text-green-700">
             {selectedService?.name} on {selectedDate} at{" "}
             {selectedTime && formatTimeLabel(selectedTime)}
+          </p>
+          {selectedExtras.length > 0 && (
+            <p className="mt-1 text-sm text-green-700">
+              + {selectedExtras.map((extra) => extra.name).join(", ")}
+            </p>
+          )}
+          <p className="mt-1 text-sm font-medium text-green-800">
+            Total: ${totalPrice.toFixed(2)}
           </p>
         </div>
       )}

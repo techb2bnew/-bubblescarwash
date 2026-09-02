@@ -24,7 +24,7 @@ export default async function AdminCalendarPage() {
   const googleCalendarEmbedUrl = getGoogleCalendarEmbedUrl("MONTH");
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Calendar</h1>
         <p className="mt-1 text-sm text-gray-500">

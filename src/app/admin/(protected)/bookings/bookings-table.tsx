@@ -6,6 +6,7 @@ import type { BlockedDate, Booking, BookingStatus, BusinessSettings } from "@/li
 import { rescheduleBooking, setBookingStatus } from "./actions";
 import StatusDropdown from "./status-dropdown";
 import AddOnsBadge from "./add-ons-badge";
+import ExtrasBadge from "./extras-badge";
 import RescheduleModal from "./reschedule-modal";
 import { FilterSelect, TableToolbar } from "../_components/table-toolbar";
 import { SortHeader } from "../_components/sort-header";
@@ -238,6 +239,7 @@ export default function BookingsTable({
               <th className="px-4 py-3">Contact</th>
               <th className="px-4 py-3">Service</th>
               <th className="px-4 py-3">Add-Ons</th>
+              <th className="px-4 py-3">Extras</th>
               <SortHeader
                 label="Amount"
                 sortKey="price"
@@ -281,6 +283,9 @@ export default function BookingsTable({
                       .filter((name): name is string => Boolean(name))}
                   />
                 </td>
+                <td className="px-4 py-3">
+                  <ExtrasBadge extras={b.booking_extras ?? []} />
+                </td>
                 <td className="px-4 py-3 font-medium text-gray-900">
                   {b.price != null ? `$${b.price.toFixed(2)}` : "—"}
                 </td>
@@ -314,7 +319,7 @@ export default function BookingsTable({
             ))}
             {paged.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={11} className="px-4 py-10 text-center text-gray-400">
                   {bookings.length === 0
                     ? "No bookings yet."
                     : "No bookings match your search/filters."}

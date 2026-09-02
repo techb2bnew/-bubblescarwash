@@ -110,7 +110,7 @@ function buildCalendarInput(
   const duration = booking.services?.duration_minutes ?? 30;
 
   return {
-    summary: `${serviceName} — ${booking.customer_name}`,
+    summary: `${booking.customer_name} — ${serviceName}`,
     description: [
       `Booking ID: ${booking.id}`,
       `Customer: ${booking.customer_name}`,

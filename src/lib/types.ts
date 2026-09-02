@@ -66,6 +66,27 @@ export interface AddOn {
   active: boolean;
 }
 
+/** Priced optional extra, selectable during booking (e.g. "Mag wheel detail — $20"). */
+export interface Extra {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  sort_order: number;
+  active: boolean;
+  created_at: string;
+}
+
+/** Snapshot of an extra's name/price at the time it was added to a booking. */
+export interface BookingExtra {
+  id: string;
+  booking_id: string;
+  extra_id: string | null;
+  name: string;
+  price: number;
+  created_at: string;
+}
+
 export interface BlockedDate {
   id: string;
   date: string;
@@ -99,6 +120,7 @@ export interface Booking {
   google_event_id: string | null;
   created_at: string;
   services?: Service;
+  booking_extras?: BookingExtra[];
 }
 
 export interface CustomerSummary {
