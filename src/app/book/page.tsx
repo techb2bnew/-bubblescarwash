@@ -4,10 +4,14 @@ import type {
   BlockedDate,
   BusinessSettings,
   CategoryRow,
+  Extra,
   Service,
   VehicleTypeRow,
 } from "@/lib/types";
+import { getBookingPaymentMode } from "./actions";
 import BookingFlow from "./booking-flow";
+
+export const dynamic = "force-dynamic";
 
 export default async function BookPage() {
   const supabase = await createClient();
@@ -15,10 +19,12 @@ export default async function BookPage() {
   const [
     { data: services },
     { data: inclusions },
+    { data: extras },
     { data: settings },
     { data: blockedDates },
     { data: vehicleTypes },
     { data: categories },
+    paymentMode,
   ] = await Promise.all([
     supabase
       .from("services")
@@ -26,6 +32,7 @@ export default async function BookPage() {
       .eq("active", true)
       .order("price"),
     supabase.from("inclusions").select("*").order("category").order("sort_order"),
+    supabase.from("extras").select("*").eq("active", true).order("sort_order"),
     supabase.from("business_settings").select("*").eq("id", 1).single(),
     supabase.from("blocked_dates").select("*"),
     supabase.from("vehicle_types").select("*").eq("active", true).order("sort_order"),
@@ -34,6 +41,7 @@ export default async function BookPage() {
       .select("*")
       .eq("active", true)
       .order("sort_order"),
+    getBookingPaymentMode(),
   ]);
 
   return (
@@ -41,8 +49,10 @@ export default async function BookPage() {
       <BookingFlow
         services={(services as Service[]) ?? []}
         inclusions={(inclusions as AddOn[]) ?? []}
+        extras={(extras as Extra[]) ?? []}
         vehicleTypes={(vehicleTypes as VehicleTypeRow[]) ?? []}
         categories={(categories as CategoryRow[]) ?? []}
+        paymentMode={paymentMode}
         settings={(settings as BusinessSettings) ?? {
           id: 1,
           name: "Car Wash",

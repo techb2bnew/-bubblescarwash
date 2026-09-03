@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import type { BoothCapacityDuration } from "@/lib/types";
 
 /** Diagonal strike-through look for unavailable calendar dates. */
 export const unavailableDateStyle: CSSProperties = {
@@ -68,9 +69,36 @@ export function generateTimeSlots(
   return slots;
 }
 
+/** Clock-hour bucket for capacity ("09:00" and "09:30" both map to "09:00"). */
+export function hourBucketKey(time: string): string {
+  const [h] = time.split(":").map(Number);
+  return `${String(h).padStart(2, "0")}:00`;
+}
+
 export function formatTimeLabel(time: string): string {
   const [h, m] = time.split(":").map(Number);
   const period = h >= 12 ? "PM" : "AM";
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+export function addDaysToDateKey(dateKey: string, days: number): string {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return toDateKey(new Date(y, m - 1, d + days));
+}
+
+/** End date (inclusive) for a booth capacity period starting on startDate. */
+export function boothPeriodEndDate(
+  startDate: string,
+  duration: BoothCapacityDuration,
+): string {
+  if (duration === "day") return startDate;
+  if (duration === "week") return addDaysToDateKey(startDate, 6);
+  if (duration === "ongoing") return "2099-12-31";
+  const [y, m, d] = startDate.split("-").map(Number);
+  return toDateKey(new Date(y, m, d - 1));
+}
+
+export function isOngoingBoothPeriod(duration: BoothCapacityDuration): boolean {
+  return duration === "ongoing";
 }

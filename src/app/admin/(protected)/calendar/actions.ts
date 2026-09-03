@@ -1,8 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import {
+  onBlockedDateCreated,
+  onBlockedDateRemoved,
+} from "@/lib/blocked-date-sync";
+import {
+  onBlockedSlotCreated,
+  onBlockedSlotRemoved,
+  onBlockedSlotsCreated,
+} from "@/lib/blocked-slot-sync";
+import { onBookingCreated } from "@/lib/booking-sync";
 import { createClient } from "@/lib/supabase/server";
-import type { BlockedSlot, BookingType } from "@/lib/types";
+import type { BlockedSlot, BookingType, BoothCapacityDuration } from "@/lib/types";
+import { boothPeriodEndDate, generateTimeSlots, hourBucketKey } from "@/lib/date-utils";
 
 export async function blockDate(date: string, reason: string) {
   const supabase = await createClient();
@@ -10,11 +21,17 @@ export async function blockDate(date: string, reason: string) {
     .from("blocked_dates")
     .insert({ date, reason: reason || null });
   if (error) throw new Error(error.message);
+
+  await onBlockedDateCreated(date, reason || null);
+
   revalidatePath("/admin/calendar");
 }
 
 export async function unblockDate(date: string) {
   const supabase = await createClient();
+
+  await onBlockedDateRemoved(date);
+
   const { error } = await supabase
     .from("blocked_dates")
     .delete()
@@ -26,47 +43,153 @@ export async function unblockDate(date: string) {
 export interface DateAvailability {
   bookedTimes: string[];
   blockedSlots: BlockedSlot[];
+  boothCount: number;
+  slotUsage: { time: string; count: number }[];
+  openingTime: string;
+  closingTime: string;
+  hasCustomHours: boolean;
+}
+
+export async function getBoothCountForDate(date: string): Promise<number> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_booth_count", {
+    target_date: date,
+  });
+  if (error) throw new Error(error.message);
+  return (data as number) ?? 1;
+}
+
+export async function setBoothCapacity(
+  startDate: string,
+  boothCount: number,
+  duration: BoothCapacityDuration,
+) {
+  if (boothCount < 1) throw new Error("Booth count must be at least 1.");
+
+  const supabase = await createClient();
+  const endDate = boothPeriodEndDate(startDate, duration);
+  const { error } = await supabase.from("booth_capacity_periods").insert({
+    start_date: startDate,
+    end_date: endDate,
+    booth_count: boothCount,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/calendar");
+}
+
+export async function getDateHoursForDate(
+  date: string,
+): Promise<{ openingTime: string; closingTime: string; hasCustomHours: boolean }> {
+  const supabase = await createClient();
+  const [{ data: hours, error }, { data: override }] = await Promise.all([
+    supabase.rpc("get_business_hours", { target_date: date }).single(),
+    supabase
+      .from("date_hours_overrides")
+      .select("date")
+      .eq("date", date)
+      .maybeSingle(),
+  ]);
+  if (error) throw new Error(error.message);
+  const row = hours as { opening_time: string; closing_time: string } | null;
+  return {
+    openingTime: (row?.opening_time ?? "09:00").slice(0, 5),
+    closingTime: (row?.closing_time ?? "17:00").slice(0, 5),
+    hasCustomHours: Boolean(override),
+  };
+}
+
+export async function setDateHours(
+  date: string,
+  startTime: string,
+  endTime: string,
+) {
+  if (startTime >= endTime) {
+    throw new Error("Start time must be before end time.");
+  }
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("date_hours_overrides")
+    .upsert(
+      { date, start_time: startTime, end_time: endTime },
+      { onConflict: "date" },
+    );
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/calendar");
+}
+
+export async function clearDateHours(date: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("date_hours_overrides")
+    .delete()
+    .eq("date", date);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/calendar");
 }
 
 export async function getDateAvailability(
   date: string,
 ): Promise<DateAvailability> {
   const supabase = await createClient();
-  const [{ data: bookings }, { data: blockedSlots }, { data: settings }] =
-    await Promise.all([
-      supabase
-        .from("bookings")
-        .select("booking_time, services(duration_minutes)")
-        .eq("booking_date", date)
-        .neq("status", "cancelled"),
-      supabase.from("blocked_slots").select("*").eq("date", date),
-      supabase
-        .from("business_settings")
-        .select("slot_interval_minutes")
-        .eq("id", 1)
-        .single(),
-    ]);
+  const [
+    { data: bookings },
+    { data: blockedSlots },
+    { data: settings },
+    boothCount,
+    dateHours,
+  ] = await Promise.all([
+    supabase
+      .from("bookings")
+      .select("booking_time, booking_type, services(duration_minutes)")
+      .eq("booking_date", date)
+      .neq("status", "cancelled"),
+    supabase.from("blocked_slots").select("*").eq("date", date),
+    supabase
+      .from("business_settings")
+      .select("slot_interval_minutes")
+      .eq("id", 1)
+      .single(),
+    getBoothCountForDate(date),
+    getDateHoursForDate(date),
+  ]);
 
   const intervalMinutes = settings?.slot_interval_minutes ?? 30;
-  const bookedTimes = new Set<string>();
+  const { openingTime, closingTime, hasCustomHours } = dateHours;
+  const hourCounts = new Map<string, number>();
+
   for (const b of bookings ?? []) {
+    if ((b.booking_type as string) !== "online") continue;
     const duration =
       (b.services as unknown as { duration_minutes: number } | null)
         ?.duration_minutes ?? intervalMinutes;
     const [h, m] = b.booking_time.slice(0, 5).split(":").map(Number);
-    let minutes = h * 60 + m;
-    const end = minutes + duration;
-    while (minutes < end) {
-      const hh = Math.floor(minutes / 60);
-      const mm = minutes % 60;
-      bookedTimes.add(`${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`);
-      minutes += intervalMinutes;
+    const startMinutes = h * 60 + m;
+    const endMinutes = startMinutes + duration;
+    let hourStart = Math.floor(startMinutes / 60) * 60;
+    while (hourStart < endMinutes) {
+      const key = `${String(Math.floor(hourStart / 60)).padStart(2, "0")}:00`;
+      hourCounts.set(key, (hourCounts.get(key) ?? 0) + 1);
+      hourStart += 60;
     }
   }
 
+  const slots = generateTimeSlots(openingTime, closingTime, intervalMinutes);
+  const bookedTimes: string[] = [];
+  const slotUsage: { time: string; count: number }[] = [];
+  for (const time of slots) {
+    const count = hourCounts.get(hourBucketKey(time)) ?? 0;
+    slotUsage.push({ time, count });
+    if (count >= boothCount) bookedTimes.push(time);
+  }
+
   return {
-    bookedTimes: Array.from(bookedTimes),
+    bookedTimes,
     blockedSlots: (blockedSlots as BlockedSlot[]) ?? [],
+    boothCount,
+    slotUsage,
+    openingTime,
+    closingTime,
+    hasCustomHours,
   };
 }
 
@@ -76,6 +199,9 @@ export async function blockSlot(date: string, time: string, reason: string) {
     .from("blocked_slots")
     .insert({ date, time, reason: reason || null });
   if (error) throw new Error(error.message);
+
+  await onBlockedSlotCreated(date, time, reason || null);
+
   revalidatePath("/admin/calendar");
 }
 
@@ -91,9 +217,10 @@ export interface AdminBookingInput {
 
 export async function createBookingAdmin(input: AdminBookingInput) {
   const supabase = await createClient();
+  let bookingId: string | null = null;
 
   if (input.booking_type === "online") {
-    const { error } = await supabase.rpc("create_booking", {
+    const { data, error } = await supabase.rpc("create_booking", {
       p_service_id: input.service_id,
       p_booking_date: input.booking_date,
       p_booking_time: input.booking_time,
@@ -102,6 +229,7 @@ export async function createBookingAdmin(input: AdminBookingInput) {
       p_customer_email: input.customer_email,
     });
     if (error) throw new Error(error.message);
+    bookingId = data as string;
   } else {
     const { data: service, error: serviceError } = await supabase
       .from("services")
@@ -110,17 +238,34 @@ export async function createBookingAdmin(input: AdminBookingInput) {
       .single();
     if (serviceError) throw new Error(serviceError.message);
 
-    const { error } = await supabase.from("bookings").insert({
-      service_id: input.service_id,
-      booking_date: input.booking_date,
-      booking_time: input.booking_time,
-      customer_name: input.customer_name,
-      customer_phone: input.customer_phone,
-      customer_email: input.customer_email,
-      price: service?.price ?? null,
-      booking_type: "offline",
-    });
+    const { data, error } = await supabase
+      .from("bookings")
+      .insert({
+        service_id: input.service_id,
+        booking_date: input.booking_date,
+        booking_time: input.booking_time,
+        customer_name: input.customer_name,
+        customer_phone: input.customer_phone,
+        customer_email: input.customer_email,
+        price: service?.price ?? null,
+        booking_type: "offline",
+      })
+      .select("id")
+      .single();
     if (error) throw new Error(error.message);
+    bookingId = data.id;
+  }
+
+  if (bookingId) {
+    await onBookingCreated({
+      bookingId,
+      serviceId: input.service_id,
+      customerName: input.customer_name,
+      customerPhone: input.customer_phone,
+      customerEmail: input.customer_email,
+      bookingDate: input.booking_date,
+      bookingTime: input.booking_time,
+    });
   }
 
   revalidatePath("/admin/calendar");
@@ -138,11 +283,17 @@ export async function blockSlots(date: string, times: string[], reason: string) 
       { onConflict: "date,time", ignoreDuplicates: true },
     );
   if (error) throw new Error(error.message);
+
+  await onBlockedSlotsCreated(date, times, reason || null);
+
   revalidatePath("/admin/calendar");
 }
 
 export async function unblockSlot(date: string, time: string) {
   const supabase = await createClient();
+
+  await onBlockedSlotRemoved(date, time);
+
   const { error } = await supabase
     .from("blocked_slots")
     .delete()

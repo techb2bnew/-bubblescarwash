@@ -201,7 +201,23 @@ export default function ServicesTable({
                 <td className="px-4 py-3 uppercase tracking-wide text-gray-600">
                   {vehicleNameBySlug.get(s.vehicle_type) ?? s.vehicle_type}
                 </td>
-                <td className="px-4 py-3 text-gray-600">${s.price.toFixed(2)}</td>
+                <td className="px-4 py-3 text-gray-600">
+                  {s.discount_active && s.discount_percent > 0 ? (
+                    <div>
+                      <span className="text-xs text-gray-400 line-through">
+                        ${s.price.toFixed(2)}
+                      </span>{" "}
+                      <span className="font-medium text-green-700">
+                        ${s.effective_price.toFixed(2)}
+                      </span>
+                      <span className="ml-1 text-xs text-green-600">
+                        (-{s.discount_percent}%)
+                      </span>
+                    </div>
+                  ) : (
+                    `$${s.price.toFixed(2)}`
+                  )}
+                </td>
                 <td className="px-4 py-3 text-gray-600">{s.duration_minutes} min</td>
                 <td className="px-4 py-3">
                   <button

@@ -12,7 +12,7 @@ export default async function AdminBookingsPage() {
   ] = await Promise.all([
     supabase
       .from("bookings")
-      .select("*, services(*, service_inclusions(inclusion_id))")
+      .select("*, services(*, service_inclusions(inclusion_id)), booking_extras(id, booking_id, extra_id, name, price, created_at)")
       .order("booking_date", { ascending: false })
       .order("booking_time", { ascending: false }),
     supabase.from("inclusions").select("id, name"),

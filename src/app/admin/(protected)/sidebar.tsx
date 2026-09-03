@@ -59,10 +59,24 @@ const NAV_ITEMS = [
     icon: <path d="m5 13 4 4L19 7" />,
   },
   {
+    href: "/admin/extras",
+    label: "Extras",
+    icon: (
+      <path d="M20.6 12.9 12.9 20.6a2 2 0 0 1-2.8 0l-6.7-6.7a2 2 0 0 1 0-2.8L11.1 3.4A2 2 0 0 1 12.5 3H19a2 2 0 0 1 2 2v6.5a2 2 0 0 1-.6 1.4ZM8.5 8.5h.01" />
+    ),
+  },
+  {
     href: "/admin/calendar",
     label: "Calendar",
     icon: (
       <path d="M7 3v3M17 3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" />
+    ),
+  },
+  {
+    href: "/admin/gift-cards",
+    label: "Gift Cards",
+    icon: (
+      <path d="M20 7H4a1 1 0 0 0-1 1v3h18V8a1 1 0 0 0-1-1ZM3 13v5a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-5M12 7v13M7.5 7C6 7 5 5.9 5 4.5S6 2 7.5 2 10 4 12 7c2-3 3.5-5 4.5-5S19 3.1 19 4.5 18 7 16.5 7" />
     ),
   },
 ];

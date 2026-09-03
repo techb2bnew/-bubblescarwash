@@ -2,11 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { BlockedDate, BookingType, BusinessSettings, Service } from "@/lib/types";
+import type {
+  BlockedDate,
+  BookingType,
+  BoothCapacityDuration,
+  BusinessSettings,
+  Service,
+} from "@/lib/types";
 import {
+  boothPeriodEndDate,
   formatTimeLabel,
   generateTimeSlots,
   getMonthGrid,
+  isOngoingBoothPeriod,
   isSameMonth,
   MONTH_NAMES,
   startOfToday,
@@ -18,13 +26,16 @@ import {
   blockDate,
   blockSlot,
   blockSlots,
+  clearDateHours,
   createBookingAdmin,
   getDateAvailability,
+  setBoothCapacity,
+  setDateHours,
   unblockDate,
   unblockSlot,
 } from "./actions";
 
-type ActiveAction = "close" | "slots" | "booking" | null;
+type ActiveAction = "close" | "slots" | "booking" | "booths" | "hours" | null;
 
 function formatDateLong(dateKey: string): string {
   const [y, m, d] = dateKey.split("-").map(Number);
@@ -53,13 +64,17 @@ export default function CalendarView({
   blockedDates,
   settings,
   services,
+  googleCalendarEmbedUrl,
 }: {
   blockedDates: BlockedDate[];
   settings: BusinessSettings;
   services: Service[];
+  googleCalendarEmbedUrl: string | null;
 }) {
   const router = useRouter();
   const today = useMemo(() => startOfToday(), []);
+  const useGoogleCalendar = Boolean(googleCalendarEmbedUrl);
+  const [calendarKey, setCalendarKey] = useState(0);
   const [cursor, setCursor] = useState({
     year: today.getFullYear(),
     month: today.getMonth(),
@@ -71,8 +86,28 @@ export default function CalendarView({
 
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
   const [blockedTimes, setBlockedTimes] = useState<string[]>([]);
+  const [boothCount, setBoothCount] = useState(1);
+  const [slotUsage, setSlotUsage] = useState<Map<string, number>>(new Map());
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [savingSlot, setSavingSlot] = useState<string | null>(null);
+
+  const [dateHours, setDateHoursState] = useState<{
+    openingTime: string;
+    closingTime: string;
+    hasCustomHours: boolean;
+  }>({
+    openingTime: settings.opening_time.slice(0, 5),
+    closingTime: settings.closing_time.slice(0, 5),
+    hasCustomHours: false,
+  });
+  const [hoursStart, setHoursStart] = useState("");
+  const [hoursEnd, setHoursEnd] = useState("");
+  const [savingHours, setSavingHours] = useState(false);
+
+  const [boothInputCount, setBoothInputCount] = useState(2);
+  const [boothDuration, setBoothDuration] = useState<BoothCapacityDuration>("week");
+  const [boothStartDate, setBoothStartDate] = useState(() => toDateKey(today));
+  const [savingBooths, setSavingBooths] = useState(false);
 
   const [rangeFrom, setRangeFrom] = useState("");
   const [rangeTo, setRangeTo] = useState("");
@@ -101,11 +136,11 @@ export default function CalendarView({
   const timeSlots = useMemo(
     () =>
       generateTimeSlots(
-        settings.opening_time,
-        settings.closing_time,
+        dateHours.openingTime,
+        dateHours.closingTime,
         settings.slot_interval_minutes,
       ),
-    [settings],
+    [dateHours, settings.slot_interval_minutes],
   );
 
   const dayIsClosed = selected ? blockedByDate.has(selected) : false;
@@ -123,6 +158,7 @@ export default function CalendarView({
       setBookingEmail("");
       setBookingType("offline");
       setBookingError(null);
+      if (selected) setBoothStartDate(selected);
     }
     resetForNewDate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -139,6 +175,13 @@ export default function CalendarView({
         if (cancelled) return;
         setBookedTimes(result.bookedTimes);
         setBlockedTimes(result.blockedSlots.map((s) => s.time.slice(0, 5)));
+        setBoothCount(result.boothCount);
+        setSlotUsage(new Map(result.slotUsage.map((s) => [s.time, s.count])));
+        setDateHoursState({
+          openingTime: result.openingTime,
+          closingTime: result.closingTime,
+          hasCustomHours: result.hasCustomHours,
+        });
       } finally {
         if (!cancelled) setLoadingSlots(false);
       }
@@ -157,6 +200,79 @@ export default function CalendarView({
     });
   }
 
+  function refreshGoogleCalendar() {
+    setCalendarKey((k) => k + 1);
+  }
+
+  function refreshAfterAction() {
+    refreshGoogleCalendar();
+    router.refresh();
+  }
+
+  function getSlotBookingCount(time: string): number {
+    return slotUsage.get(time) ?? 0;
+  }
+
+  function slotUsageLabel(time: string): string {
+    const count = getSlotBookingCount(time);
+    const label = formatTimeLabel(time);
+    if (count === 0) return label;
+    return `${label} (${count}/${boothCount} hr)`;
+  }
+
+  async function handleSetBoothCapacity() {
+    if (!boothStartDate) return;
+    setSavingBooths(true);
+    try {
+      await setBoothCapacity(boothStartDate, boothInputCount, boothDuration);
+      if (selected) {
+        const result = await getDateAvailability(selected);
+        setBookedTimes(result.bookedTimes);
+        setBoothCount(result.boothCount);
+        setSlotUsage(new Map(result.slotUsage.map((s) => [s.time, s.count])));
+      }
+      setActiveAction(null);
+      refreshAfterAction();
+    } finally {
+      setSavingBooths(false);
+    }
+  }
+
+  async function handleSetHours() {
+    if (!selected || !hoursStart || !hoursEnd) return;
+    setSavingHours(true);
+    try {
+      await setDateHours(selected, hoursStart, hoursEnd);
+      setDateHoursState({
+        openingTime: hoursStart,
+        closingTime: hoursEnd,
+        hasCustomHours: true,
+      });
+      setActiveAction(null);
+      refreshAfterAction();
+    } finally {
+      setSavingHours(false);
+    }
+  }
+
+  async function handleClearHours() {
+    if (!selected) return;
+    setSavingHours(true);
+    try {
+      await clearDateHours(selected);
+      const result = await getDateAvailability(selected);
+      setDateHoursState({
+        openingTime: result.openingTime,
+        closingTime: result.closingTime,
+        hasCustomHours: result.hasCustomHours,
+      });
+      setActiveAction(null);
+      refreshAfterAction();
+    } finally {
+      setSavingHours(false);
+    }
+  }
+
   async function handleToggle(dateKey: string) {
     setSaving(true);
     try {
@@ -167,7 +283,7 @@ export default function CalendarView({
       }
       setReason("");
       setActiveAction(null);
-      router.refresh();
+      refreshAfterAction();
     } finally {
       setSaving(false);
     }
@@ -184,7 +300,7 @@ export default function CalendarView({
         await blockSlot(selected, `${time}:00`, "");
         setBlockedTimes((prev) => [...prev, time]);
       }
-      router.refresh();
+      refreshAfterAction();
     } finally {
       setSavingSlot(null);
     }
@@ -205,7 +321,7 @@ export default function CalendarView({
         "",
       );
       setBlockedTimes((prev) => [...prev, ...timesToBlock]);
-      router.refresh();
+      refreshAfterAction();
     } finally {
       setSavingRange(false);
     }
@@ -233,7 +349,7 @@ export default function CalendarView({
       setBookingEmail("");
       setBookingType("offline");
       setActiveAction(null);
-      router.refresh();
+      refreshAfterAction();
     } catch (err) {
       setBookingError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -242,7 +358,28 @@ export default function CalendarView({
   }
 
   return (
-    <div className="flex flex-col items-start gap-4 lg:flex-row">
+    <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+      {useGoogleCalendar ? (
+        <div className="w-full min-w-0 flex-1 rounded-lg border border-gray-200 bg-white p-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <p className="text-sm font-medium text-gray-700">Google Calendar</p>
+            <button
+              type="button"
+              onClick={refreshGoogleCalendar}
+              className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50"
+            >
+              Refresh
+            </button>
+          </div>
+          <iframe
+            key={calendarKey}
+            title="Google Calendar"
+            src={googleCalendarEmbedUrl!}
+            className="w-full rounded-md border-0"
+            style={{ height: "min(70vh, 720px)", minHeight: 480 }}
+          />
+        </div>
+      ) : (
       <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-4 lg:flex-none">
         <div className="mb-3 flex items-center justify-between">
           <button
@@ -312,16 +449,43 @@ export default function CalendarView({
           </span>
         </div>
       </div>
+      )}
 
-      {selected && (
-        <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-4 lg:flex-1">
+      <div className="w-full shrink-0 rounded-lg border border-gray-200 bg-white p-4 lg:w-96">
+        {useGoogleCalendar && (
+          <div className="mb-4">
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              Manage date
+            </label>
+            <input
+              type="date"
+              value={selected ?? ""}
+              min={toDateKey(today)}
+              onChange={(e) => {
+                const value = e.target.value || null;
+                setSelected(value);
+                if (value) {
+                  const [y, m] = value.split("-").map(Number);
+                  setCursor({ year: y, month: m - 1 });
+                }
+              }}
+              className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Pick a date to block slots, close the day, or create a booking.
+            </p>
+          </div>
+        )}
+
+      {selected ? (
+        <>
           <p className="text-base font-semibold text-gray-900">
             {formatDateLong(selected)} — Availability
           </p>
           <p className="mt-0.5 text-sm text-gray-500">
             {dayIsClosed
               ? `Closed${blockedByDate.get(selected)?.reason ? ` — ${blockedByDate.get(selected)?.reason}` : ""}`
-              : "Open for bookings"}
+              : `Open ${formatTimeLabel(dateHours.openingTime)}–${formatTimeLabel(dateHours.closingTime)}${dateHours.hasCustomHours ? " (custom)" : ""} · ${boothCount} booking${boothCount === 1 ? "" : "s"} allowed per hour`}
           </p>
 
           {dayIsClosed ? (
@@ -334,6 +498,190 @@ export default function CalendarView({
             </button>
           ) : (
             <div className="mt-4 divide-y divide-gray-100 border-t border-gray-100">
+              <div className="py-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeAction !== "booths" && selected) {
+                      setBoothStartDate(selected);
+                    }
+                    setActiveAction(activeAction === "booths" ? null : "booths");
+                  }}
+                  className="flex w-full items-center justify-between text-left text-sm font-medium text-gray-800 hover:text-brand-700"
+                >
+                  <span>↳ Set Capacity</span>
+                  <ChevronIcon open={activeAction === "booths"} />
+                </button>
+                {activeAction === "booths" && (
+                  <div className="mt-3 space-y-3">
+                    <p className="text-xs text-gray-500">
+                      Set how many bookings can run in the same clock hour (e.g. 9:00 and
+                      9:30 share one pool). Currently <strong>{boothCount}</strong> per hour
+                      on this date.
+                    </p>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                        Max Number of Bookings in 1 Hour
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={boothInputCount}
+                        onChange={(e) =>
+                          setBoothInputCount(Math.max(1, Number(e.target.value) || 1))
+                        }
+                        className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                        Apply for
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(
+                          [
+                            ["day", "1 Day"],
+                            ["week", "1 Week"],
+                            ["month", "1 Month"],
+                            ["ongoing", "Ongoing"],
+                          ] as const
+                        ).map(([value, label]) => (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => setBoothDuration(value)}
+                            className={`flex-1 rounded-md border px-2 py-1.5 text-xs font-medium ${
+                              boothDuration === value
+                                ? "border-brand-600 bg-brand-50 text-brand-700"
+                                : "border-gray-300 text-gray-600 hover:border-gray-400"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                        {boothDuration === "day" ? "Select day" : "Start date"}
+                      </label>
+                      <input
+                        type="date"
+                        value={boothStartDate}
+                        min={toDateKey(today)}
+                        onChange={(e) => setBoothStartDate(e.target.value)}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        {boothDuration === "day" ? (
+                          <>
+                            Applies on <strong>{formatDateLong(boothStartDate)}</strong> only
+                          </>
+                        ) : isOngoingBoothPeriod(boothDuration) ? (
+                          <>
+                            From <strong>{formatDateLong(boothStartDate)}</strong> onward — no end
+                            date
+                          </>
+                        ) : (
+                          <>
+                            From <strong>{formatDateLong(boothStartDate)}</strong> until{" "}
+                            <strong>
+                              {formatDateLong(boothPeriodEndDate(boothStartDate, boothDuration))}
+                            </strong>
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSetBoothCapacity}
+                      disabled={savingBooths || !boothStartDate}
+                      className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                    >
+                      {savingBooths ? "Saving..." : "Apply Capacity"}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="py-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeAction !== "hours") {
+                      setHoursStart(dateHours.openingTime);
+                      setHoursEnd(dateHours.closingTime);
+                    }
+                    setActiveAction(activeAction === "hours" ? null : "hours");
+                  }}
+                  className="flex w-full items-center justify-between text-left text-sm font-medium text-gray-800 hover:text-brand-700"
+                >
+                  <span>↳ Set Hours</span>
+                  <ChevronIcon open={activeAction === "hours"} />
+                </button>
+                {activeAction === "hours" && (
+                  <div className="mt-3 space-y-3">
+                    <p className="text-xs text-gray-500">
+                      Time slots on this date will start at the opening time and
+                      end at the closing time you set below. Currently{" "}
+                      <strong>{formatTimeLabel(dateHours.openingTime)}</strong> –{" "}
+                      <strong>{formatTimeLabel(dateHours.closingTime)}</strong>
+                      {dateHours.hasCustomHours ? " (custom)" : " (default)"}.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-gray-600">
+                          Start time
+                        </label>
+                        <input
+                          type="time"
+                          value={hoursStart}
+                          onChange={(e) => setHoursStart(e.target.value)}
+                          className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-gray-600">
+                          End time
+                        </label>
+                        <input
+                          type="time"
+                          value={hoursEnd}
+                          onChange={(e) => setHoursEnd(e.target.value)}
+                          className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSetHours}
+                        disabled={savingHours || !hoursStart || !hoursEnd || hoursStart >= hoursEnd}
+                        className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                      >
+                        {savingHours ? "Saving..." : "Save Hours for This Day"}
+                      </button>
+                      {dateHours.hasCustomHours && (
+                        <button
+                          type="button"
+                          onClick={handleClearHours}
+                          disabled={savingHours}
+                          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 disabled:opacity-50"
+                        >
+                          Reset to Default
+                        </button>
+                      )}
+                    </div>
+                    {hoursStart >= hoursEnd && hoursStart && hoursEnd && (
+                      <p className="text-xs text-red-600">
+                        Start time must be before end time.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="py-3">
                 <button
                   type="button"
@@ -439,24 +787,27 @@ export default function CalendarView({
                     ) : (
                       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                         {timeSlots.map((t) => {
-                          const booked = bookedTimes.includes(t);
+                          const count = getSlotBookingCount(t);
+                          const full = bookedTimes.includes(t);
                           const blocked = blockedTimes.includes(t);
                           return (
                             <button
                               key={t}
                               type="button"
-                              disabled={booked || savingSlot === t}
+                              disabled={full || savingSlot === t}
                               onClick={() => handleToggleSlot(t)}
                               style={blocked ? unavailableDateStyle : undefined}
                               className={`rounded-md border px-2 py-1.5 text-xs ${
-                                booked
+                                full
                                   ? "cursor-not-allowed border-blue-200 bg-blue-50 text-blue-600"
                                   : blocked
                                     ? "border-red-200 text-red-600 hover:border-red-300"
-                                    : "border-gray-300 text-gray-600 hover:border-brand-300 hover:text-brand-700"
+                                    : count > 0
+                                      ? "border-blue-200 bg-blue-50/50 text-blue-700 hover:border-blue-300"
+                                      : "border-gray-300 text-gray-600 hover:border-brand-300 hover:text-brand-700"
                               }`}
                             >
-                              {formatTimeLabel(t)}
+                              {slotUsageLabel(t)}
                             </button>
                           );
                         })}
@@ -582,10 +933,11 @@ export default function CalendarView({
                       ) : (
                         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                           {timeSlots.map((t) => {
-                            const booked = bookedTimes.includes(t);
+                            const count = getSlotBookingCount(t);
+                            const full = bookedTimes.includes(t);
                             const blocked = blockedTimes.includes(t);
                             const isOffline = bookingType === "offline";
-                            const disabled = !isOffline && (booked || blocked);
+                            const disabled = !isOffline && (full || blocked);
                             return (
                               <button
                                 key={t}
@@ -595,17 +947,19 @@ export default function CalendarView({
                                 style={disabled && blocked ? unavailableDateStyle : undefined}
                                 className={`rounded-md border px-2 py-1.5 text-xs ${
                                   disabled
-                                    ? booked
+                                    ? full
                                       ? "cursor-not-allowed border-blue-200 bg-blue-50 text-blue-600"
                                       : "cursor-not-allowed border-red-200 text-red-600"
                                     : bookingTime === t
                                       ? "border-brand-600 bg-brand-50 text-brand-700"
-                                      : (booked || blocked) && isOffline
-                                        ? "border-amber-300 text-amber-700 hover:border-amber-400"
-                                        : "border-gray-300 text-gray-600 hover:border-gray-400"
+                                      : count > 0 && !full
+                                        ? "border-blue-200 bg-blue-50/50 text-blue-700 hover:border-blue-300"
+                                        : (full || blocked) && isOffline
+                                          ? "border-amber-300 text-amber-700 hover:border-amber-400"
+                                          : "border-gray-300 text-gray-600 hover:border-gray-400"
                                 }`}
                               >
-                                {formatTimeLabel(t)}
+                                {count > 0 ? slotUsageLabel(t) : formatTimeLabel(t)}
                               </button>
                             );
                           })}
@@ -644,8 +998,13 @@ export default function CalendarView({
               </div>
             </div>
           )}
-        </div>
+        </>
+      ) : (
+        <p className="text-sm text-gray-500">
+          Select a date to manage availability and bookings.
+        </p>
       )}
+      </div>
     </div>
   );
 }
