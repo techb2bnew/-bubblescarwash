@@ -2,7 +2,9 @@
 
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { getStripeClient, getStripeCurrency, isStripeConfigured } from "@/lib/stripe";
+import { getStripeClient, getStripeCurrency } from "@/lib/stripe";
+import { getPaymentMode, type PaymentMode } from "@/lib/payment-mode";
+import { onBookingCreated } from "@/lib/booking-sync";
 import type { PaymentStatus } from "@/lib/types";
 
 export interface BookedTime {
@@ -41,8 +43,36 @@ export async function getDateHours(
   };
 }
 
-export async function isPaymentConfigured(): Promise<boolean> {
-  return isStripeConfigured();
+export async function getBookingPaymentMode(): Promise<PaymentMode> {
+  return getPaymentMode();
+}
+
+export interface GiftCardPreview {
+  valid: boolean;
+  reason?: "not found" | "already used" | "cancelled" | "expired";
+  value?: number;
+}
+
+/**
+ * Read-only, non-binding preview for the "apply gift card code" input.
+ * Real validation and consumption happen atomically inside create_booking
+ * at submit time, so a code that goes stale between preview and submit
+ * simply surfaces as a thrown RPC error the UI already displays.
+ */
+export async function previewGiftCard(code: string): Promise<GiftCardPreview> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .rpc("preview_gift_card_by_code", { p_code: code })
+    .maybeSingle();
+  if (error || !data) return { valid: false, reason: "not found" };
+
+  const row = data as { value: number; status: string; expires_at: string };
+  if (row.status === "used") return { valid: false, reason: "already used" };
+  if (row.status === "cancelled") return { valid: false, reason: "cancelled" };
+  if (row.status !== "active" || new Date(row.expires_at) < new Date()) {
+    return { valid: false, reason: "expired" };
+  }
+  return { valid: true, value: row.value };
 }
 
 export async function countBookingsByEmail(email: string): Promise<number> {
@@ -62,6 +92,7 @@ export interface CreateBookingInput {
   customer_phone: string;
   customer_email: string;
   extra_ids?: string[];
+  gift_card_code?: string;
 }
 
 async function getSiteOrigin(): Promise<string> {
@@ -101,6 +132,7 @@ export async function createCheckoutSession(
     p_customer_phone: input.customer_phone,
     p_customer_email: input.customer_email,
     p_extra_ids: input.extra_ids ?? [],
+    p_gift_card_code: input.gift_card_code || null,
   });
   if (error) throw new Error(error.message);
   const bookingId = data as string;
@@ -112,6 +144,29 @@ export async function createCheckoutSession(
     ]);
     if (priceError) throw new Error(priceError.message);
     if (price == null) throw new Error("Could not price this booking.");
+
+    // Fully covered by a gift card — Stripe rejects zero-amount sessions,
+    // so mark the booking paid directly and skip Stripe entirely.
+    if (Number(price) === 0) {
+      const { error: paidError } = await supabase.rpc("mark_booking_paid_no_charge", {
+        p_booking_id: bookingId,
+      });
+      if (paidError) throw new Error(paidError.message);
+
+      await onBookingCreated({
+        bookingId,
+        serviceId: input.service_id,
+        customerName: input.customer_name,
+        customerPhone: input.customer_phone,
+        customerEmail: input.customer_email,
+        bookingDate: input.booking_date,
+        bookingTime: input.booking_time,
+        price: 0,
+      });
+
+      const origin = await getSiteOrigin();
+      return { url: `${origin}/book/confirmation?booking_id=${bookingId}` };
+    }
 
     const extraCount = input.extra_ids?.length ?? 0;
     const serviceName = service?.name ?? "Car Wash";
@@ -136,7 +191,7 @@ export async function createCheckoutSession(
           },
         },
       ],
-      metadata: { booking_id: bookingId },
+      metadata: { type: "booking", booking_id: bookingId },
       expires_at: Math.floor(Date.now() / 1000) + 32 * 60,
       success_url: `${origin}/book/confirmation?booking_id=${bookingId}`,
       cancel_url: `${origin}/book/cancelled?booking_id=${bookingId}`,
@@ -157,6 +212,50 @@ export async function createCheckoutSession(
       ? err
       : new Error("Something went wrong starting payment. Please try again.");
   }
+}
+
+export interface CreateBookingSimpleResult {
+  bookingId: string;
+}
+
+/**
+ * No-Stripe "pay in person" path: creates the booking directly (payment_status
+ * stays 'unpaid' by column default) and fires calendar sync + emails
+ * immediately, since there's no payment gate to wait on.
+ */
+export async function createBookingSimple(
+  input: CreateBookingInput,
+): Promise<CreateBookingSimpleResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("create_booking", {
+    p_service_id: input.service_id,
+    p_booking_date: input.booking_date,
+    p_booking_time: input.booking_time,
+    p_customer_name: input.customer_name,
+    p_customer_phone: input.customer_phone,
+    p_customer_email: input.customer_email,
+    p_extra_ids: input.extra_ids ?? [],
+    p_gift_card_code: input.gift_card_code || null,
+  });
+  if (error) throw new Error(error.message);
+  const bookingId = data as string;
+
+  const { data: price } = await supabase.rpc("get_booking_price", {
+    p_booking_id: bookingId,
+  });
+
+  await onBookingCreated({
+    bookingId,
+    serviceId: input.service_id,
+    customerName: input.customer_name,
+    customerPhone: input.customer_phone,
+    customerEmail: input.customer_email,
+    bookingDate: input.booking_date,
+    bookingTime: input.booking_time,
+    price: price != null ? Number(price) : null,
+  });
+
+  return { bookingId };
 }
 
 export interface BookingPaymentStatus {

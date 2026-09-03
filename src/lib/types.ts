@@ -52,6 +52,10 @@ export interface Service {
   category: ServiceCategory;
   vehicle_type: VehicleType;
   price: number;
+  discount_percent: number;
+  discount_active: boolean;
+  /** Generated column: price net of the discount when active, otherwise equal to price. */
+  effective_price: number;
   duration_minutes: number;
   active: boolean;
   created_at: string;
@@ -85,6 +89,43 @@ export interface BookingExtra {
   name: string;
   price: number;
   created_at: string;
+}
+
+export type GiftCardStatus = "pending" | "active" | "used" | "cancelled";
+
+/** Admin-managed purchasable gift card denomination. */
+export interface GiftCardProduct {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  validity_days: number;
+  sort_order: number;
+  active: boolean;
+  created_at: string;
+}
+
+/** A purchased gift card instance. */
+export interface GiftCard {
+  id: string;
+  product_id: string | null;
+  code: string;
+  value: number;
+  purchaser_name: string;
+  purchaser_email: string;
+  purchaser_phone: string | null;
+  recipient_name: string | null;
+  recipient_email: string | null;
+  message: string | null;
+  status: GiftCardStatus;
+  payment_status: PaymentStatus;
+  stripe_checkout_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+  expires_at: string;
+  redeemed_at: string | null;
+  redeemed_booking_id: string | null;
+  created_at: string;
+  gift_card_products?: { name: string } | null;
 }
 
 export interface BlockedDate {
@@ -122,6 +163,8 @@ export interface Booking {
   payment_status: PaymentStatus;
   stripe_checkout_session_id: string | null;
   stripe_payment_intent_id: string | null;
+  gift_card_id: string | null;
+  gift_card_discount: number;
   google_event_id: string | null;
   created_at: string;
   services?: Service;

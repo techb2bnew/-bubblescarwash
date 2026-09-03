@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type {
   AddOn,
   BlockedDate,
@@ -23,17 +24,36 @@ import {
   unavailableDateStyle,
   WEEKDAY_NAMES,
 } from "@/lib/date-utils";
+import type { PaymentMode } from "@/lib/payment-mode";
 import {
   countBookingsByEmail,
+  createBookingSimple,
   createCheckoutSession,
   getBookedTimes,
   getDateHours,
+  previewGiftCard,
   type BookedTime,
 } from "./actions";
 
 const BOOKING_LIMIT = 5;
 
 type Step = 1 | 2 | 3;
+
+const PAYMENT_METHODS = [
+  { value: "card", label: "Credit Card / Apple Pay / Google Pay" },
+  { value: "afterpay", label: "Afterpay" },
+  { value: "zip", label: "Zip Pay" },
+];
+
+function formatCardNumber(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 16);
+  return (digits.match(/.{1,4}/g) ?? []).join(" ");
+}
+
+function formatExpiry(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+  return digits.length <= 2 ? digits : `${digits.slice(0, 2)}/${digits.slice(2)}`;
+}
 
 export default function BookingFlow({
   services,
@@ -43,7 +63,7 @@ export default function BookingFlow({
   categories,
   settings,
   blockedDates,
-  paymentConfigured,
+  paymentMode,
 }: {
   services: Service[];
   inclusions: AddOn[];
@@ -52,8 +72,9 @@ export default function BookingFlow({
   categories: CategoryRow[];
   settings: BusinessSettings;
   blockedDates: BlockedDate[];
-  paymentConfigured: boolean;
+  paymentMode: PaymentMode;
 }) {
+  const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [vehicle, setVehicle] = useState<VehicleType>(vehicleTypes[0]?.slug ?? "");
   const [category, setCategory] = useState<ServiceCategory>(categories[0]?.slug ?? "");
@@ -74,9 +95,21 @@ export default function BookingFlow({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS[0].value);
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limitConfirmCount, setLimitConfirmCount] = useState<number | null>(null);
+
+  const [giftCardInput, setGiftCardInput] = useState("");
+  const [appliedGiftCard, setAppliedGiftCard] = useState<{
+    code: string;
+    value: number;
+  } | null>(null);
+  const [giftCardError, setGiftCardError] = useState<string | null>(null);
+  const [checkingGiftCard, setCheckingGiftCard] = useState(false);
 
   const today = useMemo(() => startOfToday(), []);
   const [cursor, setCursor] = useState({
@@ -114,7 +147,44 @@ export default function BookingFlow({
 
   const selectedExtras = extras.filter((e) => selectedExtraIds.includes(e.id));
   const extrasTotal = selectedExtras.reduce((sum, e) => sum + e.price, 0);
-  const totalPrice = (selectedService?.price ?? 0) + extrasTotal;
+  const subtotal = (selectedService?.effective_price ?? 0) + extrasTotal;
+  const giftCardDiscount = appliedGiftCard
+    ? Math.min(appliedGiftCard.value, subtotal)
+    : 0;
+  const totalPrice = subtotal - giftCardDiscount;
+
+  async function handleApplyGiftCard() {
+    const code = giftCardInput.trim();
+    if (!code) return;
+    setCheckingGiftCard(true);
+    setGiftCardError(null);
+    try {
+      const result = await previewGiftCard(code);
+      if (!result.valid) {
+        setGiftCardError(
+          result.reason === "already used"
+            ? "This gift card has already been used."
+            : result.reason === "expired"
+              ? "This gift card has expired."
+              : result.reason === "cancelled"
+                ? "This gift card is no longer valid."
+                : "We couldn't find a gift card with that code.",
+        );
+        return;
+      }
+      setAppliedGiftCard({ code, value: result.value ?? 0 });
+      setGiftCardInput("");
+    } catch {
+      setGiftCardError("Something went wrong checking that code. Please try again.");
+    } finally {
+      setCheckingGiftCard(false);
+    }
+  }
+
+  function handleRemoveGiftCard() {
+    setAppliedGiftCard(null);
+    setGiftCardError(null);
+  }
 
   function handleSelectDate(dateKey: string) {
     setSelectedDate(dateKey);
@@ -176,18 +246,25 @@ export default function BookingFlow({
     if (!selectedService || !selectedDate || !selectedTime) return;
     setSubmitting(true);
     setError(null);
+    const bookingInput = {
+      service_id: selectedService.id,
+      booking_date: selectedDate,
+      booking_time: `${selectedTime}:00`,
+      customer_name: name,
+      customer_phone: phone,
+      customer_email: email,
+      extra_ids: selectedExtraIds,
+      gift_card_code: appliedGiftCard?.code,
+    };
     try {
-      const { url } = await createCheckoutSession({
-        service_id: selectedService.id,
-        booking_date: selectedDate,
-        booking_time: `${selectedTime}:00`,
-        customer_name: name,
-        customer_phone: phone,
-        customer_email: email,
-        extra_ids: selectedExtraIds,
-      });
-      window.location.href = url;
-      // Intentionally leave `submitting` true — the page is navigating away.
+      if (paymentMode === "stripe") {
+        const { url } = await createCheckoutSession(bookingInput);
+        window.location.href = url;
+        // Intentionally leave `submitting` true — the page is navigating away.
+      } else {
+        const { bookingId } = await createBookingSimple(bookingInput);
+        router.push(`/book/confirmation?booking_id=${bookingId}`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setSubmitting(false);
@@ -295,9 +372,20 @@ export default function BookingFlow({
                           <span className="font-semibold text-gray-900">
                             {s.name}
                           </span>
-                          <span className="font-bold text-brand-600">
-                            ${s.price.toFixed(2)}
-                          </span>
+                          {s.discount_active && s.discount_percent > 0 ? (
+                            <span className="flex items-baseline gap-1.5">
+                              <span className="text-xs text-gray-400 line-through">
+                                ${s.price.toFixed(2)}
+                              </span>
+                              <span className="font-bold text-brand-600">
+                                ${s.effective_price.toFixed(2)}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="font-bold text-brand-600">
+                              ${s.price.toFixed(2)}
+                            </span>
+                          )}
                         </button>
                       </th>
                     ))}
@@ -561,8 +649,19 @@ export default function BookingFlow({
           <div className="mb-4 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
             <div>
               {selectedService?.name} (
-              {vehicleTypes.find((v) => v.slug === vehicle)?.name ?? vehicle}) — $
-              {selectedService?.price.toFixed(2)}
+              {vehicleTypes.find((v) => v.slug === vehicle)?.name ?? vehicle}) —{" "}
+              {selectedService?.discount_active && selectedService.discount_percent > 0 ? (
+                <>
+                  <span className="text-gray-400 line-through">
+                    ${selectedService.price.toFixed(2)}
+                  </span>{" "}
+                  <span className="font-medium text-green-700">
+                    ${selectedService.effective_price.toFixed(2)}
+                  </span>
+                </>
+              ) : (
+                `$${selectedService?.price.toFixed(2)}`
+              )}
             </div>
             {selectedExtras.length > 0 && (
               <div className="mt-1">
@@ -574,6 +673,12 @@ export default function BookingFlow({
                 ))}
               </div>
             )}
+            {appliedGiftCard && (
+              <div className="mt-1 flex justify-between text-xs text-green-700">
+                <span>Gift card ({appliedGiftCard.code})</span>
+                <span>-${giftCardDiscount.toFixed(2)}</span>
+              </div>
+            )}
             <div className="mt-1 flex justify-between font-medium text-gray-900">
               <span>Total</span>
               <span>${totalPrice.toFixed(2)}</span>
@@ -581,6 +686,52 @@ export default function BookingFlow({
             <div className="mt-1">
               {selectedDate} at {selectedTime && formatTimeLabel(selectedTime)}
             </div>
+          </div>
+
+          <div className="mb-4">
+            {appliedGiftCard ? (
+              <div className="flex items-center justify-between rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm">
+                <span className="text-green-800">
+                  Gift card <strong>{appliedGiftCard.code}</strong> applied (-$
+                  {appliedGiftCard.value.toFixed(2)})
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRemoveGiftCard}
+                  className="font-medium text-green-700 underline"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Have a gift card code?
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    value={giftCardInput}
+                    onChange={(e) => {
+                      setGiftCardInput(e.target.value.toUpperCase());
+                      setGiftCardError(null);
+                    }}
+                    placeholder="e.g. ABC12345"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  />
+                  <button
+                    type="button"
+                    disabled={!giftCardInput.trim() || checkingGiftCard}
+                    onClick={handleApplyGiftCard}
+                    className="shrink-0 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:border-gray-400 disabled:opacity-40"
+                  >
+                    {checkingGiftCard ? "Checking..." : "Apply"}
+                  </button>
+                </div>
+                {giftCardError && (
+                  <p className="mt-1 text-xs text-red-600">{giftCardError}</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -620,7 +771,17 @@ export default function BookingFlow({
             </div>
           </div>
 
-          {paymentConfigured ? (
+          {totalPrice === 0 ? (
+            <div className="mt-5 rounded-md border border-green-200 bg-green-50 p-4">
+              <p className="text-sm font-medium text-green-900">
+                Fully covered by your gift card
+              </p>
+              <p className="mt-1 text-sm text-green-700">
+                No payment is needed — your gift card covers the full cost of
+                this booking.
+              </p>
+            </div>
+          ) : paymentMode === "stripe" ? (
             <div className="mt-5 rounded-md border border-blue-200 bg-blue-50 p-4">
               <p className="text-sm font-medium text-blue-900">
                 Pay securely with Stripe
@@ -633,13 +794,87 @@ export default function BookingFlow({
               </p>
             </div>
           ) : (
-            <div className="mt-5 rounded-md border border-amber-200 bg-amber-50 p-4">
-              <p className="text-sm font-medium text-amber-900">
-                Online payment isn&apos;t available right now
-              </p>
-              <p className="mt-1 text-sm text-amber-700">
-                Please call us to complete this booking — we&apos;re sorry for the
-                inconvenience.
+            <div className="mt-5">
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                Select Payment Method
+              </label>
+              <div className="space-y-2">
+                {PAYMENT_METHODS.map((m) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => setPaymentMethod(m.value)}
+                    className={`flex w-full items-center gap-3 rounded-md border px-4 py-3 text-left text-sm ${
+                      paymentMethod === m.value
+                        ? "border-brand-600 bg-brand-50"
+                        : "border-gray-300 hover:border-gray-400"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                        paymentMethod === m.value
+                          ? "border-brand-600"
+                          : "border-gray-300"
+                      }`}
+                    >
+                      {paymentMethod === m.value && (
+                        <span className="h-2 w-2 rounded-full bg-brand-600" />
+                      )}
+                    </span>
+                    <span className="text-gray-800">{m.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {paymentMethod === "card" && (
+                <div className="mt-3 grid grid-cols-2 gap-3 rounded-md border border-gray-200 bg-gray-50 p-4">
+                  <div className="col-span-2">
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      Card Number
+                    </label>
+                    <input
+                      value={cardNumber}
+                      onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                      placeholder="1234 5678 9012 3456"
+                      inputMode="numeric"
+                      maxLength={19}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      Expiry Date
+                    </label>
+                    <input
+                      value={cardExpiry}
+                      onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
+                      placeholder="MM/YY"
+                      inputMode="numeric"
+                      maxLength={5}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      CVV
+                    </label>
+                    <input
+                      value={cardCvv}
+                      onChange={(e) =>
+                        setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 4))
+                      }
+                      placeholder="123"
+                      inputMode="numeric"
+                      maxLength={4}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <p className="mt-2 text-xs text-gray-400">
+                Card transactions may incur a processing fee of up to 1.1%.
+                Payment is collected at the time of service, not now.
               </p>
             </div>
           )}
@@ -654,13 +889,19 @@ export default function BookingFlow({
               Previous
             </button>
             <button
-              disabled={!name || !phone || !email || submitting || !paymentConfigured}
+              disabled={!name || !phone || !email || submitting}
               onClick={handleConfirm}
               className="rounded-md bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
             >
               {submitting
-                ? "Redirecting to Stripe..."
-                : `Continue to Payment — $${totalPrice.toFixed(2)}`}
+                ? paymentMode === "stripe" && totalPrice > 0
+                  ? "Redirecting to Stripe..."
+                  : "Confirming..."
+                : totalPrice === 0
+                  ? "Confirm Booking — Free"
+                  : paymentMode === "stripe"
+                    ? `Continue to Payment — $${totalPrice.toFixed(2)}`
+                    : `Confirm Booking — $${totalPrice.toFixed(2)} due in person`}
             </button>
           </div>
         </div>

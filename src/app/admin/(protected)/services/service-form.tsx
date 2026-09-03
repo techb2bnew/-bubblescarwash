@@ -34,6 +34,8 @@ export default function ServiceForm({
     category: service?.category ?? activeCategories[0]?.slug ?? "",
     vehicle_type: service?.vehicle_type ?? activeVehicleTypes[0]?.slug ?? "",
     price: service?.price ?? 0,
+    discount_percent: service?.discount_percent ?? 0,
+    discount_active: service?.discount_active ?? false,
     duration_minutes: service?.duration_minutes ?? 30,
   });
   const [selectedInclusionIds, setSelectedInclusionIds] = useState<Set<string>>(
@@ -159,6 +161,46 @@ export default function ServiceForm({
             }
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
+        </div>
+      </div>
+
+      <div className="rounded-md border border-gray-200 p-3">
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={form.discount_active}
+            onChange={(e) => setForm({ ...form, discount_active: e.target.checked })}
+            className="h-4 w-4 accent-brand-600"
+          />
+          Discount active
+        </label>
+        <div className="mt-2">
+          <label className="mb-1 block text-xs font-medium text-gray-600">
+            Discount (%)
+          </label>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step={1}
+            value={form.discount_percent}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                discount_percent: Math.min(
+                  100,
+                  Math.max(0, Number(e.target.value) || 0),
+                ),
+              })
+            }
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+          {form.discount_active && form.discount_percent > 0 && (
+            <p className="mt-1 text-xs text-gray-500">
+              ${form.price.toFixed(2)} → $
+              {(form.price * (1 - form.discount_percent / 100)).toFixed(2)}
+            </p>
+          )}
         </div>
       </div>
 

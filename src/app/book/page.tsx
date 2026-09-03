@@ -8,7 +8,7 @@ import type {
   Service,
   VehicleTypeRow,
 } from "@/lib/types";
-import { isPaymentConfigured } from "./actions";
+import { getBookingPaymentMode } from "./actions";
 import BookingFlow from "./booking-flow";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +24,7 @@ export default async function BookPage() {
     { data: blockedDates },
     { data: vehicleTypes },
     { data: categories },
-    paymentConfigured,
+    paymentMode,
   ] = await Promise.all([
     supabase
       .from("services")
@@ -41,7 +41,7 @@ export default async function BookPage() {
       .select("*")
       .eq("active", true)
       .order("sort_order"),
-    isPaymentConfigured(),
+    getBookingPaymentMode(),
   ]);
 
   return (
@@ -52,7 +52,7 @@ export default async function BookPage() {
         extras={(extras as Extra[]) ?? []}
         vehicleTypes={(vehicleTypes as VehicleTypeRow[]) ?? []}
         categories={(categories as CategoryRow[]) ?? []}
-        paymentConfigured={paymentConfigured}
+        paymentMode={paymentMode}
         settings={(settings as BusinessSettings) ?? {
           id: 1,
           name: "Car Wash",

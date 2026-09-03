@@ -9,6 +9,8 @@ export interface ServiceInput {
   category: ServiceCategory;
   vehicle_type: VehicleType;
   price: number;
+  discount_percent: number;
+  discount_active: boolean;
   duration_minutes: number;
 }
 

@@ -72,6 +72,13 @@ const NAV_ITEMS = [
       <path d="M7 3v3M17 3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" />
     ),
   },
+  {
+    href: "/admin/gift-cards",
+    label: "Gift Cards",
+    icon: (
+      <path d="M20 7H4a1 1 0 0 0-1 1v3h18V8a1 1 0 0 0-1-1ZM3 13v5a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-5M12 7v13M7.5 7C6 7 5 5.9 5 4.5S6 2 7.5 2 10 4 12 7c2-3 3.5-5 4.5-5S19 3.1 19 4.5 18 7 16.5 7" />
+    ),
+  },
 ];
 
 export default function Sidebar({

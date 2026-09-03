@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { onBookingCreated } from "@/lib/booking-sync";
+import { onGiftCardPurchased } from "@/lib/gift-card-sync";
 import { createClient } from "@/lib/supabase/server";
 import { getStripeClient } from "@/lib/stripe";
 
@@ -17,16 +18,30 @@ interface PaidBookingRow {
   price: number | null;
 }
 
-async function handlePaid(session: Stripe.Checkout.Session) {
-  const supabase = await createClient();
-  const paymentIntentId =
-    typeof session.payment_intent === "string"
-      ? session.payment_intent
-      : (session.payment_intent?.id ?? null);
+interface PaidGiftCardRow {
+  gift_card_id: string;
+  code: string;
+  value: number;
+  product_name: string | null;
+  purchaser_name: string;
+  purchaser_email: string;
+  recipient_name: string | null;
+  recipient_email: string | null;
+  message: string | null;
+  expires_at: string;
+}
 
+function getPaymentIntentId(session: Stripe.Checkout.Session): string | null {
+  return typeof session.payment_intent === "string"
+    ? session.payment_intent
+    : (session.payment_intent?.id ?? null);
+}
+
+async function handleBookingPaid(session: Stripe.Checkout.Session) {
+  const supabase = await createClient();
   const { data, error } = await supabase.rpc("mark_booking_paid", {
     p_stripe_checkout_session_id: session.id,
-    p_stripe_payment_intent_id: paymentIntentId,
+    p_stripe_payment_intent_id: getPaymentIntentId(session),
   });
   if (error) {
     console.error("[stripe-webhook] mark_booking_paid failed:", error);
@@ -48,13 +63,52 @@ async function handlePaid(session: Stripe.Checkout.Session) {
   });
 }
 
+async function handleGiftCardPaid(session: Stripe.Checkout.Session) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("mark_gift_card_paid", {
+    p_stripe_checkout_session_id: session.id,
+    p_stripe_payment_intent_id: getPaymentIntentId(session),
+  });
+  if (error) {
+    console.error("[stripe-webhook] mark_gift_card_paid failed:", error);
+    return;
+  }
+
+  const row = (data as PaidGiftCardRow[] | null)?.[0];
+  if (!row) return; // already processed, or gift card not found — idempotent no-op
+
+  await onGiftCardPurchased({
+    giftCardId: row.gift_card_id,
+    code: row.code,
+    value: row.value,
+    productName: row.product_name,
+    purchaserName: row.purchaser_name,
+    purchaserEmail: row.purchaser_email,
+    recipientName: row.recipient_name,
+    recipientEmail: row.recipient_email,
+    message: row.message,
+    expiresAt: row.expires_at,
+  });
+}
+
+async function handlePaid(session: Stripe.Checkout.Session) {
+  if (session.metadata?.type === "gift_card") {
+    return handleGiftCardPaid(session);
+  }
+  return handleBookingPaid(session);
+}
+
 async function handleFailed(session: Stripe.Checkout.Session) {
   const supabase = await createClient();
-  const { error } = await supabase.rpc("mark_booking_payment_failed", {
+  const rpc =
+    session.metadata?.type === "gift_card"
+      ? "mark_gift_card_payment_failed"
+      : "mark_booking_payment_failed";
+  const { error } = await supabase.rpc(rpc, {
     p_stripe_checkout_session_id: session.id,
   });
   if (error) {
-    console.error("[stripe-webhook] mark_booking_payment_failed failed:", error);
+    console.error(`[stripe-webhook] ${rpc} failed:`, error);
   }
 }
 

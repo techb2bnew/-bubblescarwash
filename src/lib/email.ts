@@ -274,6 +274,77 @@ export async function sendBookingCancelledEmails(
   ]);
 }
 
+export interface GiftCardEmailDetails {
+  code: string;
+  value: number;
+  productName: string;
+  purchaserName: string;
+  purchaserEmail: string;
+  recipientName: string | null;
+  recipientEmail: string | null;
+  message: string | null;
+  expiresAt: string;
+  businessName: string;
+}
+
+function formatGiftCardExpiry(expiresAt: string): string {
+  return new Date(expiresAt).toLocaleDateString("en-AU", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+export async function sendGiftCardEmail(details: GiftCardEmailDetails): Promise<void> {
+  const expiresLabel = formatGiftCardExpiry(details.expiresAt);
+  const hasDistinctRecipient = Boolean(
+    details.recipientEmail && details.recipientEmail !== details.purchaserEmail,
+  );
+
+  const recipientHtml = `
+    <div style="font-family:sans-serif;max-width:600px;">
+      <h2 style="color:#111;">You've received a Gift Card!</h2>
+      <p>Hi ${details.recipientName || "there"},</p>
+      <p>${details.purchaserName} sent you a <strong>${details.productName}</strong> gift card for <strong>${details.businessName}</strong>.</p>
+      ${details.message ? `<blockquote style="margin:16px 0;padding:12px 16px;background:#f9fafb;border-left:3px solid #ddd;color:#444;">${details.message}</blockquote>` : ""}
+      <div style="margin:20px 0;padding:20px;background:#f0f9ff;border:1px dashed #7dd3fc;border-radius:8px;text-align:center;">
+        <p style="margin:0;font-size:13px;color:#0369a1;">Your gift card code</p>
+        <p style="margin:4px 0;font-size:24px;font-weight:700;letter-spacing:2px;color:#0c4a6e;">${details.code}</p>
+        <p style="margin:0;font-size:14px;color:#0369a1;">Value: $${details.value.toFixed(2)}</p>
+      </div>
+      <p style="color:#666;font-size:14px;">Valid until <strong>${expiresLabel}</strong>. Enter this code when booking online, or mention it in person.</p>
+    </div>
+  `;
+
+  const tasks = [
+    sendEmail(
+      details.recipientEmail || details.purchaserEmail,
+      `You've received a $${details.value.toFixed(2)} gift card — ${details.businessName}`,
+      recipientHtml,
+    ),
+  ];
+
+  if (hasDistinctRecipient) {
+    const receiptHtml = `
+      <div style="font-family:sans-serif;max-width:600px;">
+        <h2 style="color:#111;">Gift Card Purchase Receipt</h2>
+        <p>Hi ${details.purchaserName},</p>
+        <p>Thanks for your purchase! Your <strong>${details.productName}</strong> gift card (code <strong>${details.code}</strong>, value $${details.value.toFixed(2)}) has been sent to ${details.recipientName || details.recipientEmail}.</p>
+        <p style="color:#666;font-size:14px;">Valid until ${expiresLabel}.</p>
+      </div>
+    `;
+    tasks.push(
+      sendEmail(
+        details.purchaserEmail,
+        `Receipt: Gift Card for ${details.recipientName || "your recipient"} — ${details.businessName}`,
+        receiptHtml,
+      ),
+    );
+  }
+
+  await Promise.all(tasks);
+}
+
 export function isEmailConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
 }

@@ -46,6 +46,30 @@ export default function ConfirmationStatus({
     );
   }
 
+  if (result.paymentStatus === "unpaid") {
+    // A Stripe-path booking flips to 'pending' the instant its checkout
+    // session is attached, so 'unpaid' here can only mean the simple-form
+    // "pay in person" path — never a Stripe booking that stalled.
+    return (
+      <div className="rounded-lg border border-green-200 bg-green-50 p-6 text-center">
+        <h1 className="text-lg font-semibold text-green-800">
+          Booking Confirmed!
+        </h1>
+        <p className="mt-2 text-sm text-green-700">Booking reference: {bookingId}</p>
+        <p className="mt-1 text-sm text-green-700">
+          {result.serviceName} on {result.bookingDate} at{" "}
+          {formatTimeLabel(result.bookingTime.slice(0, 5))}
+        </p>
+        <p className="mt-1 text-sm font-medium text-green-800">
+          {result.price ? `Amount due at your appointment: $${result.price.toFixed(2)}` : "No payment due"}
+        </p>
+        <p className="mt-3 text-xs text-green-600">
+          A confirmation email is on its way to you.
+        </p>
+      </div>
+    );
+  }
+
   if (result.paymentStatus === "paid") {
     return (
       <div className="rounded-lg border border-green-200 bg-green-50 p-6 text-center">
