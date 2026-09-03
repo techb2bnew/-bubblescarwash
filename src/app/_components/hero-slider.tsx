@@ -44,9 +44,9 @@ const slides: Slide[] = [
     eyebrow: "Grab a Seat While You Wait",
     heading: (
       <>
-        A place for coffee
+        A place for coffee and
         <br />
-        <span className="text-gradient">and a great car wash.</span>
+        <span className="text-gradient">a great car wash.</span>
       </>
     ),
     body: "Order a fresh brew from our cafe counter while our team gets to work — coffee, cake and a clean car, all in one stop.",
