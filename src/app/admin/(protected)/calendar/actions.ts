@@ -12,8 +12,22 @@ import {
 } from "@/lib/blocked-slot-sync";
 import { onBookingCreated } from "@/lib/booking-sync";
 import { createClient } from "@/lib/supabase/server";
-import type { BlockedSlot, BookingType, BoothCapacityDuration } from "@/lib/types";
-import { boothPeriodEndDate, generateTimeSlots, hourBucketKey } from "@/lib/date-utils";
+import type {
+  BlockedSlot,
+  BookingType,
+  BoothCapacityDuration,
+  HoursSource,
+  WeekdayHours,
+} from "@/lib/types";
+import {
+  bookingHourBuckets,
+  boothPeriodEndDate,
+  formatDateLong,
+  formatTimeLabel,
+  generateTimeSlots,
+  hourBucketKey,
+  weekdayOfDateKey,
+} from "@/lib/date-utils";
 
 export async function blockDate(date: string, reason: string) {
   const supabase = await createClient();
@@ -47,7 +61,7 @@ export interface DateAvailability {
   slotUsage: { time: string; count: number }[];
   openingTime: string;
   closingTime: string;
-  hasCustomHours: boolean;
+  hoursSource: HoursSource;
 }
 
 export async function getBoothCountForDate(date: string): Promise<number> {
@@ -59,6 +73,52 @@ export async function getBoothCountForDate(date: string): Promise<number> {
   return (data as number) ?? 1;
 }
 
+/**
+ * The busiest clock hour in the range, and how many online bookings share it.
+ * Capacity can never be set below this number — those bookings are already
+ * confirmed, and lowering the pool under them would oversell the hour.
+ */
+async function peakHourlyBookings(
+  startDate: string,
+  endDate: string,
+): Promise<{ date: string; hour: string; count: number } | null> {
+  const supabase = await createClient();
+  const [{ data: bookings, error }, { data: settings }] = await Promise.all([
+    supabase
+      .from("bookings")
+      .select("booking_date, booking_time, services(duration_minutes)")
+      .gte("booking_date", startDate)
+      .lte("booking_date", endDate)
+      .eq("booking_type", "online")
+      .neq("status", "cancelled"),
+    supabase
+      .from("business_settings")
+      .select("slot_interval_minutes")
+      .eq("id", 1)
+      .single(),
+  ]);
+  if (error) throw new Error(error.message);
+
+  const intervalMinutes = settings?.slot_interval_minutes ?? 30;
+  const counts = new Map<string, number>();
+  let peak: { date: string; hour: string; count: number } | null = null;
+
+  for (const b of bookings ?? []) {
+    const duration =
+      (b.services as unknown as { duration_minutes: number } | null)
+        ?.duration_minutes ?? intervalMinutes;
+    for (const hour of bookingHourBuckets(b.booking_time, duration)) {
+      const key = `${b.booking_date}T${hour}`;
+      const count = (counts.get(key) ?? 0) + 1;
+      counts.set(key, count);
+      if (!peak || count > peak.count) {
+        peak = { date: b.booking_date, hour, count };
+      }
+    }
+  }
+  return peak;
+}
+
 export async function setBoothCapacity(
   startDate: string,
   boothCount: number,
@@ -66,8 +126,19 @@ export async function setBoothCapacity(
 ) {
   if (boothCount < 1) throw new Error("Booth count must be at least 1.");
 
-  const supabase = await createClient();
   const endDate = boothPeriodEndDate(startDate, duration);
+  const peak = await peakHourlyBookings(startDate, endDate);
+  if (peak && boothCount < peak.count) {
+    throw new Error(
+      `${formatDateLong(peak.date)} already has ${peak.count} booking${
+        peak.count === 1 ? "" : "s"
+      } in the ${formatTimeLabel(peak.hour)} hour, so capacity can't be set below ${
+        peak.count
+      }.`,
+    );
+  }
+
+  const supabase = await createClient();
   const { error } = await supabase.from("booth_capacity_periods").insert({
     start_date: startDate,
     end_date: endDate,
@@ -79,23 +150,85 @@ export async function setBoothCapacity(
 
 export async function getDateHoursForDate(
   date: string,
-): Promise<{ openingTime: string; closingTime: string; hasCustomHours: boolean }> {
+): Promise<{ openingTime: string; closingTime: string; hoursSource: HoursSource }> {
   const supabase = await createClient();
-  const [{ data: hours, error }, { data: override }] = await Promise.all([
-    supabase.rpc("get_business_hours", { target_date: date }).single(),
-    supabase
-      .from("date_hours_overrides")
-      .select("date")
-      .eq("date", date)
-      .maybeSingle(),
-  ]);
+  const [{ data: hours, error }, { data: override }, { data: weekday }] =
+    await Promise.all([
+      supabase.rpc("get_business_hours", { target_date: date }).single(),
+      supabase
+        .from("date_hours_overrides")
+        .select("date")
+        .eq("date", date)
+        .maybeSingle(),
+      supabase
+        .from("weekday_hours")
+        .select("day_of_week")
+        .eq("day_of_week", weekdayOfDateKey(date))
+        .maybeSingle(),
+    ]);
   if (error) throw new Error(error.message);
   const row = hours as { opening_time: string; closing_time: string } | null;
   return {
     openingTime: (row?.opening_time ?? "09:00").slice(0, 5),
     closingTime: (row?.closing_time ?? "17:00").slice(0, 5),
-    hasCustomHours: Boolean(override),
+    hoursSource: override ? "date" : weekday ? "weekday" : "default",
   };
+}
+
+export async function getWeekdayHours(): Promise<WeekdayHours[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("weekday_hours")
+    .select("day_of_week, opening_time, closing_time")
+    .order("day_of_week");
+  if (error) throw new Error(error.message);
+  return ((data as WeekdayHours[]) ?? []).map((w) => ({
+    ...w,
+    opening_time: w.opening_time.slice(0, 5),
+    closing_time: w.closing_time.slice(0, 5),
+  }));
+}
+
+/**
+ * Sets recurring hours for one weekday. Per-date overrides still win over
+ * this, so a date the admin has already customised is left alone.
+ */
+export async function setWeekdayHours(
+  dayOfWeek: number,
+  startTime: string,
+  endTime: string,
+) {
+  if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
+    throw new Error("Invalid day of week.");
+  }
+  if (startTime >= endTime) {
+    throw new Error("Start time must be before end time.");
+  }
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("weekday_hours")
+    .upsert(
+      {
+        day_of_week: dayOfWeek,
+        opening_time: startTime,
+        closing_time: endTime,
+      },
+      { onConflict: "day_of_week" },
+    );
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/calendar");
+  revalidatePath("/book");
+}
+
+export async function clearWeekdayHours(dayOfWeek: number) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("weekday_hours")
+    .delete()
+    .eq("day_of_week", dayOfWeek);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/calendar");
+  revalidatePath("/book");
 }
 
 export async function setDateHours(
@@ -154,7 +287,7 @@ export async function getDateAvailability(
   ]);
 
   const intervalMinutes = settings?.slot_interval_minutes ?? 30;
-  const { openingTime, closingTime, hasCustomHours } = dateHours;
+  const { openingTime, closingTime, hoursSource } = dateHours;
   const hourCounts = new Map<string, number>();
 
   for (const b of bookings ?? []) {
@@ -162,14 +295,8 @@ export async function getDateAvailability(
     const duration =
       (b.services as unknown as { duration_minutes: number } | null)
         ?.duration_minutes ?? intervalMinutes;
-    const [h, m] = b.booking_time.slice(0, 5).split(":").map(Number);
-    const startMinutes = h * 60 + m;
-    const endMinutes = startMinutes + duration;
-    let hourStart = Math.floor(startMinutes / 60) * 60;
-    while (hourStart < endMinutes) {
-      const key = `${String(Math.floor(hourStart / 60)).padStart(2, "0")}:00`;
+    for (const key of bookingHourBuckets(b.booking_time, duration)) {
       hourCounts.set(key, (hourCounts.get(key) ?? 0) + 1);
-      hourStart += 60;
     }
   }
 
@@ -189,7 +316,7 @@ export async function getDateAvailability(
     slotUsage,
     openingTime,
     closingTime,
-    hasCustomHours,
+    hoursSource,
   };
 }
 

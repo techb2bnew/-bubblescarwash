@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { GiftCard } from "@/lib/types";
+import { formatDateLong } from "@/lib/date-utils";
 import { FilterSelect, TableToolbar } from "../../_components/table-toolbar";
 import { SortHeader } from "../../_components/sort-header";
 import { Pagination } from "../../_components/pagination";
@@ -196,7 +197,7 @@ export default function IssuedTable({ cards }: { cards: GiftCard[] }) {
                     {c.redeemed_booking_id ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">
-                    {new Date(c.created_at).toLocaleDateString()}
+                    {formatDateLong(c.created_at.slice(0, 10))}
                   </td>
                 </tr>
               );

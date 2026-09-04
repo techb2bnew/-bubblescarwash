@@ -36,6 +36,16 @@ export interface BusinessSettings {
   default_booth_count: number;
 }
 
+/** Recurring hours for one day of the week. day_of_week: 0 = Sunday … 6 = Saturday. */
+export interface WeekdayHours {
+  day_of_week: number;
+  opening_time: string;
+  closing_time: string;
+}
+
+/** Which rule supplied a date's effective hours, most specific first. */
+export type HoursSource = "date" | "weekday" | "default";
+
 export type BoothCapacityDuration = "day" | "week" | "month" | "ongoing";
 
 export interface BoothCapacityPeriod {

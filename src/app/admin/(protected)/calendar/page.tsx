@@ -3,6 +3,7 @@ import { syncBlockedDatesToGoogle } from "@/lib/blocked-date-sync";
 import { syncBlockedSlotsToGoogle } from "@/lib/blocked-slot-sync";
 import { getGoogleCalendarEmbedUrl } from "@/lib/google-calendar";
 import type { BlockedDate, BusinessSettings, Service } from "@/lib/types";
+import { getWeekdayHours } from "./actions";
 import CalendarView from "./calendar-view";
 
 export const dynamic = "force-dynamic";
@@ -14,11 +15,12 @@ export default async function AdminCalendarPage() {
   ]);
 
   const supabase = await createClient();
-  const [{ data: blockedDates }, { data: settings }, { data: services }] =
+  const [{ data: blockedDates }, { data: settings }, { data: services }, weekdayHours] =
     await Promise.all([
       supabase.from("blocked_dates").select("*").order("date"),
       supabase.from("business_settings").select("*").eq("id", 1).single(),
       supabase.from("services").select("*").eq("active", true).order("name"),
+      getWeekdayHours(),
     ]);
 
   const googleCalendarEmbedUrl = getGoogleCalendarEmbedUrl("MONTH");
@@ -36,6 +38,7 @@ export default async function AdminCalendarPage() {
         blockedDates={(blockedDates as BlockedDate[]) ?? []}
         settings={settings as BusinessSettings}
         services={(services as Service[]) ?? []}
+        weekdayHours={weekdayHours}
         googleCalendarEmbedUrl={googleCalendarEmbedUrl}
       />
     </div>

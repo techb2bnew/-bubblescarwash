@@ -7,10 +7,13 @@ import type {
   BookingType,
   BoothCapacityDuration,
   BusinessSettings,
+  HoursSource,
   Service,
+  WeekdayHours,
 } from "@/lib/types";
 import {
   boothPeriodEndDate,
+  formatDateLong,
   formatTimeLabel,
   generateTimeSlots,
   getMonthGrid,
@@ -20,27 +23,33 @@ import {
   startOfToday,
   toDateKey,
   unavailableDateStyle,
+  WEEKDAY_FULL_NAMES,
   WEEKDAY_NAMES,
+  weekdayOfDateKey,
 } from "@/lib/date-utils";
 import {
   blockDate,
   blockSlot,
   blockSlots,
   clearDateHours,
+  clearWeekdayHours,
   createBookingAdmin,
   getDateAvailability,
   setBoothCapacity,
   setDateHours,
+  setWeekdayHours,
   unblockDate,
   unblockSlot,
 } from "./actions";
 
-type ActiveAction = "close" | "slots" | "booking" | "booths" | "hours" | null;
-
-function formatDateLong(dateKey: string): string {
-  const [y, m, d] = dateKey.split("-").map(Number);
-  return `${MONTH_NAMES[m - 1]} ${d}, ${y}`;
-}
+type ActiveAction =
+  | "close"
+  | "slots"
+  | "booking"
+  | "booths"
+  | "hours"
+  | "weekly"
+  | null;
 
 function ChevronIcon({ open }: { open: boolean }) {
   return (
@@ -64,11 +73,13 @@ export default function CalendarView({
   blockedDates,
   settings,
   services,
+  weekdayHours,
   googleCalendarEmbedUrl,
 }: {
   blockedDates: BlockedDate[];
   settings: BusinessSettings;
   services: Service[];
+  weekdayHours: WeekdayHours[];
   googleCalendarEmbedUrl: string | null;
 }) {
   const router = useRouter();
@@ -94,20 +105,27 @@ export default function CalendarView({
   const [dateHours, setDateHoursState] = useState<{
     openingTime: string;
     closingTime: string;
-    hasCustomHours: boolean;
+    hoursSource: HoursSource;
   }>({
     openingTime: settings.opening_time.slice(0, 5),
     closingTime: settings.closing_time.slice(0, 5),
-    hasCustomHours: false,
+    hoursSource: "default",
   });
   const [hoursStart, setHoursStart] = useState("");
   const [hoursEnd, setHoursEnd] = useState("");
   const [savingHours, setSavingHours] = useState(false);
 
+  const [weeklyDay, setWeeklyDay] = useState(0);
+  const [weeklyStart, setWeeklyStart] = useState("");
+  const [weeklyEnd, setWeeklyEnd] = useState("");
+  const [savingWeekly, setSavingWeekly] = useState(false);
+  const [weeklyError, setWeeklyError] = useState<string | null>(null);
+
   const [boothInputCount, setBoothInputCount] = useState(2);
   const [boothDuration, setBoothDuration] = useState<BoothCapacityDuration>("week");
   const [boothStartDate, setBoothStartDate] = useState(() => toDateKey(today));
   const [savingBooths, setSavingBooths] = useState(false);
+  const [boothError, setBoothError] = useState<string | null>(null);
 
   const [rangeFrom, setRangeFrom] = useState("");
   const [rangeTo, setRangeTo] = useState("");
@@ -127,6 +145,24 @@ export default function CalendarView({
     blockedDates.forEach((b) => map.set(b.date, b));
     return map;
   }, [blockedDates]);
+
+  const weekdayHoursByDay = useMemo(() => {
+    const map = new Map<number, WeekdayHours>();
+    weekdayHours.forEach((w) => map.set(w.day_of_week, w));
+    return map;
+  }, [weekdayHours]);
+
+  const defaultOpening = settings.opening_time.slice(0, 5);
+  const defaultClosing = settings.closing_time.slice(0, 5);
+
+  /** Label for where the selected date's hours came from. */
+  function hoursSourceLabel(source: HoursSource, dateKey: string): string {
+    if (source === "date") return " (custom for this date)";
+    if (source === "weekday") {
+      return ` (${WEEKDAY_FULL_NAMES[weekdayOfDateKey(dateKey)]} hours)`;
+    }
+    return " (default)";
+  }
 
   const weeks = useMemo(
     () => getMonthGrid(cursor.year, cursor.month),
@@ -180,7 +216,7 @@ export default function CalendarView({
         setDateHoursState({
           openingTime: result.openingTime,
           closingTime: result.closingTime,
-          hasCustomHours: result.hasCustomHours,
+          hoursSource: result.hoursSource,
         });
       } finally {
         if (!cancelled) setLoadingSlots(false);
@@ -223,6 +259,7 @@ export default function CalendarView({
   async function handleSetBoothCapacity() {
     if (!boothStartDate) return;
     setSavingBooths(true);
+    setBoothError(null);
     try {
       await setBoothCapacity(boothStartDate, boothInputCount, boothDuration);
       if (selected) {
@@ -233,6 +270,8 @@ export default function CalendarView({
       }
       setActiveAction(null);
       refreshAfterAction();
+    } catch (err) {
+      setBoothError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setSavingBooths(false);
     }
@@ -246,7 +285,7 @@ export default function CalendarView({
       setDateHoursState({
         openingTime: hoursStart,
         closingTime: hoursEnd,
-        hasCustomHours: true,
+        hoursSource: "date",
       });
       setActiveAction(null);
       refreshAfterAction();
@@ -264,12 +303,52 @@ export default function CalendarView({
       setDateHoursState({
         openingTime: result.openingTime,
         closingTime: result.closingTime,
-        hasCustomHours: result.hasCustomHours,
+        hoursSource: result.hoursSource,
       });
       setActiveAction(null);
       refreshAfterAction();
     } finally {
       setSavingHours(false);
+    }
+  }
+
+  /** Reloads the selected date's hours — weekday rules can change them. */
+  async function reloadSelectedHours() {
+    if (!selected) return;
+    const result = await getDateAvailability(selected);
+    setDateHoursState({
+      openingTime: result.openingTime,
+      closingTime: result.closingTime,
+      hoursSource: result.hoursSource,
+    });
+  }
+
+  async function handleSetWeeklyHours() {
+    if (!weeklyStart || !weeklyEnd) return;
+    setSavingWeekly(true);
+    setWeeklyError(null);
+    try {
+      await setWeekdayHours(weeklyDay, weeklyStart, weeklyEnd);
+      await reloadSelectedHours();
+      refreshAfterAction();
+    } catch (err) {
+      setWeeklyError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setSavingWeekly(false);
+    }
+  }
+
+  async function handleClearWeeklyHours() {
+    setSavingWeekly(true);
+    setWeeklyError(null);
+    try {
+      await clearWeekdayHours(weeklyDay);
+      await reloadSelectedHours();
+      refreshAfterAction();
+    } catch (err) {
+      setWeeklyError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setSavingWeekly(false);
     }
   }
 
@@ -485,7 +564,7 @@ export default function CalendarView({
           <p className="mt-0.5 text-sm text-gray-500">
             {dayIsClosed
               ? `Closed${blockedByDate.get(selected)?.reason ? ` — ${blockedByDate.get(selected)?.reason}` : ""}`
-              : `Open ${formatTimeLabel(dateHours.openingTime)}–${formatTimeLabel(dateHours.closingTime)}${dateHours.hasCustomHours ? " (custom)" : ""} · ${boothCount} booking${boothCount === 1 ? "" : "s"} allowed per hour`}
+              : `Open ${formatTimeLabel(dateHours.openingTime)}–${formatTimeLabel(dateHours.closingTime)}${dateHours.hoursSource === "default" ? "" : hoursSourceLabel(dateHours.hoursSource, selected)} · ${boothCount} booking${boothCount === 1 ? "" : "s"} allowed per hour`}
           </p>
 
           {dayIsClosed ? (
@@ -528,9 +607,10 @@ export default function CalendarView({
                         min={1}
                         max={20}
                         value={boothInputCount}
-                        onChange={(e) =>
-                          setBoothInputCount(Math.max(1, Number(e.target.value) || 1))
-                        }
+                        onChange={(e) => {
+                          setBoothError(null);
+                          setBoothInputCount(Math.max(1, Number(e.target.value) || 1));
+                        }}
                         className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
                       />
                     </div>
@@ -550,7 +630,10 @@ export default function CalendarView({
                           <button
                             key={value}
                             type="button"
-                            onClick={() => setBoothDuration(value)}
+                            onClick={() => {
+                              setBoothError(null);
+                              setBoothDuration(value);
+                            }}
                             className={`flex-1 rounded-md border px-2 py-1.5 text-xs font-medium ${
                               boothDuration === value
                                 ? "border-brand-600 bg-brand-50 text-brand-700"
@@ -570,7 +653,10 @@ export default function CalendarView({
                         type="date"
                         value={boothStartDate}
                         min={toDateKey(today)}
-                        onChange={(e) => setBoothStartDate(e.target.value)}
+                        onChange={(e) => {
+                          setBoothError(null);
+                          setBoothStartDate(e.target.value);
+                        }}
                         className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
                       />
                       <p className="mt-1 text-xs text-gray-500">
@@ -593,6 +679,9 @@ export default function CalendarView({
                         )}
                       </p>
                     </div>
+                    {boothError && (
+                      <p className="text-sm text-red-600">{boothError}</p>
+                    )}
                     <button
                       type="button"
                       onClick={handleSetBoothCapacity}
@@ -627,8 +716,15 @@ export default function CalendarView({
                       end at the closing time you set below. Currently{" "}
                       <strong>{formatTimeLabel(dateHours.openingTime)}</strong> –{" "}
                       <strong>{formatTimeLabel(dateHours.closingTime)}</strong>
-                      {dateHours.hasCustomHours ? " (custom)" : " (default)"}.
+                      {hoursSourceLabel(dateHours.hoursSource, selected)}.
                     </p>
+                    {dateHours.hoursSource === "weekday" && (
+                      <p className="text-xs text-gray-500">
+                        Saving here overrides the{" "}
+                        {WEEKDAY_FULL_NAMES[weekdayOfDateKey(selected)]} weekly hours
+                        for this one date only.
+                      </p>
+                    )}
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="mb-1 block text-xs font-medium text-gray-600">
@@ -662,7 +758,7 @@ export default function CalendarView({
                       >
                         {savingHours ? "Saving..." : "Save Hours for This Day"}
                       </button>
-                      {dateHours.hasCustomHours && (
+                      {dateHours.hoursSource === "date" && (
                         <button
                           type="button"
                           onClick={handleClearHours}
@@ -1004,6 +1100,133 @@ export default function CalendarView({
           Select a date to manage availability and bookings.
         </p>
       )}
+
+      <div className="mt-4 border-t border-gray-200 pt-4">
+        <button
+          type="button"
+          onClick={() => {
+            if (activeAction !== "weekly") {
+              const rule = weekdayHoursByDay.get(weeklyDay);
+              setWeeklyStart(rule?.opening_time ?? defaultOpening);
+              setWeeklyEnd(rule?.closing_time ?? defaultClosing);
+              setWeeklyError(null);
+            }
+            setActiveAction(activeAction === "weekly" ? null : "weekly");
+          }}
+          className="flex w-full items-center justify-between text-left text-sm font-medium text-gray-800 hover:text-brand-700"
+        >
+          <span>↳ Weekly Hours</span>
+          <ChevronIcon open={activeAction === "weekly"} />
+        </button>
+        {activeAction === "weekly" && (
+          <div className="mt-3 space-y-3">
+            <p className="text-xs text-gray-500">
+              Recurring hours per day of the week — e.g. Monday to Saturday
+              9:00 AM–5:00 PM but Sunday 10:00 AM–4:00 PM. Applies to every
+              matching date. Hours set on an individual date still win over
+              this.
+            </p>
+
+            <div className="space-y-1">
+              {WEEKDAY_FULL_NAMES.map((name, day) => {
+                const rule = weekdayHoursByDay.get(day);
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => {
+                      setWeeklyDay(day);
+                      setWeeklyStart(rule?.opening_time ?? defaultOpening);
+                      setWeeklyEnd(rule?.closing_time ?? defaultClosing);
+                      setWeeklyError(null);
+                    }}
+                    className={`flex w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-xs ${
+                      weeklyDay === day
+                        ? "border-brand-600 bg-brand-50 text-brand-700"
+                        : "border-gray-200 text-gray-600 hover:border-gray-300"
+                    }`}
+                  >
+                    <span className="font-medium">{name}</span>
+                    <span className={rule ? "" : "text-gray-400"}>
+                      {rule
+                        ? `${formatTimeLabel(rule.opening_time)} – ${formatTimeLabel(rule.closing_time)}`
+                        : `${formatTimeLabel(defaultOpening)} – ${formatTimeLabel(defaultClosing)} (default)`}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  Start time
+                </label>
+                <input
+                  type="time"
+                  value={weeklyStart}
+                  onChange={(e) => {
+                    setWeeklyError(null);
+                    setWeeklyStart(e.target.value);
+                  }}
+                  className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  End time
+                </label>
+                <input
+                  type="time"
+                  value={weeklyEnd}
+                  onChange={(e) => {
+                    setWeeklyError(null);
+                    setWeeklyEnd(e.target.value);
+                  }}
+                  className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                />
+              </div>
+            </div>
+
+            {weeklyStart && weeklyEnd && weeklyStart >= weeklyEnd && (
+              <p className="text-xs text-red-600">
+                Start time must be before end time.
+              </p>
+            )}
+            {weeklyError && (
+              <p className="text-sm text-red-600">{weeklyError}</p>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleSetWeeklyHours}
+                disabled={
+                  savingWeekly ||
+                  !weeklyStart ||
+                  !weeklyEnd ||
+                  weeklyStart >= weeklyEnd
+                }
+                className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+              >
+                {savingWeekly
+                  ? "Saving..."
+                  : `Save ${WEEKDAY_FULL_NAMES[weeklyDay]} Hours`}
+              </button>
+              {weekdayHoursByDay.has(weeklyDay) && (
+                <button
+                  type="button"
+                  onClick={handleClearWeeklyHours}
+                  disabled={savingWeekly}
+                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 disabled:opacity-50"
+                >
+                  Reset to Default
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
       </div>
     </div>
   );
