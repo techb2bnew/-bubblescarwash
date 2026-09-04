@@ -789,52 +789,35 @@ export default async function Home() {
                       return (
                         <div
                           key={tier.name}
-                          style={featured ? { backgroundColor: "#0b1220" } : undefined}
-                          className={`relative flex flex-col overflow-hidden rounded-2xl p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
+                          className={`relative flex flex-col overflow-hidden rounded-2xl border bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
                             featured
-                              ? "text-white shadow-xl shadow-brand-600/20 ring-2 ring-brand-500 sm:-translate-y-2"
-                              : "border border-gray-100 bg-white"
+                              ? "border-brand-300 shadow-lg shadow-brand-600/10 ring-2 ring-brand-500 sm:-translate-y-2"
+                              : "border-gray-100"
                           }`}
                         >
-                          {!featured && (
-                            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-brand-50" />
-                          )}
+                          <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-brand-50" />
                           {featured && (
                             <span className="absolute right-4 top-4 rounded-full bg-brand-600 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
                               Most Popular
                             </span>
                           )}
                           <div className="relative">
-                            <h4 className={`text-base font-bold ${featured ? "text-white" : "text-gray-900"}`}>
-                              {tier.name}
-                            </h4>
-                            <p className={`mt-1 text-xs ${featured ? "text-gray-400" : "text-gray-400"}`}>
-                              ~{tier.duration_minutes} min
-                            </p>
+                            <h4 className="text-base font-bold text-gray-900">{tier.name}</h4>
+                            <p className="mt-1 text-xs text-gray-400">~{tier.duration_minutes} min</p>
                           </div>
 
                           {tier.features.length > 0 && (
-                            <ul
-                              className={`relative mt-4 space-y-1.5 text-sm ${
-                                featured ? "text-gray-300" : "text-gray-600"
-                              }`}
-                            >
+                            <ul className="relative mt-4 space-y-1.5 text-sm text-gray-600">
                               {tier.features.slice(0, 5).map((f) => (
                                 <li key={f} className="flex gap-2">
-                                  <span className={`mt-0.5 ${featured ? "text-brand-400" : "text-brand-500"}`}>
-                                    ✓
-                                  </span>
+                                  <span className="mt-0.5 text-brand-500">✓</span>
                                   <span>{f}</span>
                                 </li>
                               ))}
                             </ul>
                           )}
 
-                          <div
-                            className={`relative mt-5 flex-1 space-y-1 border-t pt-4 ${
-                              featured ? "border-white/10" : "border-gray-100"
-                            }`}
-                          >
+                          <div className="relative mt-5 flex-1 space-y-1 border-t border-gray-100 pt-4">
                             {tier.prices.map((p, i) => {
                               const vt = vehicleTypes.find((v) => v.slug === p.vehicleTypeSlug);
                               return (
@@ -842,14 +825,12 @@ export default async function Home() {
                                   key={p.vehicleTypeSlug}
                                   className={
                                     i === 0
-                                      ? `text-2xl font-extrabold ${featured ? "text-brand-400" : "text-brand-600"}`
-                                      : `text-xs ${featured ? "text-gray-400" : "text-gray-500"}`
+                                      ? "text-2xl font-extrabold text-brand-600"
+                                      : "text-xs text-gray-500"
                                   }
                                 >
                                   {vt?.name ?? p.vehicleTypeSlug}{" "}
-                                  <span
-                                    className={i === 0 ? "" : featured ? "font-medium text-gray-300" : "font-medium text-gray-700"}
-                                  >
+                                  <span className={i === 0 ? "" : "font-medium text-gray-700"}>
                                     ${p.price.toFixed(0)}
                                   </span>
                                 </p>
@@ -859,10 +840,8 @@ export default async function Home() {
 
                           <Link
                             href="/book"
-                            className={`relative mt-5 rounded-full px-4 py-2.5 text-center text-sm font-semibold transition ${
-                              featured
-                                ? "bg-brand-600 text-white hover:bg-brand-700"
-                                : "bg-gray-900 text-white hover:bg-brand-600"
+                            className={`relative mt-5 rounded-full px-4 py-2.5 text-center text-sm font-semibold text-white transition ${
+                              featured ? "bg-brand-600 hover:bg-brand-700" : "bg-gray-900 hover:bg-brand-600"
                             }`}
                           >
                             Book This
