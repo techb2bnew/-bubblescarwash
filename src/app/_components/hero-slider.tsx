@@ -36,7 +36,7 @@ const slides: Slide[] = [
         <span className="text-gradient">the best cleaning.</span>
       </>
     ),
-    body: "A place for coffee and a great car wash — book online in under a minute, then relax while our team takes care of the rest.",
+    body: "Book online in under a minute, then relax while our team takes care of the rest.",
   },
   {
     src: "/real-photos/cafe-coffee.jpg",
@@ -49,7 +49,7 @@ const slides: Slide[] = [
         <span className="text-gradient">a great car wash.</span>
       </>
     ),
-    body: "Order a fresh brew from our cafe counter while our team gets to work — coffee, cake and a clean car, all in one stop.",
+    body: "Order a fresh brew from our cafe counter while our team gets to work on your car.",
   },
   {
     src: "/real-photos/gift-voucher.jpg",
@@ -62,7 +62,7 @@ const slides: Slide[] = [
         <span className="text-gradient">someone special.</span>
       </>
     ),
-    body: "Can't decide what to get them? A Bubbles gift voucher covers a wash, a detail, or a coffee — ask our team in-store.",
+    body: "A Bubbles gift voucher covers a wash, a detail, or a coffee at the cafe.",
   },
 ];
 
@@ -103,7 +103,7 @@ export default function HeroSlider() {
       </div>
 
       <div className="relative mx-auto flex max-w-[1600px] flex-col items-center px-6 pb-14 pt-28 text-center sm:px-10 sm:pb-16 sm:pt-36 lg:px-12 lg:pb-20 lg:pt-44">
-        <div className="relative min-h-[360px] w-full max-w-2xl sm:min-h-[300px]">
+        <div className="relative min-h-[420px] w-full max-w-2xl sm:min-h-[380px] lg:min-h-[440px]">
           {slides.map((slide, i) => (
             <div
               key={slide.src}
