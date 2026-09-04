@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { CategoryRow, Service, VehicleTypeRow } from "@/lib/types";
+import { blogPosts } from "@/lib/blog-posts";
 import SiteHeader from "./_components/site-header";
 import BeforeAfterSlider from "./_components/before-after-slider";
 import Reveal from "./_components/reveal";
@@ -383,29 +384,6 @@ const serviceGrid = [
   },
 ];
 
-const tips = [
-  {
-    date: "Wash Tips",
-    category: "General",
-    title: "Avoiding scratches and swirl marks",
-    body: "Why we only use microfiber mitts and two-bucket washing to keep your paint scratch-free.",
-    src: "/real-photos/headlight-polish.jpg",
-  },
-  {
-    date: "Wash Tips",
-    category: "Auto Detailing",
-    title: "What a good car wash should never skip",
-    body: "The checklist we run through on every vehicle — from pre-rinse to a final panel wipe-down.",
-    src: "/real-photos/hand-wax.jpg",
-  },
-  {
-    date: "Wash Tips",
-    category: "Interior",
-    title: "Getting the interior properly dust-free",
-    body: "Where dust and crumbs actually hide, and the vacuum technique that gets them out for good.",
-    src: "/real-photos/detail-collage.jpg",
-  },
-];
 
 const guarantees = [
   {
@@ -525,7 +503,7 @@ export default async function Home() {
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-12 px-4 pb-14 pt-14 sm:px-8 lg:grid-cols-2 lg:items-stretch lg:gap-8">
           <div className="relative flex w-full flex-col">
             <BeforeAfterSlider
-              src="/real-photos/headlight-polish.jpg"
+              src="/real-photos/hand-wax.jpg"
               alt="Car before and after a hand wash — drag to compare"
             />
             <p className="mt-2 text-center text-xs text-gray-400">
@@ -620,8 +598,8 @@ export default async function Home() {
       <section className="relative isolate overflow-hidden">
         <div className="relative h-64 w-full sm:h-80">
           <Image
-            src="/real-photos/tunnel-wash.jpg"
-            alt="Car passing through the automatic wash tunnel brushes"
+            src="/real-photos/detail-collage.jpg"
+            alt="Headlight and interior detailing in progress"
             fill
             sizes="100vw"
             className="object-cover"
@@ -927,44 +905,38 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Gift Vouchers — highlighted callout with a real photo + the actual loyalty promo graphic */}
-      <section style={{ backgroundColor: "#0b1220" }} className="relative overflow-hidden py-12 text-white">
-        <div className="pointer-events-none absolute -left-10 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full bg-brand-500 opacity-20" />
-        <div className="pointer-events-none absolute -right-6 top-10 h-24 w-24 rounded-full bg-brand-400 opacity-20" />
-        <div className="relative mx-auto grid max-w-[1600px] grid-cols-1 items-center gap-10 px-4 sm:px-8 lg:grid-cols-2">
-          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl shadow-xl">
+      {/* Loyalty promo banner — moody wash photo + the real "Buy 4 & Get 1 Free" graphic, shown large */}
+      <section className="relative isolate overflow-hidden">
+        <div className="absolute inset-0 -z-10">
+          <Image
+            src="/real-photos/detail-collage.jpg"
+            alt="Headlight and interior detailing in progress"
+            fill
+            sizes="100vw"
+            className="object-cover grayscale"
+          />
+          <div className="absolute inset-0 bg-[#0b1220]/70" />
+        </div>
+        <div className="relative mx-auto flex max-w-[1600px] flex-col items-center gap-10 px-4 py-16 sm:px-8 sm:py-20 lg:flex-row lg:justify-between">
+          <div className="max-w-xl text-center lg:text-left">
+            <h2 className="text-3xl font-extrabold leading-tight text-white sm:text-4xl">
+              We&apos;ll Clean the Mud
+              <br />
+              Off Your Dirty Car!
+            </h2>
+            <p className="mt-4 text-sm text-gray-300 sm:text-base">
+              Our car wash has a variety of premium-quality services, that your car (and your
+              wallet) will love!
+            </p>
+          </div>
+          <div className="relative h-56 w-56 flex-none overflow-hidden rounded-2xl ring-4 ring-brand-500 sm:h-64 sm:w-64">
             <Image
-              src="/real-photos/gift-voucher.jpg"
-              alt="Wrapped gift box, ready to give as a gift voucher"
+              src="/real-photos/loyalty-buy4-promo.png"
+              alt="Buy 4 washes and get 1 free — ask in store"
               fill
-              sizes="(max-width: 1024px) 100vw, 768px"
+              sizes="256px"
               className="object-cover"
             />
-            <div className="absolute -bottom-6 -right-6 h-28 w-28 overflow-hidden rounded-2xl shadow-xl ring-4 ring-[#0b1220] sm:h-32 sm:w-32">
-              <Image
-                src="/real-photos/loyalty-buy4-promo.png"
-                alt="Buy 4 washes and get 1 free — ask in store"
-                fill
-                sizes="128px"
-                className="object-cover"
-              />
-            </div>
-          </div>
-          <div className="flex flex-col items-start gap-5">
-            <span className="rounded-full bg-brand-500/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-brand-300">
-              Gift Vouchers
-            </span>
-            <h2 className="text-3xl font-extrabold sm:text-4xl">A great gift for someone special</h2>
-            <p className="max-w-md text-sm text-gray-400">
-              Ask our team in-store or over the phone about gift vouchers for a wash, detail, or a
-              coffee at the cafe — the perfect present for any car lover.
-            </p>
-            <a
-              href="tel:0870805959"
-              className="rounded-full bg-brand-600 px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-700"
-            >
-              Call (08) 7080 5959
-            </a>
           </div>
         </div>
       </section>
@@ -1107,12 +1079,15 @@ export default async function Home() {
             </h2>
           </div></Reveal>
           <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
-            {tips.map((t, i) => (
-              <Reveal key={t.title} delay={i * 100}>
-                <article className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+            {blogPosts.map((t, i) => (
+              <Reveal key={t.slug} delay={i * 100}>
+                <Link
+                  href={`/blog/${t.slug}`}
+                  className="group block overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                >
                   <div className="relative aspect-[16/10] w-full overflow-hidden">
                     <Image
-                      src={t.src}
+                      src={t.image}
                       alt={t.title}
                       fill
                       sizes="(max-width: 768px) 100vw, 360px"
@@ -1121,12 +1096,15 @@ export default async function Home() {
                   </div>
                   <div className="p-5">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-600">
-                      {t.date} · {t.category}
+                      {t.dateLabel} · {t.category}
                     </p>
                     <h3 className="mt-2 text-base font-bold text-gray-900">{t.title}</h3>
-                    <p className="mt-2 text-xs leading-relaxed text-gray-500">{t.body}</p>
+                    <p className="mt-2 text-xs leading-relaxed text-gray-500">{t.excerpt}</p>
+                    <span className="mt-3 inline-block text-xs font-semibold text-brand-600">
+                      Read more →
+                    </span>
                   </div>
-                </article>
+                </Link>
               </Reveal>
             ))}
           </div>

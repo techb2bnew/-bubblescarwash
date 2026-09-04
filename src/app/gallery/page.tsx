@@ -13,51 +13,52 @@ export const metadata = {
 // instead of a uniform grid of equal cards.
 const photos = [
   {
-    src: "https://images.pexels.com/photos/6873179/pexels-photo-6873179.jpeg",
-    alt: "Detailer washing a car covered in foam",
-    caption: "Full foam soak before the hand wash",
+    src: "/real-photos/hero-carwash.jpg",
+    alt: "High-pressure rinse spraying down a car",
+    caption: "High-pressure rinse to loosen grime",
     col: 2,
     row: 2,
   },
   {
-    src: "https://images.pexels.com/photos/6873020/pexels-photo-6873020.jpeg",
-    alt: "Close-up of hand washing a car with a brush",
-    caption: "Every panel scrubbed by hand",
+    src: "/real-photos/tunnel-wash.jpg",
+    alt: "Car passing through the automatic wash tunnel",
+    caption: "Through the wash tunnel",
     col: 1,
     row: 1,
   },
   {
-    src: "https://images.pexels.com/photos/4906424/pexels-photo-4906424.jpeg",
-    alt: "Cozy cafe counter interior",
-    caption: "The cafe counter",
+    src: "/real-photos/cafe-coffee.jpg",
+    alt: "Barista pouring latte art into a coffee cup",
+    caption: "Fresh coffee at the cafe counter",
     col: 1,
     row: 1,
   },
   {
-    src: "https://images.pexels.com/photos/364305/pexels-photo-364305.jpeg",
-    alt: "Close-up of a clean car wheel and tyre",
-    caption: "Mag wheels detailed, tyres finished",
+    src: "/real-photos/headlight-polish.jpg",
+    alt: "Hand wiping down a headlight and fender",
+    caption: "Every panel wiped by hand",
     col: 1,
     row: 1,
   },
   {
-    src: "https://images.pexels.com/photos/14689178/pexels-photo-14689178.jpeg",
-    alt: "Fresh cafe latte",
-    caption: "Fresh coffee while you wait",
+    src: "/real-photos/gift-voucher.jpg",
+    alt: "Wrapped gift box tied with a ribbon",
+    caption: "Gift vouchers, wrapped and ready",
+    position: "80% 65%",
     col: 1,
     row: 1,
   },
   {
-    src: "https://images.pexels.com/photos/5233285/pexels-photo-5233285.jpeg",
-    alt: "Vacuuming a car seat",
-    caption: "Interior vacuum, seats to boot",
+    src: "/real-photos/detail-collage.jpg",
+    alt: "Headlight restoration and dashboard detailing",
+    caption: "Headlight restore & interior detail",
     col: 2,
     row: 1,
   },
   {
-    src: "https://images.pexels.com/photos/5233259/pexels-photo-5233259.jpeg",
-    alt: "Detailer polishing a car",
-    caption: "Cut & polish detailing",
+    src: "/real-photos/hand-wax.jpg",
+    alt: "Detailer hand-waxing a car panel",
+    caption: "Hand wax & polish finish",
     col: 2,
     row: 1,
   },
@@ -68,15 +69,26 @@ export default function GalleryPage() {
     <div className="flex min-h-screen flex-col bg-white text-gray-900">
       <SiteHeader />
 
-      <section className="border-b border-gray-100 bg-gray-50 py-16 text-center">
-        <div className="mx-auto max-w-2xl px-4 sm:px-8">
-          <p className="text-xs font-semibold uppercase tracking-widest text-brand-600">Gallery</p>
-          <h1 className="mt-3 text-3xl font-extrabold text-gray-900 sm:text-4xl">
-            The wash, the detail, the coffee
-          </h1>
-          <p className="mt-3 text-sm text-gray-500">
-            A behind-the-scenes look at what happens between drop-off and pickup.
-          </p>
+      <section className="relative isolate overflow-hidden">
+        <div className="relative h-64 w-full sm:h-80">
+          <Image
+            src="/real-photos/hand-wax.jpg"
+            alt="Detailer hand-waxing a car panel"
+            fill
+            sizes="100vw"
+            priority
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0b1220] via-[#0b1220]/80 to-[#0b1220]/40" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center text-white">
+            <p className="text-xs font-semibold uppercase tracking-widest text-brand-300">Gallery</p>
+            <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">
+              The wash, the detail, the coffee
+            </h1>
+            <p className="mt-3 max-w-md text-sm text-gray-300">
+              A behind-the-scenes look at what happens between drop-off and pickup.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -100,6 +112,7 @@ export default function GalleryPage() {
                 fill
                 sizes="(max-width: 640px) 50vw, 25vw"
                 className="object-cover transition duration-300 group-hover:scale-105"
+                style={p.position ? { objectPosition: p.position } : undefined}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0" />
               <figcaption className="absolute inset-x-0 bottom-0 p-3 text-xs font-medium text-white sm:text-sm">

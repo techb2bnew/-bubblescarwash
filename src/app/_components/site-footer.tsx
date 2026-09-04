@@ -137,15 +137,10 @@ export default function SiteFooter() {
             {siteNavLinks.map((link) => (
               <li key={link.href}>
                 <Link href={link.href} className="transition hover:text-brand-400">
-                  {link.label}
+                  {link.label === "Book" ? "Book Now" : link.label}
                 </Link>
               </li>
             ))}
-            <li>
-              <Link href="/book" className="transition hover:text-brand-400">
-                Book Now
-              </Link>
-            </li>
           </ul>
         </div>
 

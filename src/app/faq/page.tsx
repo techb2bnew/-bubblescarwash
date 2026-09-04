@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import SiteHeader from "../_components/site-header";
 import SiteFooter from "../_components/site-footer";
@@ -51,19 +52,28 @@ export default function FaqPage() {
     <div className="flex min-h-screen flex-col bg-white text-gray-900">
       <SiteHeader />
 
-      <section className="border-b border-gray-100 bg-gray-50 py-16 text-center">
-        <div className="mx-auto max-w-2xl px-4 sm:px-8">
-          <p className="text-xs font-semibold uppercase tracking-widest text-brand-600">FAQ</p>
-          <h1 className="mt-3 text-3xl font-extrabold text-gray-900 sm:text-4xl">
-            Questions, answered
-          </h1>
-          <p className="mt-3 text-sm text-gray-500">
-            Can&apos;t find what you&apos;re after? Give us a call on{" "}
-            <a href="tel:0870805959" className="font-semibold text-brand-600">
-              (08) 7080 5959
-            </a>
-            .
-          </p>
+      <section className="relative isolate overflow-hidden">
+        <div className="relative h-64 w-full sm:h-80">
+          <Image
+            src="/real-photos/detail-collage.jpg"
+            alt="Headlight restoration and dashboard detailing"
+            fill
+            sizes="100vw"
+            priority
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0b1220] via-[#0b1220]/80 to-[#0b1220]/40" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center text-white">
+            <p className="text-xs font-semibold uppercase tracking-widest text-brand-300">FAQ</p>
+            <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">Questions, answered</h1>
+            <p className="mt-3 max-w-md text-sm text-gray-300">
+              Can&apos;t find what you&apos;re after? Give us a call on{" "}
+              <a href="tel:0870805959" className="font-semibold text-brand-300">
+                (08) 7080 5959
+              </a>
+              .
+            </p>
+          </div>
         </div>
       </section>
 

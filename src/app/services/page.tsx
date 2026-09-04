@@ -123,8 +123,8 @@ export default async function ServicesPage() {
           </div>
           <div className="relative mx-auto aspect-[4/3] w-full max-w-md overflow-hidden rounded-3xl shadow-2xl shadow-black/40 ring-1 ring-white/10">
             <Image
-              src="https://images.pexels.com/photos/5233259/pexels-photo-5233259.jpeg"
-              alt="Detailer polishing a car"
+              src="/real-photos/hand-wax.jpg"
+              alt="Detailer hand-waxing a car panel"
               fill
               sizes="(max-width: 768px) 100vw, 480px"
               className="object-cover"

@@ -12,10 +12,10 @@ export default function SiteHeader() {
     <header>
       {/* Slim utility bar — hours, address, socials (scrolls away, not sticky) */}
       <div style={{ backgroundColor: "#0b1220" }} className="hidden text-gray-400 sm:block">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-2 text-xs sm:px-8">
-          <div className="flex items-center gap-5">
-            <span className="flex items-center gap-1.5">
-              <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5 text-brand-400">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 text-sm sm:px-8">
+          <div className="flex items-center gap-6">
+            <span className="flex items-center gap-2">
+              <svg viewBox="0 0 24 24" fill="none" className="h-[1.125rem] w-[1.125rem] text-brand-400">
                 <path
                   d="M12 21s7-6.5 7-11.5a7 7 0 1 0-14 0C5 14.5 12 21 12 21Z"
                   stroke="currentColor"
@@ -25,26 +25,26 @@ export default function SiteHeader() {
               </svg>
               273 North East Rd, Hampstead Gardens SA 5086
             </span>
-            <span className="hidden items-center gap-1.5 lg:flex">
-              <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5 text-brand-400">
+            <span className="hidden items-center gap-2 lg:flex">
+              <svg viewBox="0 0 24 24" fill="none" className="h-[1.125rem] w-[1.125rem] text-brand-400">
                 <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
                 <path d="M12 7v5l3.5 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
               </svg>
               Open 7 days · Mon–Sat 8–5, Sun 9–5
             </span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-5">
             <a href="mailto:info@bubblescarwashcafe.com.au" className="hover:text-brand-300">
               info@bubblescarwashcafe.com.au
             </a>
-            <span className="h-3 w-px bg-white/15" />
+            <span className="h-4 w-px bg-white/15" />
             <a href="https://facebook.com" target="_blank" rel="noreferrer" aria-label="Facebook" className="hover:text-brand-300">
-              <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="h-[1.125rem] w-[1.125rem]">
                 <path d="M14 8.5h2.5V5.5H14c-2.2 0-4 1.8-4 4V12H8v3h2v6h3v-6h2.5l.5-3H13v-2c0-.8.7-1.5 1-1.5Z" />
               </svg>
             </a>
             <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram" className="hover:text-brand-300">
-              <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5">
+              <svg viewBox="0 0 24 24" fill="none" className="h-[1.125rem] w-[1.125rem]">
                 <rect x="3.5" y="3.5" width="17" height="17" rx="5" stroke="currentColor" strokeWidth="1.8" />
                 <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8" />
                 <circle cx="17" cy="7" r="1" fill="currentColor" />
@@ -74,7 +74,7 @@ export default function SiteHeader() {
                 href={link.href}
                 className="group relative flex items-center py-1 transition hover:text-brand-600"
               >
-                {link.label}
+                {link.label === "Book" ? "Book Now" : link.label}
                 <span className="absolute -bottom-0.5 left-0 h-0.5 w-0 rounded-full bg-brand-600 transition-all duration-200 group-hover:w-full" />
               </Link>
             ))}
@@ -96,12 +96,6 @@ export default function SiteHeader() {
               </span>
               (08) 7080 5959
             </a>
-            <Link
-              href="/book"
-              className="hidden rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-6 py-3 text-base font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:-translate-y-0.5 hover:shadow-md sm:inline-flex"
-            >
-              Book Now
-            </Link>
             <button
               type="button"
               onClick={() => setMenuOpen((open) => !open)}
@@ -132,7 +126,7 @@ export default function SiteHeader() {
                 onClick={() => setMenuOpen(false)}
                 className="rounded-lg px-3 py-2.5 transition hover:bg-brand-50 hover:text-brand-600"
               >
-                {link.label}
+                {link.label === "Book" ? "Book Now" : link.label}
               </Link>
             ))}
             <a
@@ -141,13 +135,6 @@ export default function SiteHeader() {
             >
               (08) 7080 5959
             </a>
-            <Link
-              href="/book"
-              onClick={() => setMenuOpen(false)}
-              className="mt-2 rounded-full bg-brand-600 px-6 py-3 text-center font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:bg-brand-700"
-            >
-              Book Now
-            </Link>
           </nav>
         )}
       </div>

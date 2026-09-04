@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import SiteHeader from "../_components/site-header";
 import SiteFooter from "../_components/site-footer";
@@ -57,15 +58,26 @@ export default function ContactPage() {
     <div className="flex min-h-screen flex-col bg-white text-gray-900">
       <SiteHeader />
 
-      <section style={{ backgroundColor: "#0b1220" }} className="py-16 text-center text-white sm:py-20">
-        <div className="mx-auto max-w-2xl px-4 sm:px-8">
-          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-brand-300 ring-1 ring-white/10">
-            Get In Touch
-          </span>
-          <h1 className="mt-6 text-3xl font-extrabold sm:text-4xl">We&apos;d love to hear from you</h1>
-          <p className="mt-4 text-sm text-gray-400">
-            Questions about a booking, pricing, or just want to say hi — here&apos;s how to reach us.
-          </p>
+      <section className="relative isolate overflow-hidden">
+        <div className="relative h-64 w-full sm:h-80">
+          <Image
+            src="/real-photos/cafe-coffee.jpg"
+            alt="Barista pouring latte art into a coffee cup"
+            fill
+            sizes="100vw"
+            priority
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0b1220] via-[#0b1220]/80 to-[#0b1220]/40" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center text-white">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-brand-300 ring-1 ring-white/10">
+              Get In Touch
+            </span>
+            <h1 className="mt-6 text-3xl font-extrabold sm:text-4xl">We&apos;d love to hear from you</h1>
+            <p className="mt-4 max-w-md text-sm text-gray-300">
+              Questions about a booking, pricing, or just want to say hi — here&apos;s how to reach us.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -128,6 +140,18 @@ export default function ContactPage() {
               or give us a call.
             </p>
           </div>
+        </div>
+      </section>
+
+      <section className="bg-white">
+        <div className="relative h-80 w-full sm:h-96">
+          <iframe
+            src="https://maps.google.com/maps?q=216%2F218%20North%20East%20Road%2C%20Klemzig%20SA%205087&t=m&z=16&output=embed&iwloc=near"
+            title="Bubbles Car Wash & Cafe on Google Maps"
+            className="absolute inset-0 h-full w-full border-0"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
         </div>
       </section>
 
