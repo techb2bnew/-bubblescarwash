@@ -102,8 +102,8 @@ export default function HeroSlider() {
         <div className="absolute inset-0 bg-gradient-to-r from-[#0b1220]/70 via-transparent to-transparent" />
       </div>
 
-      <div className="relative mx-auto flex max-w-[1600px] flex-col items-center px-6 pb-14 pt-28 text-center sm:px-10 sm:pb-16 sm:pt-36 lg:px-12 lg:pb-20 lg:pt-44">
-        <div className="relative min-h-[420px] w-full max-w-2xl sm:min-h-[380px] lg:min-h-[440px]">
+      <div className="relative mx-auto flex max-w-[1600px] flex-col items-center px-6 pb-14 pt-20 text-center sm:px-10 sm:pb-16 sm:pt-28 lg:px-12 lg:pb-20 lg:pt-32">
+        <div className="relative min-h-[300px] w-full max-w-4xl sm:min-h-[280px] lg:min-h-[300px]">
           {slides.map((slide, i) => (
             <div
               key={slide.src}
@@ -115,7 +115,7 @@ export default function HeroSlider() {
               <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-semibold uppercase tracking-widest text-brand-300 ring-1 ring-white/10">
                 {slide.eyebrow}
               </span>
-              <h1 className="mt-7 text-5xl font-extrabold leading-tight text-white sm:text-6xl lg:text-7xl">
+              <h1 className="mt-7 text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl">
                 {slide.heading}
               </h1>
               <p className="mt-7 max-w-xl text-xl text-gray-300">{slide.body}</p>
@@ -143,7 +143,7 @@ export default function HeroSlider() {
         </div>
 
         {/* Slide dots */}
-        <div className="mt-10 flex items-center justify-center gap-2">
+        <div className="mb-2 mt-10 flex items-center justify-center gap-2">
           {slides.map((slide, i) => (
             <button
               key={slide.src}
