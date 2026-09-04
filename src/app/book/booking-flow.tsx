@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type {
   AddOn,
@@ -36,6 +37,44 @@ import {
 } from "./actions";
 
 const BOOKING_LIMIT = 5;
+
+// A real photo per vehicle body type, matched by keywords in the
+// admin-configured vehicle type name — so "Sedan" shows an actual sedan,
+// "SUV/4WD" an actual SUV, etc. Each car is orange to match the Bubbles
+// brand palette. Falls back to cycling through the set for any name that
+// doesn't match a keyword.
+const VEHICLE_TYPE_PHOTOS: { keywords: string[]; src: string; alt: string; position: string }[] = [
+  {
+    keywords: ["sedan"],
+    src: "https://images.pexels.com/photos/12590806/pexels-photo-12590806.jpeg",
+    alt: "Orange sedan, close-up side profile",
+    position: "center 40%",
+  },
+  {
+    keywords: ["suv", "4wd"],
+    src: "https://images.pexels.com/photos/19923026/pexels-photo-19923026.jpeg",
+    alt: "Orange SUV, side profile",
+    position: "center 55%",
+  },
+  {
+    keywords: ["pickup", "x-large", "xlarge", "ute"],
+    src: "https://images.pexels.com/photos/14156803/pexels-photo-14156803.jpeg",
+    alt: "Orange pickup truck, side profile",
+    position: "center 55%",
+  },
+  {
+    keywords: ["van", "minibus", "xxl", "7 seat", "7seat"],
+    src: "https://images.pexels.com/photos/28087030/pexels-photo-28087030.jpeg",
+    alt: "Orange van, side profile",
+    position: "center 70%",
+  },
+];
+
+function getVehicleTypePhoto(name: string, fallbackIndex: number) {
+  const lower = name.toLowerCase();
+  const match = VEHICLE_TYPE_PHOTOS.find((p) => p.keywords.some((k) => lower.includes(k)));
+  return match ?? VEHICLE_TYPE_PHOTOS[fallbackIndex % VEHICLE_TYPE_PHOTOS.length];
+}
 
 type Step = 1 | 2 | 3;
 
@@ -271,21 +310,36 @@ export default function BookingFlow({
     }
   }
 
+  const stepLabels = ["Vehicle & Service", "Add-ons", "Your Details"];
+
   return (
-    <div className="mx-auto max-w-2xl">
-      <div className="mb-8 flex items-center justify-center gap-3">
+    <div className="mx-auto max-w-3xl">
+      <div className="mb-10 flex items-center justify-center">
         {[1, 2, 3].map((n) => (
-          <div key={n} className="flex items-center gap-3">
-            <div
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
-                step >= n ? "bg-brand-600 text-white" : "bg-gray-200 text-gray-500"
-              }`}
-            >
-              {n}
+          <div key={n} className="flex items-center">
+            <div className="flex flex-col items-center gap-2">
+              <div
+                className={`flex h-11 w-11 items-center justify-center rounded-full text-base font-bold shadow-sm transition-colors ${
+                  step >= n
+                    ? "bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-brand-600/30"
+                    : "bg-gray-100 text-gray-400"
+                }`}
+              >
+                {n}
+              </div>
+              <span
+                className={`hidden text-xs font-semibold sm:block ${
+                  step >= n ? "text-brand-700" : "text-gray-400"
+                }`}
+              >
+                {stepLabels[n - 1]}
+              </span>
             </div>
             {n < 3 && (
               <div
-                className={`h-px w-10 ${step > n ? "bg-brand-600" : "bg-gray-300"}`}
+                className={`mx-3 mb-6 h-1 w-14 rounded-full transition-colors sm:w-24 ${
+                  step > n ? "bg-brand-600" : "bg-gray-200"
+                }`}
               />
             )}
           </div>
@@ -294,32 +348,74 @@ export default function BookingFlow({
 
       {step === 1 && (
         <div>
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">
+          <h2 className="mb-5 text-xl font-extrabold text-gray-900">
             Select Vehicle &amp; Service
           </h2>
 
-          <p className="mb-2 text-sm font-medium text-gray-700">Select Vehicle:</p>
-          <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {vehicleTypes.map((v) => (
-              <button
-                key={v.id}
-                onClick={() => {
-                  setVehicle(v.slug);
-                  setSelectedService(null);
-                }}
-                className={`rounded-md border py-3 text-sm font-medium ${
-                  vehicle === v.slug
-                    ? "border-brand-600 bg-brand-50 text-brand-700"
-                    : "border-gray-300 text-gray-600 hover:border-gray-400"
-                }`}
-              >
-                {v.name}
-              </button>
-            ))}
-          </div>
+          {vehicleTypes.length > 0 && (
+            <div
+              className="relative mb-7 overflow-hidden rounded-2xl"
+              style={{
+                backgroundColor: "#0b1220",
+                backgroundImage:
+                  "repeating-linear-gradient(115deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 60px)",
+              }}
+            >
+              <div className="relative px-5 pt-8 text-center sm:px-8 sm:pt-10">
+                <span className="text-xs font-bold uppercase tracking-[0.2em] text-brand-400">
+                  Step 01
+                </span>
+                <h3 className="mt-2 text-2xl font-extrabold text-white sm:text-3xl">
+                  Choose Your Car Type
+                </h3>
+                <div className="mt-6 inline-flex flex-wrap justify-center gap-2 rounded-full bg-white/5 p-1.5 ring-1 ring-white/10">
+                  {vehicleTypes.map((v) => (
+                    <button
+                      key={v.id}
+                      onClick={() => {
+                        setVehicle(v.slug);
+                        setSelectedService(null);
+                      }}
+                      className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
+                        vehicle === v.slug
+                          ? "bg-brand-600 text-white shadow-sm"
+                          : "text-gray-300 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      {v.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          <p className="mb-2 text-sm font-medium text-gray-700">Select Service:</p>
-          <div className="mb-6 grid grid-cols-2 gap-2">
+              <div className="relative mt-6 h-56 sm:h-72">
+                {vehicleTypes.map((v, i) => {
+                  const photo = getVehicleTypePhoto(v.name, i);
+                  return (
+                    <div
+                      key={v.id}
+                      className={`absolute inset-0 transition-opacity duration-500 ${
+                        vehicle === v.slug ? "opacity-100" : "pointer-events-none opacity-0"
+                      }`}
+                    >
+                      <Image
+                        src={photo.src}
+                        alt={`${photo.alt} — ${v.name}`}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 700px"
+                        className="object-cover"
+                        style={{ objectPosition: photo.position }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="h-6" />
+            </div>
+          )}
+
+          <p className="mb-2.5 text-sm font-semibold text-gray-700">Select Service</p>
+          <div className="mb-7 grid grid-cols-2 gap-3">
             {categories.map((c) => (
               <button
                 key={c.id}
@@ -327,10 +423,10 @@ export default function BookingFlow({
                   setCategory(c.slug);
                   setSelectedService(null);
                 }}
-                className={`rounded-md border py-3 text-sm font-medium ${
+                className={`rounded-xl border-2 py-3.5 text-sm font-semibold transition ${
                   category === c.slug
-                    ? "border-brand-600 bg-brand-50 text-brand-700"
-                    : "border-gray-300 text-gray-600 hover:border-gray-400"
+                    ? "border-brand-600 bg-brand-50 text-brand-700 shadow-sm"
+                    : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
                 }`}
               >
                 {c.name} Service
@@ -343,70 +439,75 @@ export default function BookingFlow({
               No services configured for this combination yet.
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-sm">
               <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr>
                     <th className="w-1/3" />
-                    {tierServices.map((s) => (
-                      <th
-                        key={s.id}
-                        className="border-l border-gray-100 p-0 text-center align-top"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => setSelectedService(s)}
-                          className="flex w-full flex-col items-center gap-1 p-3"
+                    {tierServices.map((s, si) => {
+                      const active = selectedService?.id === s.id;
+                      return (
+                        <th
+                          key={s.id}
+                          className={`border-l border-gray-100 p-0 text-center align-top ${
+                            active ? "bg-brand-50/60" : si % 2 === 1 ? "bg-gray-50" : ""
+                          }`}
                         >
-                          <span
-                            className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
-                              selectedService?.id === s.id
-                                ? "border-brand-600"
-                                : "border-gray-300"
-                            }`}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedService(s)}
+                            className="flex w-full flex-col items-center gap-1.5 p-4"
                           >
-                            {selectedService?.id === s.id && (
-                              <span className="h-2.5 w-2.5 rounded-full bg-brand-600" />
-                            )}
-                          </span>
-                          <span className="font-semibold text-gray-900">
-                            {s.name}
-                          </span>
-                          {s.discount_active && s.discount_percent > 0 ? (
-                            <span className="flex items-baseline gap-1.5">
-                              <span className="text-xs text-gray-400 line-through">
+                            <span
+                              className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition ${
+                                active ? "border-brand-600" : "border-gray-300"
+                              }`}
+                            >
+                              {active && (
+                                <span className="h-2.5 w-2.5 rounded-full bg-brand-600" />
+                              )}
+                            </span>
+                            <span className="font-bold text-gray-900">
+                              {s.name}
+                            </span>
+                            {s.discount_active && s.discount_percent > 0 ? (
+                              <span className="flex items-baseline gap-1.5">
+                                <span className="text-xs text-gray-400 line-through">
+                                  ${s.price.toFixed(2)}
+                                </span>
+                                <span className="text-base font-extrabold text-brand-600">
+                                  ${s.effective_price.toFixed(2)}
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="text-base font-extrabold text-brand-600">
                                 ${s.price.toFixed(2)}
                               </span>
-                              <span className="font-bold text-brand-600">
-                                ${s.effective_price.toFixed(2)}
-                              </span>
-                            </span>
-                          ) : (
-                            <span className="font-bold text-brand-600">
-                              ${s.price.toFixed(2)}
-                            </span>
-                          )}
-                        </button>
-                      </th>
-                    ))}
+                            )}
+                          </button>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
                   {categoryInclusions.map((inc, i) => (
-                    <tr key={inc.id} className={i % 2 === 0 ? "bg-gray-50" : ""}>
-                      <td className="p-2 pl-3 text-xs text-gray-600">
+                    <tr key={inc.id} className={i % 2 === 0 ? "bg-gray-50/70" : ""}>
+                      <td className="p-2.5 pl-4 text-xs font-medium text-gray-600">
                         {inc.name}
                       </td>
                       {tierServices.map((s) => (
                         <td
                           key={s.id}
-                          className="border-l border-gray-100 p-2 text-center"
+                          className={`border-l border-gray-100 p-2.5 text-center ${
+                            selectedService?.id === s.id ? "bg-brand-50/60" : ""
+                          }`}
                         >
                           {hasInclusion(s, inc.id) ? (
-                            <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-white">
+                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-white shadow-sm">
                               <svg
-                                width="10"
-                                height="10"
+                                width="11"
+                                height="11"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
@@ -429,31 +530,31 @@ export default function BookingFlow({
             </div>
           )}
 
-          <div className="mt-8 border-t border-gray-200 pt-6">
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">
+          <div className="mt-9 border-t border-gray-100 pt-7">
+            <h2 className="mb-4 text-xl font-extrabold text-gray-900">
               Choose Your Date &amp; Time
             </h2>
 
             <div className="flex flex-col gap-6 md:flex-row md:items-start">
-              <div className="rounded-lg border border-gray-200 p-4 md:flex-1">
-                <div className="mb-3 flex items-center justify-between">
+              <div className="rounded-2xl border border-gray-200 p-5 shadow-sm md:flex-1">
+                <div className="mb-4 flex items-center justify-between">
                   <button
                     onClick={() => changeMonth(-1)}
-                    className="px-2 text-gray-500"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 hover:text-brand-600"
                   >
                     «
                   </button>
-                  <span className="font-medium">
+                  <span className="text-sm font-bold text-gray-900">
                     {MONTH_NAMES[cursor.month]} {cursor.year}
                   </span>
                   <button
                     onClick={() => changeMonth(1)}
-                    className="px-2 text-gray-500"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 hover:text-brand-600"
                   >
                     »
                   </button>
                 </div>
-                <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-gray-500">
+                <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-gray-400">
                   {WEEKDAY_NAMES.map((w) => (
                     <div key={w} className="py-1">
                       {w}
@@ -479,13 +580,13 @@ export default function BookingFlow({
                         style={
                           isUnavailable && inMonth ? unavailableDateStyle : undefined
                         }
-                        className={`aspect-square rounded text-sm ${
+                        className={`aspect-square rounded-lg text-sm font-medium transition ${
                           !inMonth ? "text-gray-300" : ""
                         } ${
                           disabled && inMonth
                             ? "cursor-not-allowed text-gray-400"
-                            : "hover:bg-gray-100"
-                        } ${selectedDate === key ? "bg-brand-600 text-white hover:bg-brand-600" : ""}`}
+                            : "hover:bg-brand-50 hover:text-brand-700"
+                        } ${selectedDate === key ? "bg-brand-600 text-white shadow-sm hover:bg-brand-600 hover:text-white" : ""}`}
                       >
                         {date.getDate()}
                       </button>
@@ -494,21 +595,21 @@ export default function BookingFlow({
                 </div>
               </div>
 
-              <div className="rounded-lg border border-gray-200 p-4 md:w-64 md:flex-none">
+              <div className="rounded-2xl border border-gray-200 p-5 shadow-sm md:w-72 md:flex-none">
                 {selectedDate ? (
                   <>
-                    <h3 className="mb-3 text-sm font-medium text-gray-700">
+                    <h3 className="mb-3 text-sm font-bold text-gray-800">
                       Available times on {selectedDate}
                     </h3>
                     {loadingTimes ? (
                       <p className="text-sm text-gray-400">Loading...</p>
                     ) : timesError ? (
-                      <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                      <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                         {timesError}
                         <button
                           type="button"
                           onClick={() => handleSelectDate(selectedDate)}
-                          className="mt-2 block font-medium underline"
+                          className="mt-2 block font-semibold underline"
                         >
                           Try again
                         </button>
@@ -531,14 +632,14 @@ export default function BookingFlow({
                                   : undefined
                               }
                               style={blocked ? unavailableDateStyle : undefined}
-                              className={`rounded-md border px-2 py-1.5 text-xs ${
+                              className={`rounded-lg border-2 px-2 py-2 text-xs font-semibold transition ${
                                 taken
                                   ? blocked
                                     ? "cursor-not-allowed border-red-200 text-red-600"
                                     : "cursor-not-allowed border-blue-200 bg-blue-50 text-blue-600"
                                   : selectedTime === t
-                                    ? "border-brand-600 bg-brand-50 text-brand-700"
-                                    : "border-gray-300 text-gray-600 hover:border-gray-400"
+                                    ? "border-brand-600 bg-brand-50 text-brand-700 shadow-sm"
+                                    : "border-gray-200 text-gray-600 hover:border-brand-200 hover:bg-brand-50/50"
                               }`}
                             >
                               {formatTimeLabel(t)}
@@ -557,13 +658,13 @@ export default function BookingFlow({
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end">
+          <div className="mt-8 flex justify-end">
             <button
               disabled={
                 !selectedService || !selectedDate || !selectedTime || Boolean(timesError)
               }
               onClick={() => setStep(2)}
-              className="rounded-md bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
+              className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-8 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:-translate-y-0.5 hover:shadow-md disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
             >
               Next
             </button>
@@ -573,14 +674,14 @@ export default function BookingFlow({
 
       {step === 2 && (
         <div>
-          <h2 className="mb-1 text-lg font-semibold text-gray-900">
+          <h2 className="mb-1 text-xl font-extrabold text-gray-900">
             Optional Add-ons
           </h2>
-          <p className="mb-4 text-sm text-gray-500">
+          <p className="mb-5 text-sm text-gray-500">
             Add any extra services to {selectedService?.name ?? "your booking"}.
           </p>
 
-          <div className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+          <div className="divide-y divide-gray-100 rounded-2xl border border-gray-200 shadow-sm">
             {extras.length === 0 ? (
               <p className="p-4 text-sm text-gray-400">
                 No add-ons available right now.
@@ -591,10 +692,12 @@ export default function BookingFlow({
                 return (
                   <label
                     key={extra.id}
-                    className="flex cursor-pointer items-start justify-between gap-4 p-4 hover:bg-gray-50"
+                    className={`flex cursor-pointer items-start justify-between gap-4 p-4 transition first:rounded-t-2xl last:rounded-b-2xl ${
+                      checked ? "bg-brand-50/60" : "hover:bg-gray-50"
+                    }`}
                   >
                     <div>
-                      <p className="font-medium text-gray-900">{extra.name}</p>
+                      <p className="font-bold text-gray-900">{extra.name}</p>
                       {extra.description && (
                         <p className="mt-0.5 text-xs text-gray-500">
                           {extra.description}
@@ -602,14 +705,14 @@ export default function BookingFlow({
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
-                      <span className="font-semibold text-brand-600">
+                      <span className="font-bold text-brand-600">
                         ${extra.price.toFixed(2)}
                       </span>
                       <input
                         type="checkbox"
                         checked={checked}
                         onChange={() => toggleExtra(extra.id)}
-                        className="h-4 w-4 accent-brand-600"
+                        className="h-5 w-5 accent-brand-600"
                       />
                     </div>
                   </label>
@@ -618,23 +721,23 @@ export default function BookingFlow({
             )}
           </div>
 
-          <div className="mt-4 flex items-center justify-between rounded-md bg-gray-50 px-4 py-3 text-sm">
-            <span className="text-gray-600">Estimated total</span>
-            <span className="font-semibold text-gray-900">
+          <div className="mt-5 flex items-center justify-between rounded-2xl bg-gray-50 px-5 py-4 text-sm">
+            <span className="font-medium text-gray-600">Estimated total</span>
+            <span className="text-lg font-extrabold text-gray-900">
               ${totalPrice.toFixed(2)}
             </span>
           </div>
 
-          <div className="mt-6 flex justify-between">
+          <div className="mt-7 flex justify-between">
             <button
               onClick={() => setStep(1)}
-              className="rounded-md border border-gray-300 px-5 py-2 text-sm text-gray-600"
+              className="rounded-full border-2 border-gray-200 px-6 py-3 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
             >
               Previous
             </button>
             <button
               onClick={() => setStep(3)}
-              className="rounded-md bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-700"
+              className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-8 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:-translate-y-0.5 hover:shadow-md"
             >
               Next
             </button>
@@ -644,9 +747,9 @@ export default function BookingFlow({
 
       {step === 3 && (
         <div>
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">Your Details</h2>
+          <h2 className="mb-4 text-xl font-extrabold text-gray-900">Your Details</h2>
 
-          <div className="mb-4 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
+          <div className="mb-5 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 shadow-sm">
             <div>
               {selectedService?.name} (
               {vehicleTypes.find((v) => v.slug === vehicle)?.name ?? vehicle}) —{" "}
@@ -688,9 +791,9 @@ export default function BookingFlow({
             </div>
           </div>
 
-          <div className="mb-4">
+          <div className="mb-5">
             {appliedGiftCard ? (
-              <div className="flex items-center justify-between rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm">
+              <div className="flex items-center justify-between rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm">
                 <span className="text-green-800">
                   Gift card <strong>{appliedGiftCard.code}</strong> applied (-$
                   {appliedGiftCard.value.toFixed(2)})
@@ -698,14 +801,14 @@ export default function BookingFlow({
                 <button
                   type="button"
                   onClick={handleRemoveGiftCard}
-                  className="font-medium text-green-700 underline"
+                  className="font-semibold text-green-700 underline"
                 >
                   Remove
                 </button>
               </div>
             ) : (
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
+                <label className="mb-1.5 block text-sm font-semibold text-gray-700">
                   Have a gift card code?
                 </label>
                 <div className="flex gap-2">
@@ -716,13 +819,13 @@ export default function BookingFlow({
                       setGiftCardError(null);
                     }}
                     placeholder="e.g. ABC12345"
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
                   />
                   <button
                     type="button"
                     disabled={!giftCardInput.trim() || checkingGiftCard}
                     onClick={handleApplyGiftCard}
-                    className="shrink-0 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:border-gray-400 disabled:opacity-40"
+                    className="shrink-0 rounded-xl border-2 border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50 disabled:opacity-40"
                   >
                     {checkingGiftCard ? "Checking..." : "Apply"}
                   </button>
@@ -734,31 +837,31 @@ export default function BookingFlow({
             )}
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
                 Full name
               </label>
               <input
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
                 Phone
               </label>
               <input
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
                 Email
               </label>
               <input
@@ -766,14 +869,14 @@ export default function BookingFlow({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
               />
             </div>
           </div>
 
           {totalPrice === 0 ? (
-            <div className="mt-5 rounded-md border border-green-200 bg-green-50 p-4">
-              <p className="text-sm font-medium text-green-900">
+            <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-4 shadow-sm">
+              <p className="text-sm font-bold text-green-900">
                 Fully covered by your gift card
               </p>
               <p className="mt-1 text-sm text-green-700">
@@ -782,8 +885,8 @@ export default function BookingFlow({
               </p>
             </div>
           ) : paymentMode === "stripe" ? (
-            <div className="mt-5 rounded-md border border-blue-200 bg-blue-50 p-4">
-              <p className="text-sm font-medium text-blue-900">
+            <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+              <p className="text-sm font-bold text-blue-900">
                 Pay securely with Stripe
               </p>
               <p className="mt-1 text-sm text-blue-700">
@@ -795,19 +898,19 @@ export default function BookingFlow({
             </div>
           ) : (
             <div className="mt-5">
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label className="mb-2 block text-sm font-semibold text-gray-700">
                 Select Payment Method
               </label>
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {PAYMENT_METHODS.map((m) => (
                   <button
                     key={m.value}
                     type="button"
                     onClick={() => setPaymentMethod(m.value)}
-                    className={`flex w-full items-center gap-3 rounded-md border px-4 py-3 text-left text-sm ${
+                    className={`flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3.5 text-left text-sm transition ${
                       paymentMethod === m.value
-                        ? "border-brand-600 bg-brand-50"
-                        : "border-gray-300 hover:border-gray-400"
+                        ? "border-brand-600 bg-brand-50 shadow-sm"
+                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                     }`}
                   >
                     <span
@@ -821,15 +924,15 @@ export default function BookingFlow({
                         <span className="h-2 w-2 rounded-full bg-brand-600" />
                       )}
                     </span>
-                    <span className="text-gray-800">{m.label}</span>
+                    <span className="font-medium text-gray-800">{m.label}</span>
                   </button>
                 ))}
               </div>
 
               {paymentMethod === "card" && (
-                <div className="mt-3 grid grid-cols-2 gap-3 rounded-md border border-gray-200 bg-gray-50 p-4">
+                <div className="mt-3 grid grid-cols-2 gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4">
                   <div className="col-span-2">
-                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                    <label className="mb-1 block text-xs font-semibold text-gray-600">
                       Card Number
                     </label>
                     <input
@@ -838,11 +941,11 @@ export default function BookingFlow({
                       placeholder="1234 5678 9012 3456"
                       inputMode="numeric"
                       maxLength={19}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                    <label className="mb-1 block text-xs font-semibold text-gray-600">
                       Expiry Date
                     </label>
                     <input
@@ -851,11 +954,11 @@ export default function BookingFlow({
                       placeholder="MM/YY"
                       inputMode="numeric"
                       maxLength={5}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                    <label className="mb-1 block text-xs font-semibold text-gray-600">
                       CVV
                     </label>
                     <input
@@ -881,17 +984,17 @@ export default function BookingFlow({
 
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
-          <div className="mt-6 flex justify-between">
+          <div className="mt-7 flex justify-between">
             <button
               onClick={() => setStep(2)}
-              className="rounded-md border border-gray-300 px-5 py-2 text-sm text-gray-600"
+              className="rounded-full border-2 border-gray-200 px-6 py-3 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
             >
               Previous
             </button>
             <button
               disabled={!name || !phone || !email || submitting}
               onClick={handleConfirm}
-              className="rounded-md bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
+              className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-8 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:-translate-y-0.5 hover:shadow-md disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
             >
               {submitting
                 ? paymentMode === "stripe" && totalPrice > 0
@@ -908,19 +1011,19 @@ export default function BookingFlow({
       )}
 
       {limitConfirmCount !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="text-base font-semibold text-gray-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-base font-bold text-gray-900">
               Booking limit reached
             </h3>
             <p className="mt-2 text-sm text-gray-600">
               This email has already been used for {limitConfirmCount} bookings.
               Do you still want to continue with this booking?
             </p>
-            <div className="mt-5 flex justify-end gap-2">
+            <div className="mt-5 flex justify-end gap-2.5">
               <button
                 onClick={() => setLimitConfirmCount(null)}
-                className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-600"
+                className="rounded-full border-2 border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
               >
                 Cancel
               </button>
@@ -929,7 +1032,7 @@ export default function BookingFlow({
                   setLimitConfirmCount(null);
                   submitBooking();
                 }}
-                className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+                className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:shadow-md"
               >
                 Yes, continue
               </button>
