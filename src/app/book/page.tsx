@@ -66,7 +66,9 @@ export default async function BookPage() {
             <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-brand-300 ring-1 ring-white/10">
               Book Online
             </span>
-            <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">Reserve Your Wash</h1>
+            <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">
+              Reserve Your <span className="wave-word wave-word-dark">Wash</span>
+            </h1>
             <p className="mt-2 max-w-md text-sm text-gray-300">
               Pick your vehicle, service and a time that suits you.
             </p>
@@ -74,8 +76,9 @@ export default async function BookPage() {
         </div>
       </section>
 
-      <main className="flex-1 bg-gray-50 px-4 py-12 sm:py-16">
-        <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-gray-100 sm:p-8">
+      <main className="relative flex-1 overflow-hidden bg-gray-50 px-4 py-12 sm:py-16">
+        <div className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-brand-200/40 blur-3xl" />
+        <div className="relative mx-auto max-w-3xl rounded-3xl bg-white p-5 shadow-xl shadow-gray-900/5 ring-1 ring-gray-100 sm:p-8">
           <BookingFlow
             services={(services as Service[]) ?? []}
             inclusions={(inclusions as AddOn[]) ?? []}

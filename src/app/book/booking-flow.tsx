@@ -348,8 +348,11 @@ export default function BookingFlow({
 
       {step === 1 && (
         <div>
-          <h2 className="mb-5 text-xl font-extrabold text-gray-900">
-            Select Vehicle &amp; Service
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-600">
+            Get Started
+          </p>
+          <h2 className="mb-6 mt-1.5 text-2xl font-extrabold text-gray-900">
+            Select Vehicle &amp; <span className="wave-word">Service</span>
           </h2>
 
           {vehicleTypes.length > 0 && (
@@ -531,8 +534,11 @@ export default function BookingFlow({
           )}
 
           <div className="mt-9 border-t border-gray-100 pt-7">
-            <h2 className="mb-4 text-xl font-extrabold text-gray-900">
-              Choose Your Date &amp; Time
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-600">
+              Pick A Slot
+            </p>
+            <h2 className="mb-6 mt-1.5 text-2xl font-extrabold text-gray-900">
+              Choose Your Date &amp; <span className="wave-word">Time</span>
             </h2>
 
             <div className="flex flex-col gap-6 md:flex-row md:items-start">
@@ -674,10 +680,13 @@ export default function BookingFlow({
 
       {step === 2 && (
         <div>
-          <h2 className="mb-1 text-xl font-extrabold text-gray-900">
-            Optional Add-ons
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-600">
+            Make It Shine
+          </p>
+          <h2 className="mb-1 mt-1.5 text-2xl font-extrabold text-gray-900">
+            Optional <span className="wave-word">Add-ons</span>
           </h2>
-          <p className="mb-5 text-sm text-gray-500">
+          <p className="mb-6 text-sm text-gray-500">
             Add any extra services to {selectedService?.name ?? "your booking"}.
           </p>
 
@@ -747,7 +756,12 @@ export default function BookingFlow({
 
       {step === 3 && (
         <div>
-          <h2 className="mb-4 text-xl font-extrabold text-gray-900">Your Details</h2>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-600">
+            Almost There
+          </p>
+          <h2 className="mb-6 mt-1.5 text-2xl font-extrabold text-gray-900">
+            Your <span className="wave-word">Details</span>
+          </h2>
 
           <div className="mb-5 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 shadow-sm">
             <div>
