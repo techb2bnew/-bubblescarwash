@@ -655,7 +655,7 @@ export default async function Home() {
             <svg viewBox="0 0 24 24" fill="currentColor" className="h-10 w-10 text-brand-400/70 sm:h-12 sm:w-12">
               <path d="M9 7C6 7 4 9.5 4 13c0 2.5 2 4.5 4.5 4.5S13 15.5 13 13c0-1.6-1-3-2.5-3.4C10.8 8 12 7 14 7V4.5C11 4.5 9 5.8 9 7Zm10 0c-3 0-5 2.5-5 6 0 2.5 2 4.5 4.5 4.5S23 15.5 23 13c0-1.6-1-3-2.5-3.4C20.8 8 22 7 24 7V4.5c-3 0-5 1.3-5 2.5Z" />
             </svg>
-            <p className="mt-4 max-w-4xl text-[25px] font-extrabold leading-snug">
+            <p className="mt-4 max-w-4xl font-extrabold leading-snug" style={{ fontSize: 25 }}>
               &ldquo;We treat every car like it&apos;s about to be judged in a car show.&rdquo;
             </p>
             <p className="mt-5 text-sm font-semibold uppercase tracking-widest text-brand-300 sm:text-base">
