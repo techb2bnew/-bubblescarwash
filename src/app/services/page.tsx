@@ -108,7 +108,7 @@ export default async function ServicesPage() {
               Services &amp; Pricing
             </span>
             <h1 className="mt-6 text-4xl font-extrabold leading-tight text-white sm:text-5xl">
-              Every wash and detail, priced live
+              Every wash and detail, priced <span className="wave-word wave-word-dark">live</span>
             </h1>
             <p className="mt-5 max-w-md text-base text-gray-400">
               From a quick outside rinse to full paint correction — pick the package that suits
@@ -218,7 +218,7 @@ export default async function ServicesPage() {
               How It Works
             </p>
             <h2 className="mt-3 text-3xl font-extrabold text-gray-900 sm:text-4xl">
-              Book, drop off, relax, drive away
+              Book, drop off, relax, drive <span className="wave-word">away</span>
             </h2>
           </div>
           <div className="mt-14 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
@@ -240,7 +240,7 @@ export default async function ServicesPage() {
       <section className="bg-white py-16 text-center">
         <div className="mx-auto max-w-2xl px-4 sm:px-8">
           <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">
-            Ready for a spotless car?
+            Ready for a spotless <span className="wave-word">car?</span>
           </h2>
           <p className="mt-3 text-sm text-gray-500">
             Pick a package above and book your slot — it only takes a minute.

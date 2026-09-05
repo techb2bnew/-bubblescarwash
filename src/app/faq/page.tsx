@@ -65,7 +65,9 @@ export default function FaqPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-[#0b1220] via-[#0b1220]/80 to-[#0b1220]/40" />
           <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center text-white">
             <p className="text-xs font-semibold uppercase tracking-widest text-brand-300">FAQ</p>
-            <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">Questions, answered</h1>
+            <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">
+              Questions, <span className="wave-word wave-word-dark">answered</span>
+            </h1>
             <p className="mt-3 max-w-md text-sm text-gray-300">
               Can&apos;t find what you&apos;re after? Give us a call on{" "}
               <a href="tel:0870805959" className="font-semibold text-brand-300">
@@ -97,7 +99,9 @@ export default function FaqPage() {
 
       <section style={{ backgroundColor: "#0b1220" }} className="py-16 text-center text-white">
         <div className="mx-auto max-w-2xl px-4 sm:px-8">
-          <h2 className="text-2xl font-extrabold sm:text-3xl">Still have a question?</h2>
+          <h2 className="text-2xl font-extrabold sm:text-3xl">
+            Still have a <span className="wave-word wave-word-dark">question?</span>
+          </h2>
           <p className="mt-3 text-sm text-gray-400">We&apos;re happy to help — reach out any time.</p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
             <Link

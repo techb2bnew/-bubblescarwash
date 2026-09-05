@@ -83,7 +83,7 @@ export default function GalleryPage() {
           <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center text-white">
             <p className="text-xs font-semibold uppercase tracking-widest text-brand-300">Gallery</p>
             <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">
-              The wash, the detail, the coffee
+              The wash, the detail, the <span className="wave-word wave-word-dark">coffee</span>
             </h1>
             <p className="mt-3 max-w-md text-sm text-gray-300">
               A behind-the-scenes look at what happens between drop-off and pickup.
@@ -125,7 +125,9 @@ export default function GalleryPage() {
 
       <section style={{ backgroundColor: "#0b1220" }} className="py-16 text-center text-white">
         <div className="mx-auto max-w-2xl px-4 sm:px-8">
-          <h2 className="text-2xl font-extrabold sm:text-3xl">See it for yourself</h2>
+          <h2 className="text-2xl font-extrabold sm:text-3xl">
+            See it for <span className="wave-word wave-word-dark">yourself</span>
+          </h2>
           <p className="mt-3 text-sm text-gray-400">
             Book online and pick the package that matches your car.
           </p>

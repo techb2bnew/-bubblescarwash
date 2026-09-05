@@ -40,7 +40,7 @@ export default async function GiftCardsPage() {
               Gift Vouchers
             </span>
             <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">
-              A Great Gift For Someone Special
+              A Great Gift For Someone <span className="wave-word wave-word-dark">Special</span>
             </h1>
             <p className="mt-2 max-w-md text-sm text-gray-300">
               Covers a wash, a detail, or a coffee at the cafe.

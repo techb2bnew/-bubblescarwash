@@ -60,7 +60,7 @@ export default function AboutPage() {
               Our Story
             </span>
             <h1 className="mt-6 text-4xl font-extrabold leading-tight text-white sm:text-5xl">
-              Fifteen years of clean cars and good coffee
+              Fifteen years of clean cars and good <span className="wave-word wave-word-dark">coffee</span>
             </h1>
             <p className="mt-5 max-w-md text-base text-gray-400">
               Bubbles Car Wash &amp; Cafe has been part of Adelaide&apos;s north east since 2011 —
@@ -87,7 +87,9 @@ export default function AboutPage() {
             <p className="text-xs font-semibold uppercase tracking-widest text-brand-600">
               How We Got Here
             </p>
-            <h2 className="mt-3 text-3xl font-extrabold text-gray-900 sm:text-4xl">Our journey</h2>
+            <h2 className="mt-3 text-3xl font-extrabold text-gray-900 sm:text-4xl">
+              Our <span className="wave-word">journey</span>
+            </h2>
           </div>
 
           <ol className="mt-14 space-y-10 border-l border-gray-100 pl-8">
@@ -111,7 +113,9 @@ export default function AboutPage() {
             <p className="text-xs font-semibold uppercase tracking-widest text-brand-600">
               What We Stand For
             </p>
-            <h2 className="mt-3 text-3xl font-extrabold text-gray-900 sm:text-4xl">Our values</h2>
+            <h2 className="mt-3 text-3xl font-extrabold text-gray-900 sm:text-4xl">
+              Our <span className="wave-word">values</span>
+            </h2>
           </div>
           <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-3">
             {values.map((v) => (
@@ -129,7 +133,9 @@ export default function AboutPage() {
 
       <section style={{ backgroundColor: "#0b1220" }} className="py-16 text-center text-white">
         <div className="mx-auto max-w-2xl px-4 sm:px-8">
-          <h2 className="text-2xl font-extrabold sm:text-3xl">Come see us in person</h2>
+          <h2 className="text-2xl font-extrabold sm:text-3xl">
+            Come see us in <span className="wave-word wave-word-dark">person</span>
+          </h2>
           <p className="mt-3 text-sm text-gray-400">
             273 North East Rd, Hampstead Gardens SA 5086 — open 7 days.
           </p>

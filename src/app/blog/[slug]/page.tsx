@@ -55,7 +55,10 @@ export default async function BlogPostPage({
             <p className="text-xs font-semibold uppercase tracking-widest text-brand-300">
               {post.dateLabel} · {post.category}
             </p>
-            <h1 className="mt-3 max-w-2xl text-3xl font-extrabold sm:text-4xl">{post.title}</h1>
+            <h1 className="mt-3 max-w-2xl text-3xl font-extrabold sm:text-4xl">
+              {post.title.split(" ").slice(0, -1).join(" ")}{" "}
+              <span className="wave-word wave-word-dark">{post.title.split(" ").slice(-1)}</span>
+            </h1>
           </div>
         </div>
       </section>
@@ -74,7 +77,9 @@ export default async function BlogPostPage({
             </div>
 
             <div className="mt-10 rounded-2xl border border-brand-100 bg-brand-50 p-6 text-center">
-              <h2 className="text-lg font-bold text-gray-900">Ready for a spotless car?</h2>
+              <h2 className="text-lg font-bold text-gray-900">
+                Ready for a spotless <span className="wave-word">car?</span>
+              </h2>
               <p className="mt-1 text-sm text-gray-600">
                 Book online in under a minute and let our team take care of the rest.
               </p>

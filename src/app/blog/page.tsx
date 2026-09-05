@@ -19,7 +19,9 @@ export default function BlogPage() {
       <section style={{ backgroundColor: "#0b1220" }} className="py-16 text-center text-white sm:py-20">
         <div className="mx-auto max-w-2xl px-4 sm:px-8">
           <SectionLabel tone="dark">Blog &amp; News</SectionLabel>
-          <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">Tips and Latest News</h1>
+          <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">
+            Tips and Latest <span className="wave-word wave-word-dark">News</span>
+          </h1>
           <p className="mt-4 text-sm text-gray-400">
             Wash tips, detailing advice and news from the Bubbles team.
           </p>

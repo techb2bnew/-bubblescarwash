@@ -73,7 +73,9 @@ export default function ContactPage() {
             <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-brand-300 ring-1 ring-white/10">
               Get In Touch
             </span>
-            <h1 className="mt-6 text-3xl font-extrabold sm:text-4xl">We&apos;d love to hear from you</h1>
+            <h1 className="mt-6 text-3xl font-extrabold sm:text-4xl">
+              We&apos;d love to hear from <span className="wave-word wave-word-dark">you</span>
+            </h1>
             <p className="mt-4 max-w-md text-sm text-gray-300">
               Questions about a booking, pricing, or just want to say hi — here&apos;s how to reach us.
             </p>
@@ -109,7 +111,9 @@ export default function ContactPage() {
             <p className="text-xs font-semibold uppercase tracking-widest text-brand-600">
               Opening Hours
             </p>
-            <h2 className="mt-3 text-2xl font-extrabold text-gray-900">Open 7 days a week</h2>
+            <h2 className="mt-3 text-2xl font-extrabold text-gray-900">
+              Open 7 days a <span className="wave-word">week</span>
+            </h2>
             <div className="mt-6 space-y-2 text-sm text-gray-600">
               <p className="flex justify-between border-b border-gray-100 pb-2">
                 <span className="font-semibold text-gray-900">Monday – Saturday</span>
