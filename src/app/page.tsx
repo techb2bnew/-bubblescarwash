@@ -10,6 +10,7 @@ import HeroSlider from "./_components/hero-slider";
 import ReviewsSlider from "./_components/reviews-slider";
 import SiteFooter from "./_components/site-footer";
 import SectionLabel from "./_components/section-label";
+import WorkshopGallerySlider from "./_components/workshop-gallery-slider";
 
 type Tier = {
   name: string;
@@ -284,9 +285,11 @@ const howItWorks = [
 ];
 
 const galleryPhotos = [
-  { src: "/real-photos/hand-wax.jpg", alt: "Detailer hand-waxing a car panel", size: "small" as const },
-  { src: "/real-photos/detail-collage.jpg", alt: "Headlight restoration and dashboard detailing", size: "large" as const },
-  { src: "/real-photos/tunnel-wash.jpg", alt: "Car going through the automatic wash tunnel", size: "small" as const },
+  { src: "/real-photos/hand-wax.jpg", alt: "Detailer hand-waxing a car panel" },
+  { src: "/real-photos/detail-collage.jpg", alt: "Headlight restoration and dashboard detailing" },
+  { src: "/real-photos/tunnel-wash.jpg", alt: "Car going through the automatic wash tunnel" },
+  { src: "/real-photos/cafe-coffee.jpg", alt: "Barista pouring latte art into a coffee cup" },
+  { src: "/real-photos/headlight-polish.jpg", alt: "Hand wiping down a headlight and fender" },
 ];
 
 const statBand = [
@@ -639,7 +642,7 @@ export default async function Home() {
 
       {/* Quote banner — full-width action photo with a pull quote */}
       <section className="relative isolate overflow-hidden">
-        <div className="relative h-64 w-full sm:h-80">
+        <div className="relative h-80 w-full sm:h-[28rem]">
           <Image
             src="/real-photos/detail-collage.jpg"
             alt="Headlight and interior detailing in progress"
@@ -649,13 +652,13 @@ export default async function Home() {
           />
           <div className="absolute inset-0 bg-gray-950/70" />
           <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center text-white">
-            <svg viewBox="0 0 24 24" fill="currentColor" className="h-8 w-8 text-brand-400/70">
+            <svg viewBox="0 0 24 24" fill="currentColor" className="h-10 w-10 text-brand-400/70 sm:h-12 sm:w-12">
               <path d="M9 7C6 7 4 9.5 4 13c0 2.5 2 4.5 4.5 4.5S13 15.5 13 13c0-1.6-1-3-2.5-3.4C10.8 8 12 7 14 7V4.5C11 4.5 9 5.8 9 7Zm10 0c-3 0-5 2.5-5 6 0 2.5 2 4.5 4.5 4.5S23 15.5 23 13c0-1.6-1-3-2.5-3.4C20.8 8 22 7 24 7V4.5c-3 0-5 1.3-5 2.5Z" />
             </svg>
-            <p className="mt-3 max-w-xl text-xl font-extrabold leading-snug sm:text-2xl">
+            <p className="mt-4 max-w-4xl text-[25px] font-extrabold leading-snug">
               &ldquo;We treat every car like it&apos;s about to be judged in a car show.&rdquo;
             </p>
-            <p className="mt-4 text-xs font-semibold uppercase tracking-widest text-brand-300">
+            <p className="mt-5 text-sm font-semibold uppercase tracking-widest text-brand-300 sm:text-base">
               — The Bubbles Team
             </p>
           </div>
@@ -671,24 +674,7 @@ export default async function Home() {
               A closer look at our <span className="wave-word">craft</span>
             </h2>
           </div></Reveal>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-6 sm:gap-8">
-            {galleryPhotos.map((p, i) => (
-              <div
-                key={p.src}
-                className={`relative overflow-hidden rounded-3xl shadow-xl ring-4 ring-brand-50 ${
-                  p.size === "large" ? "h-56 w-56 sm:h-72 sm:w-72" : "h-36 w-36 sm:h-44 sm:w-44"
-                } ${i % 2 === 1 ? "sm:-translate-y-6" : ""}`}
-              >
-                <Image src={p.src} alt={p.alt} fill sizes="300px" className="object-cover" />
-                {p.size === "large" && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-950/40 text-center text-white opacity-0 transition hover:opacity-100">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-brand-300">Detailing</p>
-                    <p className="mt-1 text-sm font-bold">Pristine Perspectives</p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          <WorkshopGallerySlider photos={galleryPhotos} />
         </div>
       </section>
 
