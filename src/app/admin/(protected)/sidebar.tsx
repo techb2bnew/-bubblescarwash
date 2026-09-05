@@ -79,6 +79,13 @@ const NAV_ITEMS = [
       <path d="M20 7H4a1 1 0 0 0-1 1v3h18V8a1 1 0 0 0-1-1ZM3 13v5a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-5M12 7v13M7.5 7C6 7 5 5.9 5 4.5S6 2 7.5 2 10 4 12 7c2-3 3.5-5 4.5-5S19 3.1 19 4.5 18 7 16.5 7" />
     ),
   },
+  {
+    href: "/admin/payments",
+    label: "Payments",
+    icon: (
+      <path d="M2 10h20M6 15h4M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" />
+    ),
+  },
 ];
 
 export default function Sidebar({

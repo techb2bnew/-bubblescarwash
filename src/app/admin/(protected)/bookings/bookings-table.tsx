@@ -296,6 +296,24 @@ export default function BookingsTable({
                     paymentStatus={b.payment_status}
                     bookingType={b.booking_type}
                   />
+                  {b.card_brand && b.card_last4 && (
+                    <div className="mt-1 text-xs text-gray-400">
+                      <span className="capitalize">{b.card_brand}</span> •••• {b.card_last4}
+                      {b.receipt_url && (
+                        <>
+                          {" · "}
+                          <a
+                            href={b.receipt_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            Receipt
+                          </a>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <StatusDropdown

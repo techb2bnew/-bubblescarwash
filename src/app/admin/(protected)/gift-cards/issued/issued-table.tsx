@@ -146,6 +146,7 @@ export default function IssuedTable({ cards }: { cards: GiftCard[] }) {
                 className="w-24"
               />
               <th className="w-28 px-4 py-3">Status</th>
+              <th className="px-4 py-3">Payment</th>
               <th className="px-4 py-3">Redeemed booking</th>
               <SortHeader
                 label="Purchased"
@@ -193,6 +194,28 @@ export default function IssuedTable({ cards }: { cards: GiftCard[] }) {
                       {ds}
                     </span>
                   </td>
+                  <td className="px-4 py-3 text-xs text-gray-500">
+                    {c.card_brand && c.card_last4 ? (
+                      <div>
+                        <span className="capitalize">{c.card_brand}</span> •••• {c.card_last4}
+                        {c.receipt_url && (
+                          <>
+                            {" · "}
+                            <a
+                              href={c.receipt_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              Receipt
+                            </a>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="px-4 py-3 font-mono text-xs text-gray-500">
                     {c.redeemed_booking_id ?? "—"}
                   </td>
@@ -204,7 +227,7 @@ export default function IssuedTable({ cards }: { cards: GiftCard[] }) {
             })}
             {paged.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={8} className="px-4 py-10 text-center text-gray-400">
                   {cards.length === 0
                     ? "No gift cards have been purchased yet."
                     : "No gift cards match your search/filters."}

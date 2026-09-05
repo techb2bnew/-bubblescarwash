@@ -131,6 +131,9 @@ export interface GiftCard {
   payment_status: PaymentStatus;
   stripe_checkout_session_id: string | null;
   stripe_payment_intent_id: string | null;
+  card_brand: string | null;
+  card_last4: string | null;
+  receipt_url: string | null;
   expires_at: string;
   redeemed_at: string | null;
   redeemed_booking_id: string | null;
@@ -173,6 +176,9 @@ export interface Booking {
   payment_status: PaymentStatus;
   stripe_checkout_session_id: string | null;
   stripe_payment_intent_id: string | null;
+  card_brand: string | null;
+  card_last4: string | null;
+  receipt_url: string | null;
   gift_card_id: string | null;
   gift_card_discount: number;
   google_event_id: string | null;
