@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import {
-  Bar,
-  BarChart,
+  Area,
+  AreaChart,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -117,11 +117,11 @@ export default function RevenueChart({
 
       <div className="h-64 w-full p-5">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
+          <AreaChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 4 }}>
             <defs>
-              <linearGradient id="revenueBarFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#ff8a24" />
-                <stop offset="100%" stopColor="#d9480a" />
+              <linearGradient id="revenueAreaFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--color-brand-500)" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="var(--color-brand-500)" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid vertical={false} stroke={CHART_CHROME.grid} />
@@ -139,14 +139,20 @@ export default function RevenueChart({
               width={48}
               tickFormatter={(v) => formatCurrency(v)}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: "#faf5f0" }} />
-            <Bar
-              dataKey="total"
-              fill="url(#revenueBarFill)"
-              radius={[4, 4, 0, 0]}
-              maxBarSize={40}
+            <Tooltip
+              content={<CustomTooltip />}
+              cursor={{ stroke: CHART_CHROME.axis, strokeWidth: 1 }}
             />
-          </BarChart>
+            <Area
+              type="monotone"
+              dataKey="total"
+              stroke="var(--color-brand-600)"
+              strokeWidth={2.5}
+              fill="url(#revenueAreaFill)"
+              dot={false}
+              activeDot={{ r: 5, fill: "var(--color-brand-600)", stroke: "#fff", strokeWidth: 2 }}
+            />
+          </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>
