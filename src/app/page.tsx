@@ -128,9 +128,13 @@ const highlights = [
     body: "Selling your car? Come see our staff for sale-ready detailing packages that help it shine.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-        <path d="M4 9h13a3 3 0 0 1 0 6h-1" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-        <path d="M4 9v6a4 4 0 0 0 4 4h5a4 4 0 0 0 4-4V9" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M8 3c-.6.8-.6 1.4 0 2.2M12 3c-.6.8-.6 1.4 0 2.2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+        <path
+          d="M11 3h6a2 2 0 0 1 2 2v6L11 19 3 11 11 3Z"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+        <circle cx="15" cy="7" r="1.3" fill="currentColor" />
       </svg>
     ),
   },
@@ -139,8 +143,9 @@ const highlights = [
     body: "Grab a fresh coffee at the cafe and relax while your car gets the full treatment.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-        <path d="M12 3v3M12 18v3M4.2 12H3M21 12h-1.2M6 6l1.2 1.2M18 18l-1.2-1.2M18 6l-1.2 1.2M6 18l1.2-1.2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-        <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M4 9h13a3 3 0 0 1 0 6h-1" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+        <path d="M4 9v6a4 4 0 0 0 4 4h5a4 4 0 0 0 4-4V9" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M8 3c-.6.8-.6 1.4 0 2.2M12 3c-.6.8-.6 1.4 0 2.2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
       </svg>
     ),
   },
@@ -171,11 +176,12 @@ const trustPills = [
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
         <path
-          d="M6 12c0-4 3-7 6-7s6 3 6 7-3 8-6 8-6-4-6-8Z"
+          d="M7 10V6a2 2 0 1 1 4 0v4M11 9V5a2 2 0 1 1 4 0v5M15 10V7a2 2 0 1 1 4 0v6c0 3.5-2.5 6-6 6h-2c-3 0-5-2-5-5v-2a2 2 0 1 1 4 0"
           stroke="currentColor"
-          strokeWidth="1.6"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         />
-        <path d="M9 12h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
     ),
   },
@@ -201,8 +207,13 @@ const trustPills = [
     label: "Email booking updates",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
-        <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.6" />
-        <path d="m4 7 8 6 8-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        <path
+          d="M12 3a5 5 0 0 0-5 5v3.5c0 .8-.3 1.6-.9 2.2L5 15h14l-1.1-1.3a3 3 0 0 1-.9-2.2V8a5 5 0 0 0-5-5Z"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+        <path d="M10 18a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
     ),
   },
@@ -210,9 +221,8 @@ const trustPills = [
     label: "Gift cards",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
-        <rect x="3" y="8" width="18" height="12" rx="2" stroke="currentColor" strokeWidth="1.6" />
-        <path d="M3 12h18M12 8v12" stroke="currentColor" strokeWidth="1.6" />
-        <path d="M12 8c-2-3.5-6-2.5-6 0s4 1 6 0Zm0 0c2-3.5 6-2.5 6 0s-4 1-6 0Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+        <rect x="3" y="7" width="18" height="10" rx="2" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M9 7v10" stroke="currentColor" strokeWidth="1.6" strokeDasharray="2.2 2.2" />
       </svg>
     ),
   },
@@ -233,8 +243,7 @@ const howItWorks = [
     body: "Pick your vehicle, service tier and a slot that suits you — takes under a minute.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
-        <rect x="3.5" y="5" width="17" height="15" rx="2" stroke="currentColor" strokeWidth="1.6" />
-        <path d="M3.5 9.5h17M8 3v3M16 3v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <path d="M5 3l6 15 2-6 6-2L5 3Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
       </svg>
     ),
   },
@@ -244,8 +253,8 @@ const howItWorks = [
     body: "Pull in at the bay, grab a coffee at the cafe, and hand the keys to our team.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
-        <path d="M4 9h13a3 3 0 0 1 0 6h-1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-        <path d="M4 9v6a4 4 0 0 0 4 4h5a4 4 0 0 0 4-4V9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="8" cy="15" r="3" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M10.5 12.5 19 4M16 7l2 2M13 10l2 2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
     ),
   },
@@ -255,12 +264,10 @@ const howItWorks = [
     body: "Hand wash, interior clean and detailing to the exact package you chose.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
-        <path
-          d="M6 12c0-4 3-7 6-7s6 3 6 7-3 8-6 8-6-4-6-8Z"
-          stroke="currentColor"
-          strokeWidth="1.6"
-        />
-        <path d="M9 12h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <rect x="4" y="9" width="16" height="8" rx="3" stroke="currentColor" strokeWidth="1.6" />
+        <circle cx="17" cy="6" r="1.3" fill="currentColor" />
+        <circle cx="19.5" cy="9" r="1" fill="currentColor" />
+        <circle cx="14.5" cy="5" r="0.9" fill="currentColor" />
       </svg>
     ),
   },
@@ -288,7 +295,8 @@ const statBand = [
     label: "Years Running",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-        <path d="M12 2 3 6v6c0 5 4 8.5 9 10 5-1.5 9-5 9-10V6l-9-4Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+        <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M12 7.5V12l3 2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },
@@ -307,7 +315,16 @@ const statBand = [
     label: "Cars Washed",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-        <path d="M6 12c0-4 3-7 6-7s6 3 6 7-3 8-6 8-6-4-6-8Z" stroke="currentColor" strokeWidth="1.7" />
+        <path
+          d="M4 16.5 5.2 12a2 2 0 0 1 1.9-1.4h9.8a2 2 0 0 1 1.9 1.4l1.2 4.5"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <rect x="3" y="16.5" width="18" height="3.5" rx="1.4" stroke="currentColor" strokeWidth="1.7" />
+        <circle cx="7.5" cy="20" r="1" fill="currentColor" />
+        <circle cx="16.5" cy="20" r="1" fill="currentColor" />
       </svg>
     ),
   },
@@ -328,8 +345,13 @@ const serviceGrid = [
     body: "Hand wash, chamois dry and tyres glossed — the essential clean.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-        <path d="M6 12c0-4 3-7 6-7s6 3 6 7-3 8-6 8-6-4-6-8Z" stroke="currentColor" strokeWidth="1.6" />
-        <path d="M9 12h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <path
+          d="M5 4c3 1 4 3 3 6-1 2.5 0 4.5 2 5"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+        <path d="M14 15a3 3 0 1 0 6 0c0-1.7-1.2-2.8-3-4.5-1.8 1.7-3 2.8-3 4.5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
       </svg>
     ),
   },
@@ -338,8 +360,8 @@ const serviceGrid = [
     body: "Outside wash plus interior dusted, vacuumed and windows cleaned.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-        <path d="M4 9h13a3 3 0 0 1 0 6h-1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-        <path d="M4 9v6a4 4 0 0 0 4 4h5a4 4 0 0 0 4-4V9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M8 20V9a3 3 0 0 1 3-3h2a3 3 0 0 1 3 3v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M8 14h8v6H8Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
       </svg>
     ),
   },
@@ -367,8 +389,13 @@ const serviceGrid = [
     body: "Add-ons like headlight restoration, hand wax and carpet steam clean.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-        <rect x="5" y="4" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.6" />
-        <path d="M9 9h6M9 13h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <path
+          d="M13 2 5 13h5.5L9.5 22l9-13H13l1-7Z"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
       </svg>
     ),
   },
@@ -391,7 +418,14 @@ const guarantees = [
     body: "Not happy with a spot we missed? Tell us before you leave and we'll fix it, free.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-        <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M7 11v9H4v-9h3Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+        <path
+          d="M7 11l3.5-7c1 0 2 1 2 2v3h4.5a2 2 0 0 1 2 2.4l-1.2 6A2 2 0 0 1 16 19H9"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
       </svg>
     ),
   },
@@ -400,8 +434,8 @@ const guarantees = [
     body: "The price you see when you book is the price you pay at the till.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-        <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.7" />
-        <path d="M12 7v10M9.5 9.5c0-1.4 1.2-2 2.5-2s2.5.7 2.5 1.8c0 2.4-5 1.4-5 3.9 0 1.1 1.2 1.8 2.5 1.8s2.5-.6 2.5-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M6 3h12v18l-2-1.2L14 21l-2-1.2L10 21l-2-1.2L6 21V3Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+        <path d="M9 8h6M9 12h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
     ),
   },
@@ -428,7 +462,8 @@ const careItems = [
     body: "pH-neutral formulas that clean without stripping wax or harming paint.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
-        <path d="M12 3c2 2.5 5 6 5 10a5 5 0 0 1-10 0c0-4 3-7.5 5-10Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+        <path d="M5 19c0-8 4-14 14-14 0 10-6 14-14 14Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+        <path d="M6 18c3-3 5-6 12-11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
     ),
   },
@@ -437,8 +472,13 @@ const careItems = [
     body: "Soft mitts and towels on every panel — no scratches, no swirl marks.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
-        <rect x="4" y="4" width="16" height="16" rx="4" stroke="currentColor" strokeWidth="1.6" />
-        <path d="M8 12h8M12 8v8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <path
+          d="M5 5.5 8 4h8l3 1.5v5A8 8 0 0 1 12 20 8 8 0 0 1 5 10.5v-5Z"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+        <path d="M9 10.5h6M9 14h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
     ),
   },
@@ -447,12 +487,8 @@ const careItems = [
     body: "A protective layer that keeps the shine (and the water-beading) going longer.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
-        <path
-          d="M12 3 3 7.5v5c0 5 4 8.5 9 10 5-1.5 9-5 9-10v-5L12 3Z"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinejoin="round"
-        />
+        <path d="M12 5a7 7 0 1 1-6.3 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <path d="M4 6v3h3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },
@@ -461,8 +497,15 @@ const careItems = [
     body: "Deep suction that gets into footwells, seams and boot corners.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
-        <rect x="5" y="4" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.6" />
-        <path d="M9 9h6M9 13h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <rect x="4" y="10" width="6" height="10" rx="2" stroke="currentColor" strokeWidth="1.6" />
+        <path
+          d="M10 13h5a4 4 0 0 0 4-4V7"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path d="M19 4v3M17.5 5.5h3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
     ),
   },
