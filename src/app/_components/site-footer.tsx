@@ -109,7 +109,7 @@ export default function SiteFooter() {
             alt="Bubbles Car Wash & Cafe"
             width={641}
             height={428}
-            className="h-14 w-auto"
+            className="h-24 w-auto"
           />
           <p className="mt-4 max-w-xs text-sm text-gray-400">
             Adelaide&apos;s north east wash &amp; cafe since 2011 — a clean car and a good coffee,
