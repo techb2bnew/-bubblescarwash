@@ -148,7 +148,7 @@ export default function ContactPage() {
       </section>
 
       <section className="bg-white">
-        <div className="relative h-80 w-full sm:h-96">
+        <div className="relative h-80 w-full sm:h-96 lg:h-[450px]">
           <iframe
             src="https://maps.google.com/maps?q=216%2F218%20North%20East%20Road%2C%20Klemzig%20SA%205087&t=m&z=16&output=embed&iwloc=near"
             title="Bubbles Car Wash & Cafe on Google Maps"
