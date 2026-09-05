@@ -2,11 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { siteNavLinks } from "./site-nav-links";
 
 export default function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <header>
@@ -68,16 +72,25 @@ export default function SiteHeader() {
             />
           </Link>
           <nav className="hidden items-center gap-9 text-base font-bold text-gray-700 md:flex">
-            {siteNavLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="group relative flex items-center py-1 transition hover:text-brand-600"
-              >
-                {link.label === "Book" ? "Book Now" : link.label}
-                <span className="absolute -bottom-0.5 left-0 h-0.5 w-0 rounded-full bg-brand-600 transition-all duration-200 group-hover:w-full" />
-              </Link>
-            ))}
+            {siteNavLinks.map((link) => {
+              const active = isActive(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`group relative flex items-center py-1 transition hover:text-brand-600 ${
+                    active ? "text-brand-600" : ""
+                  }`}
+                >
+                  {link.label === "Book" ? "Book Now" : link.label}
+                  <span
+                    className={`absolute -bottom-0.5 left-0 h-0.5 rounded-full bg-brand-600 transition-all duration-200 ${
+                      active ? "w-full" : "w-0 group-hover:w-full"
+                    }`}
+                  />
+                </Link>
+              );
+            })}
           </nav>
           <div className="flex items-center gap-3">
             <a
@@ -124,7 +137,9 @@ export default function SiteHeader() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
-                className="rounded-lg px-3 py-2.5 transition hover:bg-brand-50 hover:text-brand-600"
+                className={`rounded-lg px-3 py-2.5 transition hover:bg-brand-50 hover:text-brand-600 ${
+                  isActive(link.href) ? "bg-brand-50 text-brand-600" : ""
+                }`}
               >
                 {link.label === "Book" ? "Book Now" : link.label}
               </Link>
