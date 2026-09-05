@@ -67,7 +67,7 @@ export default function SiteHeader() {
               className="h-20 w-auto sm:h-24"
             />
           </Link>
-          <nav className="hidden items-center gap-9 text-base font-medium text-gray-600 md:flex">
+          <nav className="hidden items-center gap-9 text-base font-bold text-gray-700 md:flex">
             {siteNavLinks.map((link) => (
               <Link
                 key={link.href}
@@ -118,7 +118,7 @@ export default function SiteHeader() {
 
         {/* Mobile dropdown menu */}
         {menuOpen && (
-          <nav className="flex flex-col gap-1 border-t border-gray-100 bg-white px-4 py-3 text-base font-medium text-gray-700 md:hidden">
+          <nav className="flex flex-col gap-1 border-t border-gray-100 bg-white px-4 py-3 text-base font-bold text-gray-700 md:hidden">
             {siteNavLinks.map((link) => (
               <Link
                 key={link.href}

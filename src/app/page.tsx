@@ -562,7 +562,7 @@ export default async function Home() {
           <div>
             <SectionLabel align="left">Why Choose Bubbles</SectionLabel>
             <h2 className="mt-3 text-2xl font-extrabold text-gray-900 sm:text-3xl">
-              Driving excellence in every wash
+              Driving excellence in every <span className="wave-word">wash</span>
             </h2>
             <p className="mt-3 max-w-lg text-sm text-gray-500">
               We are a prestigious car wash &amp; cafe in Adelaide&apos;s north east since 2011. We
@@ -618,7 +618,7 @@ export default async function Home() {
           <Reveal><div className="mx-auto max-w-2xl text-center">
             <SectionLabel>What We Offer</SectionLabel>
             <h2 className="mt-3 text-3xl font-extrabold text-gray-900 sm:text-4xl">
-              Every service, done properly
+              Every service, done <span className="wave-word">properly</span>
             </h2>
           </div></Reveal>
           <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -668,7 +668,7 @@ export default async function Home() {
           <Reveal><div className="mx-auto max-w-2xl text-center">
             <SectionLabel>Workshop &amp; Gallery</SectionLabel>
             <h2 className="mt-3 text-3xl font-extrabold text-gray-900 sm:text-4xl">
-              A closer look at our craft
+              A closer look at our <span className="wave-word">craft</span>
             </h2>
           </div></Reveal>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-6 sm:gap-8">
@@ -700,7 +700,7 @@ export default async function Home() {
           <Reveal><div className="mx-auto max-w-2xl text-center">
             <SectionLabel tone="dark">How It Works</SectionLabel>
             <h2 className="mt-3 text-3xl font-extrabold text-white sm:text-4xl">
-              Booking to spotless in four steps
+              Booking to spotless in four <span className="wave-word wave-word-dark">steps</span>
             </h2>
           </div></Reveal>
           <div className="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
@@ -731,7 +731,7 @@ export default async function Home() {
           <Reveal><div className="mx-auto max-w-2xl text-center">
             <SectionLabel>Our Guarantee</SectionLabel>
             <h2 className="mt-3 text-2xl font-extrabold text-gray-900 sm:text-3xl">
-              What every visit comes with
+              What every visit comes <span className="wave-word">with</span>
             </h2>
           </div></Reveal>
           <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
@@ -778,7 +778,7 @@ export default async function Home() {
           <div>
             <SectionLabel align="left" tone="dark">Our Mission</SectionLabel>
             <h2 className="mt-3 text-3xl font-extrabold text-white sm:text-4xl">
-              Making the world&apos;s next car wash friendly
+              Making the world&apos;s next car wash <span className="wave-word wave-word-dark">friendly</span>
             </h2>
             <p className="mt-4 max-w-lg text-sm text-gray-400">
               We want every visit to feel effortless — book online, drop off, and relax with a
@@ -801,7 +801,7 @@ export default async function Home() {
           <Reveal><div className="mx-auto max-w-2xl text-center">
             <SectionLabel>Our Packages</SectionLabel>
             <h2 className="mt-3 text-3xl font-extrabold text-gray-900 sm:text-4xl">
-              A wash for every kind of clean
+              A wash for every kind of <span className="wave-word">clean</span>
             </h2>
             <p className="mt-3 text-sm text-gray-500">
               Pricing shown per vehicle size. Every package and price below is managed live from
@@ -906,7 +906,7 @@ export default async function Home() {
           <Reveal><div className="mx-auto max-w-2xl text-center">
             <SectionLabel>What We Use</SectionLabel>
             <h2 className="mt-3 text-3xl font-extrabold text-gray-900 sm:text-4xl">
-              Good products, used properly
+              Good products, used <span className="wave-word">properly</span>
             </h2>
           </div></Reveal>
           <div className="mt-10 grid grid-cols-2 gap-5 sm:grid-cols-4">
@@ -978,7 +978,7 @@ export default async function Home() {
           <div>
             <SectionLabel align="left">Book An Appointment</SectionLabel>
             <h2 className="mt-3 text-3xl font-extrabold text-gray-900 sm:text-4xl">
-              Apply for a Car Wash
+              Apply for a Car <span className="wave-word">Wash</span>
             </h2>
             <p className="mt-4 max-w-lg text-sm text-gray-500">
               Skip the wait — reserve your bay online and pick the exact time that suits you.
@@ -1018,7 +1018,7 @@ export default async function Home() {
           <Reveal><div className="mx-auto max-w-2xl text-center">
             <SectionLabel>Reviews</SectionLabel>
             <h2 className="mt-3 text-3xl font-extrabold text-gray-900 sm:text-4xl">
-              What Adelaide is saying
+              What Adelaide is <span className="wave-word">saying</span>
             </h2>
           </div></Reveal>
           <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-[0.55fr_1.45fr] lg:items-start">
@@ -1097,7 +1097,7 @@ export default async function Home() {
           <Reveal><div className="mx-auto max-w-2xl text-center">
             <SectionLabel>Blog &amp; News</SectionLabel>
             <h2 className="mt-3 text-3xl font-extrabold text-gray-900 sm:text-4xl">
-              Tips and latest news
+              Tips and latest <span className="wave-word">news</span>
             </h2>
           </div></Reveal>
           <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">

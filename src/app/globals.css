@@ -69,6 +69,32 @@ blockquote {
   color: transparent;
 }
 
+/* Wavy, brand-colored underline drawn under just the last word of a heading */
+.wave-word {
+  position: relative;
+  display: inline-block;
+  white-space: nowrap;
+  padding-bottom: 14px;
+}
+
+.wave-word::after {
+  content: "";
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  height: 10px;
+  transform: rotate(-3deg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 10'%3E%3Cpath d='M0 6c2-5 4-5 6 0s4 5 6 0 4-5 6 0 4 5 6 0' fill='none' stroke='%23f9760f' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-size: 22px 10px;
+  background-position: left center;
+}
+
+.wave-word-dark::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 10'%3E%3Cpath d='M0 6c2-5 4-5 6 0s4 5 6 0 4-5 6 0 4 5 6 0' fill='none' stroke='%23ffa34d' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
 input,
 select,
 textarea {
