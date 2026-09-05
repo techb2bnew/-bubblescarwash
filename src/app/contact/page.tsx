@@ -135,7 +135,7 @@ export default function ContactPage() {
             <p className="text-xs font-semibold uppercase tracking-widest text-brand-300">
               Prefer to plan ahead?
             </p>
-            <p className="mt-3 text-sm text-gray-400">
+            <p className="mt-3 text-sm text-white">
               Booking online guarantees your slot — no waiting around when you arrive. Have a
               question first? Check our{" "}
               <Link href="/faq" className="font-semibold text-brand-300 hover:text-brand-200">
