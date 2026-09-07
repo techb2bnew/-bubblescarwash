@@ -37,14 +37,31 @@ const values = [
   {
     title: "Care, not just cleaning",
     body: "Every vehicle gets checked over before it leaves — swirl marks, missed spots and heavy soiling get flagged, not ignored.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
+        <path d="M12 19.5 4.5 12A4.6 4.6 0 0 1 12 6.2 4.6 4.6 0 0 1 19.5 12L12 19.5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      </svg>
+    ),
   },
   {
     title: "Honest pricing",
     body: "What you see on the booking page is what you pay. No surprise add-ons sprung on you at pickup.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
+        <path d="M11.5 4h6a2 2 0 0 1 2 2v6L9 22.5 1.5 15 11.5 4Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+        <circle cx="15" cy="8" r="1.4" stroke="currentColor" strokeWidth="1.4" />
+      </svg>
+    ),
   },
   {
     title: "Environmentally mindful",
     body: "We use pH-neutral shampoos and reclaim water where we can — a clean car shouldn't cost the environment.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
+        <path d="M6 20c-2-6 1-13 13-14 1 8-4 13-13 14Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+        <path d="M7 19c2-4 5-8 10-11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    ),
   },
 ];
 
@@ -82,29 +99,49 @@ export default function AboutPage() {
       </section>
 
 
-      <section className="bg-white py-20">
-        <div className="mx-auto max-w-4xl px-4 sm:px-8">
-          <div className="text-center">
+      <section className="overflow-hidden bg-white py-20">
+        <div className="mx-auto grid max-w-[1600px] grid-cols-1 items-start gap-12 px-4 sm:px-8 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
+          <div className="relative mx-auto w-full max-w-md lg:mx-0 lg:sticky lg:top-24">
+            <div className="pointer-events-none absolute -top-10 left-6 h-40 w-40 rounded-full bg-brand-100/70" />
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[2.5rem] shadow-xl shadow-gray-900/10">
+              <Image
+                src="/real-photos/cafe-interior.png"
+                alt="Bubbles Car Wash & Cafe seating and cafe interior"
+                fill
+                sizes="(max-width: 1024px) 100vw, 480px"
+                className="object-cover"
+              />
+            </div>
+            <p
+              className="pointer-events-none absolute -right-6 -bottom-8 hidden -rotate-6 text-lg font-semibold italic text-brand-600 sm:block"
+              style={{ fontFamily: "cursive" }}
+            >
+              More than
+              <br />a Car Wash
+            </p>
+          </div>
+
+          <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-brand-600">
               How We Got Here
             </p>
             <h2 className="mt-3 text-3xl font-extrabold text-gray-900 sm:text-4xl">
               Our <span className="wave-word">journey</span>
             </h2>
-          </div>
 
-          <ol className="mt-14 space-y-10 border-l border-gray-100 pl-8">
-            {timeline.map((t) => (
-              <li key={t.year} className="relative">
-                <span className="absolute -left-[calc(2rem+5px)] top-1 h-2.5 w-2.5 rounded-full bg-brand-500" />
-                <p className="text-xs font-bold uppercase tracking-widest text-brand-600">
-                  {t.year}
-                </p>
-                <h3 className="mt-1 text-lg font-bold text-gray-900">{t.title}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-gray-500">{t.body}</p>
-              </li>
-            ))}
-          </ol>
+            <ol className="mt-10 space-y-10 border-l-2 border-brand-100 pl-8">
+              {timeline.map((t) => (
+                <li key={t.year} className="relative">
+                  <span className="absolute -left-[calc(2rem+6px)] top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 ring-4 ring-brand-50" />
+                  <p className="text-xs font-bold uppercase tracking-widest text-brand-600">
+                    {t.year}
+                  </p>
+                  <h3 className="mt-1 text-lg font-bold text-gray-900">{t.title}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-gray-500">{t.body}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
         </div>
       </section>
 
@@ -120,8 +157,14 @@ export default function AboutPage() {
           </div>
           <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-3">
             {values.map((v) => (
-              <div key={v.title} className="rounded-2xl border border-gray-100 bg-white p-6">
+              <div
+                key={v.title}
+                className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              >
                 <div className="h-1 w-10 rounded-full bg-brand-500" />
+                <span className="mt-4 flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-600">
+                  {v.icon}
+                </span>
                 <h3 className="mt-4 text-base font-bold text-gray-900">{v.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-gray-500">{v.body}</p>
               </div>
