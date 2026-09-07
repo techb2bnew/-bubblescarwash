@@ -103,7 +103,7 @@ export default function HeroSlider() {
       </div>
 
       <div className="relative mx-auto flex max-w-[1600px] flex-col items-center px-6 pb-14 pt-20 text-center sm:px-10 sm:pb-16 sm:pt-28 lg:px-12 lg:pb-20 lg:pt-32">
-        <div className="relative min-h-[300px] w-full max-w-4xl sm:min-h-[280px] lg:min-h-[300px]">
+        <div className="relative min-h-[230px] w-full max-w-4xl sm:min-h-[280px] lg:min-h-[300px]">
           {slides.map((slide, i) => (
             <div
               key={slide.src}
@@ -130,7 +130,7 @@ export default function HeroSlider() {
           ))}
         </div>
 
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+        <div className="mt-0 flex flex-wrap items-center justify-center gap-4 sm:mt-10">
           <Link
             href="/book"
             className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-9 py-5 text-lg font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-brand-600/40"
