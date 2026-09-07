@@ -549,7 +549,7 @@ export default async function Home() {
       {/* About / highlights, with a stat badge over the photo */}
       <section id="why-us" className="border-b border-gray-100 bg-white">
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-12 px-4 pb-14 pt-14 sm:px-8 lg:grid-cols-2 lg:items-stretch lg:gap-8">
-          <div className="relative flex w-full flex-col">
+          <div className="relative flex w-full flex-col pb-8 sm:pb-0">
             <BeforeAfterSlider
               src="/real-photos/hand-wax.jpg"
               alt="Car before and after a hand wash — drag to compare"
@@ -557,7 +557,7 @@ export default async function Home() {
             <p className="mt-2 text-center text-xs text-gray-400">
               Drag the slider to see the difference
             </p>
-            <div className="absolute -bottom-6 -right-6 flex flex-col items-center justify-center rounded-2xl bg-brand-600 px-6 py-5 text-center text-white shadow-xl shadow-brand-600/30">
+            <div className="absolute bottom-0 right-4 flex flex-col items-center justify-center rounded-2xl bg-brand-600 px-6 py-5 text-center text-white shadow-xl shadow-brand-600/30 sm:-bottom-6 sm:-right-6">
               <p className="text-3xl font-extrabold">15+</p>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-50">
                 Years Running
@@ -1124,7 +1124,7 @@ export default async function Home() {
 
       {/* Visit Us photo banner */}
       <section id="visit" className="relative isolate overflow-hidden">
-        <div className="relative h-80 w-full sm:h-[26rem]">
+        <div className="relative h-auto min-h-[22rem] w-full py-14 sm:h-[26rem] sm:py-0">
           <Image
             src="/real-photos/cafe-coffee.jpg"
             alt="Cozy cafe counter interior at Bubbles Car Wash & Cafe"
@@ -1133,7 +1133,7 @@ export default async function Home() {
             className="object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-gray-950/90 via-gray-950/55 to-gray-950/30" />
-          <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center text-white">
+          <div className="relative flex h-full flex-col items-center justify-center px-4 py-10 text-center text-white sm:absolute sm:inset-0 sm:py-0">
             <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-brand-300 ring-1 ring-white/15">
               Grab a Seat
             </span>
