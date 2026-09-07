@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import type { CategoryRow, Service, VehicleTypeRow } from "@/lib/types";
 import { blogPosts } from "@/lib/blog-posts";
 import SiteHeader from "./_components/site-header";
@@ -11,6 +11,7 @@ import ReviewsSlider from "./_components/reviews-slider";
 import SiteFooter from "./_components/site-footer";
 import SectionLabel from "./_components/section-label";
 import WorkshopGallerySlider from "./_components/workshop-gallery-slider";
+import MarqueeBand from "./_components/marquee-band";
 
 type Tier = {
   name: string;
@@ -20,8 +21,10 @@ type Tier = {
   features: string[];
 };
 
+export const revalidate = 60;
+
 async function getWashPackages() {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const [
     { data: categories },
@@ -591,6 +594,8 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      <MarqueeBand />
 
       {/* Our Numbers — dark stat band */}
       <section style={{ backgroundColor: "#0b1220" }} className="relative overflow-hidden py-14">

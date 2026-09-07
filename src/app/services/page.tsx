@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import type { CategoryRow, Service, VehicleTypeRow } from "@/lib/types";
 import SiteHeader from "../_components/site-header";
 import SiteFooter from "../_components/site-footer";
@@ -11,6 +11,8 @@ export const metadata = {
   description: "Every wash and detailing package at Bubbles Car Wash & Cafe, with live pricing per vehicle size.",
 };
 
+export const revalidate = 60;
+
 type Tier = {
   name: string;
   category: string;
@@ -20,7 +22,7 @@ type Tier = {
 };
 
 async function getWashPackages() {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const [
     { data: categories },
