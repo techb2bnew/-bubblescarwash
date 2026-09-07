@@ -320,7 +320,7 @@ export default function BookingFlow({
   const stepLabels = ["Vehicle & Service", "Add-ons", "Your Details"];
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-[1600px]">
       <div className="mb-10 flex items-center justify-center">
         {[1, 2, 3].map((n) => (
           <div key={n} className="flex items-center">
@@ -406,7 +406,7 @@ export default function BookingFlow({
                 </div>
               </div>
 
-              <div className="relative mt-6 h-56 sm:h-72">
+              <div className="relative mt-4 h-64 sm:h-80">
                 {vehicleTypes.map((v, i) => {
                   const photo = getVehicleTypePhoto(v.name, i);
                   return (
@@ -414,7 +414,7 @@ export default function BookingFlow({
                       key={v.id}
                       className={`absolute inset-0 transition-opacity duration-500 ${
                         vehicle === v.slug ? "opacity-100" : "pointer-events-none opacity-0"
-                      } ${photo.fit === "contain" ? "bg-gray-950" : ""}`}
+                      } ${photo.fit === "contain" ? "px-[2%]" : ""}`}
                     >
                       <Image
                         src={photo.src}
@@ -428,7 +428,6 @@ export default function BookingFlow({
                   );
                 })}
               </div>
-              <div className="h-6" />
             </div>
           )}
 

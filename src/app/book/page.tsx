@@ -80,7 +80,7 @@ export default async function BookPage() {
 
       <main className="relative flex-1 overflow-hidden bg-gray-50 px-4 py-12 sm:py-16">
         <div className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-brand-200/40 blur-3xl" />
-        <div className="relative mx-auto max-w-3xl rounded-3xl bg-white p-5 shadow-xl shadow-gray-900/5 ring-1 ring-gray-100 sm:p-8">
+        <div className="relative mx-auto max-w-[1600px] rounded-3xl bg-white p-5 shadow-xl shadow-gray-900/5 ring-1 ring-gray-100 sm:p-8">
           <BookingFlow
             services={(services as Service[]) ?? []}
             inclusions={(inclusions as AddOn[]) ?? []}
