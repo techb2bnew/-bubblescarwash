@@ -20,7 +20,8 @@ type Slide = {
   src: string;
   alt: string;
   eyebrow: string;
-  heading: React.ReactNode;
+  headingLine1: string;
+  headingLine2: string;
   body: string;
 };
 
@@ -29,47 +30,34 @@ const slides: Slide[] = [
     src: "/real-photos/hero-carwash.jpg",
     alt: "High-pressure rinse spraying down a car windscreen",
     eyebrow: "Adelaide's North East · Since 2011",
-    heading: (
-      <>
-        Giving your car
-        <br />
-        <span className="text-gradient">the best cleaning.</span>
-      </>
-    ),
+    headingLine1: "Giving your car",
+    headingLine2: "the best cleaning.",
     body: "Book online in under a minute, then relax while our team takes care of the rest.",
   },
   {
     src: "/real-photos/cafe-coffee.jpg",
     alt: "Barista pouring latte art into a coffee cup",
     eyebrow: "Grab a Seat While You Wait",
-    heading: (
-      <>
-        A place for coffee and
-        <br />
-        <span className="text-gradient">a great car wash.</span>
-      </>
-    ),
+    headingLine1: "A place for coffee and",
+    headingLine2: "a great car wash.",
     body: "Order a fresh brew from our cafe counter while our team gets to work on your car.",
   },
   {
     src: "/real-photos/gift-voucher.jpg",
     alt: "Wrapped gift box tied with a ribbon",
     eyebrow: "Something For Someone Special",
-    heading: (
-      <>
-        A great gift for
-        <br />
-        <span className="text-gradient">someone special.</span>
-      </>
-    ),
+    headingLine1: "A great gift for",
+    headingLine2: "someone special.",
     body: "A Bubbles gift voucher covers a wash, a detail, or a coffee at the cafe.",
   },
 ];
 
 const SLIDE_DURATION = 6000;
+const TYPE_SPEED = 55;
 
 export default function HeroSlider() {
   const [active, setActive] = useState(0);
+  const [typedText, setTypedText] = useState("");
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -77,6 +65,18 @@ export default function HeroSlider() {
     }, SLIDE_DURATION);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    const full = slides[active].headingLine2;
+    setTypedText("");
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setTypedText(full.slice(0, i));
+      if (i >= full.length) clearInterval(id);
+    }, TYPE_SPEED);
+    return () => clearInterval(id);
+  }, [active]);
 
   return (
     <section className="relative isolate overflow-hidden">
@@ -116,7 +116,14 @@ export default function HeroSlider() {
                 {slide.eyebrow}
               </span>
               <h1 className="mt-7 text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl">
-                {slide.heading}
+                {slide.headingLine1}
+                <br />
+                <span className="text-gradient">
+                  {i === active ? typedText : slide.headingLine2}
+                  {i === active && typedText.length < slide.headingLine2.length && (
+                    <span className="animate-pulse text-brand-400">|</span>
+                  )}
+                </span>
               </h1>
               <p className="mt-7 max-w-xl text-xl text-gray-300">{slide.body}</p>
             </div>
