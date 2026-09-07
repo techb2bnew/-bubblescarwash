@@ -320,15 +320,23 @@ export default function BookingFlow({
             <div className="flex flex-col items-center gap-2">
               <div
                 className={`flex h-11 w-11 items-center justify-center rounded-full text-base font-bold shadow-sm transition-colors ${
-                  step >= n
-                    ? "bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-brand-600/30"
-                    : "bg-gray-100 text-gray-400"
+                  step > n
+                    ? "bg-brand-600 text-white"
+                    : step === n
+                      ? "bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-brand-600/30 ring-4 ring-brand-100"
+                      : "bg-gray-100 text-gray-400"
                 }`}
               >
-                {n}
+                {step > n ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                ) : (
+                  n
+                )}
               </div>
               <span
-                className={`hidden text-xs font-semibold sm:block ${
+                className={`text-[11px] font-semibold sm:text-xs ${
                   step >= n ? "text-brand-700" : "text-gray-400"
                 }`}
               >
@@ -442,94 +450,72 @@ export default function BookingFlow({
               No services configured for this combination yet.
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-sm">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr>
-                    <th className="w-1/3" />
-                    {tierServices.map((s, si) => {
-                      const active = selectedService?.id === s.id;
-                      return (
-                        <th
-                          key={s.id}
-                          className={`border-l border-gray-100 p-0 text-center align-top ${
-                            active ? "bg-brand-50/60" : si % 2 === 1 ? "bg-gray-50" : ""
-                          }`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => setSelectedService(s)}
-                            className="flex w-full flex-col items-center gap-1.5 p-4"
-                          >
-                            <span
-                              className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition ${
-                                active ? "border-brand-600" : "border-gray-300"
-                              }`}
-                            >
-                              {active && (
-                                <span className="h-2.5 w-2.5 rounded-full bg-brand-600" />
-                              )}
-                            </span>
-                            <span className="font-bold text-gray-900">
-                              {s.name}
-                            </span>
-                            {s.discount_active && s.discount_percent > 0 ? (
-                              <span className="flex items-baseline gap-1.5">
-                                <span className="text-xs text-gray-400 line-through">
-                                  ${s.price.toFixed(2)}
-                                </span>
-                                <span className="text-base font-extrabold text-brand-600">
-                                  ${s.effective_price.toFixed(2)}
-                                </span>
-                              </span>
-                            ) : (
-                              <span className="text-base font-extrabold text-brand-600">
-                                ${s.price.toFixed(2)}
-                              </span>
-                            )}
-                          </button>
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {categoryInclusions.map((inc, i) => (
-                    <tr key={inc.id} className={i % 2 === 0 ? "bg-gray-50/70" : ""}>
-                      <td className="p-2.5 pl-4 text-xs font-medium text-gray-600">
-                        {inc.name}
-                      </td>
-                      {tierServices.map((s) => (
-                        <td
-                          key={s.id}
-                          className={`border-l border-gray-100 p-2.5 text-center ${
-                            selectedService?.id === s.id ? "bg-brand-50/60" : ""
-                          }`}
-                        >
-                          {hasInclusion(s, inc.id) ? (
-                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-white shadow-sm">
-                              <svg
-                                width="11"
-                                height="11"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
+            <div
+              className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${
+                tierServices.length >= 3 ? "lg:grid-cols-3" : ""
+              }`}
+            >
+              {tierServices.map((s, si) => {
+                const active = selectedService?.id === s.id;
+                const popular = tierServices.length > 1 && si === Math.floor((tierServices.length - 1) / 2);
+                const includedInclusions = categoryInclusions.filter((inc) => hasInclusion(s, inc.id));
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSelectedService(s)}
+                    className={`relative flex flex-col rounded-2xl border-2 p-5 text-left transition ${
+                      active
+                        ? "border-brand-600 bg-brand-50/50 shadow-lg shadow-brand-600/10"
+                        : "border-gray-200 hover:border-brand-200 hover:shadow-sm"
+                    }`}
+                  >
+                    {popular && (
+                      <span className="absolute -top-3 left-5 rounded-full bg-brand-600 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+                        Most Popular
+                      </span>
+                    )}
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-base font-extrabold text-gray-900">{s.name}</span>
+                      <span
+                        className={`flex h-5 w-5 flex-none items-center justify-center rounded-full border-2 transition ${
+                          active ? "border-brand-600 bg-brand-600" : "border-gray-300"
+                        }`}
+                      >
+                        {active && (
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20 6 9 17l-5-5" />
+                          </svg>
+                        )}
+                      </span>
+                    </div>
+                    {s.discount_active && s.discount_percent > 0 ? (
+                      <div className="mt-1.5 flex items-baseline gap-2">
+                        <span className="text-sm text-gray-400 line-through">${s.price.toFixed(2)}</span>
+                        <span className="text-2xl font-extrabold text-brand-600">${s.effective_price.toFixed(2)}</span>
+                      </div>
+                    ) : (
+                      <p className="mt-1.5 text-2xl font-extrabold text-brand-600">${s.price.toFixed(2)}</p>
+                    )}
+                    <ul className="mt-4 space-y-2 border-t border-gray-100 pt-4">
+                      {includedInclusions.length === 0 ? (
+                        <li className="text-xs text-gray-400">No inclusions listed</li>
+                      ) : (
+                        includedInclusions.map((inc) => (
+                          <li key={inc.id} className="flex items-center gap-2 text-sm text-gray-700">
+                            <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-brand-500/15 text-brand-600">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M20 6 9 17l-5-5" />
                               </svg>
                             </span>
-                          ) : (
-                            <span className="inline-block h-2 w-2 rounded-full bg-gray-200" />
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                            {inc.name}
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -690,45 +676,56 @@ export default function BookingFlow({
             Add any extra services to {selectedService?.name ?? "your booking"}.
           </p>
 
-          <div className="divide-y divide-gray-100 rounded-2xl border border-gray-200 shadow-sm">
-            {extras.length === 0 ? (
-              <p className="p-4 text-sm text-gray-400">
-                No add-ons available right now.
-              </p>
-            ) : (
-              extras.map((extra) => {
+          {extras.length === 0 ? (
+            <p className="rounded-2xl border border-gray-200 p-4 text-sm text-gray-400 shadow-sm">
+              No add-ons available right now.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {extras.map((extra) => {
                 const checked = selectedExtraIds.includes(extra.id);
                 return (
                   <label
                     key={extra.id}
-                    className={`flex cursor-pointer items-start justify-between gap-4 p-4 transition first:rounded-t-2xl last:rounded-b-2xl ${
-                      checked ? "bg-brand-50/60" : "hover:bg-gray-50"
+                    className={`flex cursor-pointer items-start justify-between gap-3 rounded-2xl border-2 p-4 transition ${
+                      checked
+                        ? "border-brand-600 bg-brand-50/50 shadow-sm shadow-brand-600/10"
+                        : "border-gray-200 hover:border-brand-200 hover:shadow-sm"
                     }`}
                   >
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-bold text-gray-900">{extra.name}</p>
                       {extra.description && (
                         <p className="mt-0.5 text-xs text-gray-500">
                           {extra.description}
                         </p>
                       )}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-3">
-                      <span className="font-bold text-brand-600">
+                      <p className="mt-2 text-sm font-extrabold text-brand-600">
                         ${extra.price.toFixed(2)}
-                      </span>
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleExtra(extra.id)}
-                        className="h-5 w-5 accent-brand-600"
-                      />
+                      </p>
                     </div>
+                    <span
+                      className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-md border-2 transition ${
+                        checked ? "border-brand-600 bg-brand-600" : "border-gray-300"
+                      }`}
+                    >
+                      {checked && (
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M20 6 9 17l-5-5" />
+                        </svg>
+                      )}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleExtra(extra.id)}
+                      className="sr-only"
+                    />
                   </label>
                 );
-              })
-            )}
-          </div>
+              })}
+            </div>
+          )}
 
           <div className="mt-5 flex items-center justify-between rounded-2xl bg-gray-50 px-5 py-4 text-sm">
             <span className="font-medium text-gray-600">Estimated total</span>
