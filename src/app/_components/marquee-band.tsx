@@ -20,7 +20,9 @@ function Strip({
 
   return (
     <div
-      className={`${reverse ? "rotate-2" : "-rotate-2"} py-3.5 shadow-lg ${
+      className={`absolute left-[-10%] right-[-10%] top-1/2 -translate-y-1/2 py-3.5 shadow-lg ${
+        reverse ? "rotate-[8deg]" : "-rotate-[8deg]"
+      } ${
         dark
           ? "bg-gray-950 shadow-black/30"
           : "bg-gradient-to-r from-brand-500 to-brand-600 shadow-brand-600/20"
@@ -54,12 +56,12 @@ function Strip({
 
 export default function MarqueeBand() {
   return (
-    <div className="relative overflow-hidden bg-white py-16" aria-hidden="true">
-      <div className="relative">
-        <div className="relative z-10">
+    <div className="relative overflow-hidden bg-white py-20" aria-hidden="true">
+      <div className="relative h-32">
+        <div className="relative z-10 h-full">
           <Strip dark />
         </div>
-        <div className="absolute inset-x-0 top-0 z-20 -mt-2">
+        <div className="absolute inset-0 z-20">
           <Strip reverse />
         </div>
       </div>
