@@ -322,7 +322,7 @@ export default function BookingFlow({
   const stepLabels = ["Vehicle & Service", "Add-ons", "Your Details"];
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-5xl">
       <div className="mb-10 flex items-center justify-center">
         {[1, 2, 3].map((n) => (
           <div key={n} className="flex items-center">
@@ -375,7 +375,7 @@ export default function BookingFlow({
           {vehicleTypes.length > 0 && (
             <div className="mb-7">
               <p className="mb-4 text-sm font-semibold text-gray-700">What are you driving?</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {vehicleTypes.map((v) => {
                   const active = vehicle === v.slug;
                   return (
