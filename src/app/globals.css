@@ -121,6 +121,10 @@ blockquote {
   animation: marquee-scroll 26s linear infinite;
 }
 
+.marquee-track-reverse {
+  animation: marquee-scroll 26s linear infinite reverse;
+}
+
 input,
 select,
 textarea {
