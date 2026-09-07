@@ -12,7 +12,6 @@ import type {
 import SiteHeader from "../_components/site-header";
 import SiteFooter from "../_components/site-footer";
 import TypewriterWord from "../_components/typewriter-word";
-import MarqueeBand from "../_components/marquee-band";
 import { getBookingPaymentMode } from "./actions";
 import BookingFlow from "./booking-flow";
 
@@ -78,7 +77,6 @@ export default async function BookPage() {
         </div>
       </section>
 
-      <MarqueeBand />
 
       <main className="relative flex-1 overflow-hidden bg-gray-50 px-4 py-12 sm:py-16">
         <div className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-brand-200/40 blur-3xl" />

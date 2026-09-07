@@ -1,5 +1,4 @@
 import Image from "next/image";
-import MarqueeBand from "../_components/marquee-band";
 import { createClient } from "@/lib/supabase/server";
 import type { GiftCardProduct } from "@/lib/types";
 import SiteHeader from "../_components/site-header";
@@ -50,7 +49,6 @@ export default async function GiftCardsPage() {
         </div>
       </section>
 
-      <MarqueeBand />
 
       <main className="flex-1 bg-gray-50 px-4 py-12 sm:py-16">
         <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-gray-100 sm:p-8">

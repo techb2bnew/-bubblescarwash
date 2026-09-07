@@ -1,5 +1,4 @@
 import Image from "next/image";
-import MarqueeBand from "../_components/marquee-band";
 import Link from "next/link";
 import SiteHeader from "../_components/site-header";
 import SiteFooter from "../_components/site-footer";
@@ -84,7 +83,6 @@ export default function ContactPage() {
         </div>
       </section>
 
-      <MarqueeBand />
 
       <section className="py-16">
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-6 px-4 sm:grid-cols-3 sm:px-8">

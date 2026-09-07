@@ -1,5 +1,4 @@
 import Image from "next/image";
-import MarqueeBand from "../_components/marquee-band";
 import Link from "next/link";
 import { createPublicClient } from "@/lib/supabase/public";
 import type { CategoryRow, Service, VehicleTypeRow } from "@/lib/types";
@@ -137,7 +136,6 @@ export default async function ServicesPage() {
         </div>
       </section>
 
-      <MarqueeBand />
 
       {/* Dynamic packages */}
       <section className="bg-gray-50 py-20">

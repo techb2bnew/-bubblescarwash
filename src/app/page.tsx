@@ -11,7 +11,6 @@ import ReviewsSlider from "./_components/reviews-slider";
 import SiteFooter from "./_components/site-footer";
 import SectionLabel from "./_components/section-label";
 import WorkshopGallerySlider from "./_components/workshop-gallery-slider";
-import MarqueeBand from "./_components/marquee-band";
 
 type Tier = {
   name: string;
@@ -595,7 +594,6 @@ export default async function Home() {
         </div>
       </section>
 
-      <MarqueeBand />
 
       {/* Our Numbers — dark stat band */}
       <section style={{ backgroundColor: "#0b1220" }} className="relative overflow-hidden py-14">

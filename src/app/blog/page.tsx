@@ -1,5 +1,4 @@
 import Image from "next/image";
-import MarqueeBand from "../_components/marquee-band";
 import Link from "next/link";
 import SiteHeader from "../_components/site-header";
 import SiteFooter from "../_components/site-footer";
@@ -29,7 +28,6 @@ export default function BlogPage() {
         </div>
       </section>
 
-      <MarqueeBand />
 
       <section className="bg-gray-50 py-16">
         <div className="mx-auto max-w-[1600px] px-4 sm:px-8">
