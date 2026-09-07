@@ -1,10 +1,10 @@
 "use server";
 
-import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getStripeClient, getStripeCurrency } from "@/lib/stripe";
 import { getPaymentMode, type PaymentMode } from "@/lib/payment-mode";
 import { onBookingCreated } from "@/lib/booking-sync";
+import { getSiteOrigin } from "@/lib/site-origin";
 import type { PaymentStatus } from "@/lib/types";
 
 export interface BookedTime {
@@ -86,6 +86,7 @@ export async function countBookingsByEmail(email: string): Promise<number> {
 
 export interface CreateBookingInput {
   service_id: string;
+  vehicle_type: string;
   booking_date: string;
   booking_time: string;
   customer_name: string;
@@ -93,16 +94,6 @@ export interface CreateBookingInput {
   customer_email: string;
   extra_ids?: string[];
   gift_card_code?: string;
-}
-
-async function getSiteOrigin(): Promise<string> {
-  const h = await headers();
-  const origin = h.get("origin");
-  if (origin) return origin;
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? "https";
-  if (host) return `${proto}://${host}`;
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 }
 
 /**
@@ -126,6 +117,7 @@ export async function createCheckoutSession(
 
   const { data, error } = await supabase.rpc("create_booking", {
     p_service_id: input.service_id,
+    p_vehicle_type: input.vehicle_type,
     p_booking_date: input.booking_date,
     p_booking_time: input.booking_time,
     p_customer_name: input.customer_name,
@@ -229,6 +221,7 @@ export async function createBookingSimple(
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_booking", {
     p_service_id: input.service_id,
+    p_vehicle_type: input.vehicle_type,
     p_booking_date: input.booking_date,
     p_booking_time: input.booking_time,
     p_customer_name: input.customer_name,

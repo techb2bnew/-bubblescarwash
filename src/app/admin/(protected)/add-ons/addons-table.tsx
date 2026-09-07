@@ -2,12 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { AddOn } from "@/lib/types";
-import { deleteAddOn, toggleAddOnActive } from "./actions";
+import type { AddOnWithService, ServiceOption } from "./addons-page-client";
+import { deleteServiceAddOn, toggleServiceAddOnActive } from "../services/actions";
 import { FilterSelect, TableToolbar } from "../_components/table-toolbar";
 import { SortHeader } from "../_components/sort-header";
 import { Pagination } from "../_components/pagination";
 import { useConfirmDialog } from "../_components/confirm-dialog";
+import { EditButton, DeleteButton } from "../_components/action-icons";
+import { useToast } from "../_components/toast";
 
 const PAGE_SIZE = 10;
 const VISIBILITY_OPTIONS = [
@@ -18,28 +20,46 @@ const VISIBILITY_OPTIONS = [
 
 export default function AddOnsTable({
   addOns,
+  services,
   onEdit,
 }: {
-  addOns: AddOn[];
-  onEdit: (addOn: AddOn) => void;
+  addOns: AddOnWithService[];
+  services: ServiceOption[];
+  onEdit: (addOn: AddOnWithService) => void;
 }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirmDialog();
+  const showToast = useToast();
+
+  const serviceOptions = [
+    { value: "all", label: "All Services" },
+    ...services.map((s) => ({ value: s.id, label: s.name })),
+  ];
   const [search, setSearch] = useState("");
+  const [service, setService] = useState("all");
   const [visibility, setVisibility] = useState("all");
-  const [sortKey, setSortKey] = useState<string | null>("sort_order");
+  const [sortKey, setSortKey] = useState<string | null>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
 
   async function handleDelete(id: string) {
     if (!(await confirm("Delete this add-on? This cannot be undone."))) return;
-    await deleteAddOn(id);
-    router.refresh();
+    try {
+      await deleteServiceAddOn(id);
+      router.refresh();
+      showToast("Add-on deleted.");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Something went wrong", "error");
+    }
   }
 
-  async function handleToggle(addOn: AddOn) {
-    await toggleAddOnActive(addOn.id, !addOn.active);
-    router.refresh();
+  async function handleToggle(addOn: AddOnWithService) {
+    try {
+      await toggleServiceAddOnActive(addOn.id, !addOn.active);
+      router.refresh();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Something went wrong", "error");
+    }
   }
 
   function handleSort(key: string) {
@@ -56,29 +76,36 @@ export default function AddOnsTable({
     let result = addOns;
     const q = search.trim().toLowerCase();
     if (q) result = result.filter((a) => a.name.toLowerCase().includes(q));
+    if (service !== "all") result = result.filter((a) => a.service_id === service);
     if (visibility === "visible") result = result.filter((a) => a.active);
     if (visibility === "hidden") result = result.filter((a) => !a.active);
 
     if (sortKey) {
       result = [...result].sort((a, b) => {
-        const av = sortKey === "name" ? a.name.toLowerCase() : a.sort_order;
-        const bv = sortKey === "name" ? b.name.toLowerCase() : b.sort_order;
+        const av =
+          sortKey === "name" ? a.name.toLowerCase() : (a.services?.name.toLowerCase() ?? "");
+        const bv =
+          sortKey === "name" ? b.name.toLowerCase() : (b.services?.name.toLowerCase() ?? "");
         if (av < bv) return sortDir === "asc" ? -1 : 1;
         if (av > bv) return sortDir === "asc" ? 1 : -1;
         return 0;
       });
     }
     return result;
-  }, [addOns, search, visibility, sortKey, sortDir]);
+  }, [addOns, search, service, visibility, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const clampedPage = Math.min(page, totalPages);
-  const paged = filtered.slice(
-    (clampedPage - 1) * PAGE_SIZE,
-    clampedPage * PAGE_SIZE,
-  );
+  const paged = filtered.slice((clampedPage - 1) * PAGE_SIZE, clampedPage * PAGE_SIZE);
 
-  const hasActiveFilters = search.trim() !== "" || visibility !== "all";
+  const hasActiveFilters = search.trim() !== "" || service !== "all" || visibility !== "all";
+
+  function clearFilters() {
+    setSearch("");
+    setService("all");
+    setVisibility("all");
+    setPage(1);
+  }
 
   return (
     <div className="space-y-3">
@@ -90,12 +117,17 @@ export default function AddOnsTable({
         }}
         searchPlaceholder="Search add-ons..."
         hasActiveFilters={hasActiveFilters}
-        onClear={() => {
-          setSearch("");
-          setVisibility("all");
-          setPage(1);
-        }}
+        onClear={clearFilters}
       >
+        <FilterSelect
+          label="Service"
+          value={service}
+          onChange={(v) => {
+            setService(v);
+            setPage(1);
+          }}
+          options={serviceOptions}
+        />
         <FilterSelect
           label="Visibility"
           value={visibility}
@@ -119,12 +151,11 @@ export default function AddOnsTable({
                 onSort={handleSort}
               />
               <SortHeader
-                label="Order"
-                sortKey="sort_order"
+                label="Service"
+                sortKey="service"
                 currentSort={sortKey}
                 currentDir={sortDir}
                 onSort={handleSort}
-                className="w-20"
               />
               <th className="w-28 px-4 py-3">Visible</th>
               <th className="w-28 px-4 py-3" />
@@ -132,12 +163,9 @@ export default function AddOnsTable({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {paged.map((a) => (
-              <tr
-                key={a.id}
-                className={`hover:bg-gray-50/60 ${a.active ? "" : "opacity-50"}`}
-              >
+              <tr key={a.id} className={`hover:bg-gray-50/60 ${a.active ? "" : "opacity-50"}`}>
                 <td className="px-4 py-3 font-medium text-gray-900">{a.name}</td>
-                <td className="px-4 py-3 text-gray-500">{a.sort_order}</td>
+                <td className="px-4 py-3 text-gray-600">{a.services?.name ?? "—"}</td>
                 <td className="px-4 py-3">
                   <button
                     onClick={() => handleToggle(a)}
@@ -150,19 +178,11 @@ export default function AddOnsTable({
                     {a.active ? "Visible" : "Hidden"}
                   </button>
                 </td>
-                <td className="space-x-3 px-4 py-3 text-right">
-                  <button
-                    onClick={() => onEdit(a)}
-                    className="text-sm font-medium text-blue-600 hover:underline"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(a.id)}
-                    className="text-sm font-medium text-red-600 hover:underline"
-                  >
-                    Delete
-                  </button>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <EditButton onClick={() => onEdit(a)} />
+                    <DeleteButton onClick={() => handleDelete(a.id)} />
+                  </div>
                 </td>
               </tr>
             ))}

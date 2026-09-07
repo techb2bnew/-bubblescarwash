@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -40,11 +41,9 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: "/admin/categories",
-    label: "Categories",
-    icon: (
-      <path d="M4 6h16M4 12h16M4 18h7" />
-    ),
+    href: "/admin/add-ons",
+    label: "Add-Ons",
+    icon: <path d="m5 13 4 4L19 7" />,
   },
   {
     href: "/admin/vehicle-types",
@@ -52,11 +51,6 @@ const NAV_ITEMS = [
     icon: (
       <path d="M3 13.5 5 8a2 2 0 0 1 2-1.5h10A2 2 0 0 1 19 8l2 5.5M3 13.5V18a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-4.5M3 13.5h18M7 16.5h.01M17 16.5h.01" />
     ),
-  },
-  {
-    href: "/admin/add-ons",
-    label: "Add-Ons",
-    icon: <path d="m5 13 4 4L19 7" />,
   },
   {
     href: "/admin/extras",
@@ -71,6 +65,7 @@ const NAV_ITEMS = [
     icon: (
       <path d="M7 3v3M17 3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" />
     ),
+    children: [{ label: "Set Operations", href: "/admin/calendar/set-operations" }],
   },
   {
     href: "/admin/gift-cards",
@@ -88,6 +83,24 @@ const NAV_ITEMS = [
   },
 ];
 
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
 export default function Sidebar({
   open,
   onClose,
@@ -96,6 +109,9 @@ export default function Sidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => ({
+    "/admin/calendar": pathname.startsWith("/admin/calendar"),
+  }));
 
   return (
     <>
@@ -147,33 +163,73 @@ export default function Sidebar({
             const active =
               item.href === "/admin"
                 ? pathname === "/admin"
-                : pathname.startsWith(item.href);
+                : pathname === item.href;
+            const isExpanded = expanded[item.href] ?? false;
+
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
-                className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
-                  active
-                    ? "bg-brand-600 text-white"
-                    : "text-white/60 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5 shrink-0"
+              <div key={item.href}>
+                <div
+                  className={`flex items-center rounded-md text-sm font-medium transition-colors ${
+                    active
+                      ? "bg-brand-600 text-white"
+                      : "text-white/60 hover:bg-white/10 hover:text-white"
+                  }`}
                 >
-                  {item.icon}
-                </svg>
-                {item.label}
-              </Link>
+                  <Link
+                    href={item.href}
+                    onClick={onClose}
+                    className="flex flex-1 items-center gap-3 px-3 py-2.5"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-5 w-5 shrink-0"
+                    >
+                      {item.icon}
+                    </svg>
+                    {item.label}
+                  </Link>
+                  {item.children && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpanded((prev) => ({ ...prev, [item.href]: !prev[item.href] }))
+                      }
+                      aria-label={`Toggle ${item.label} submenu`}
+                      className="px-3 py-2.5"
+                    >
+                      <ChevronIcon open={isExpanded} />
+                    </button>
+                  )}
+                </div>
+                {item.children && isExpanded && (
+                  <div className="ml-8 mt-1 space-y-1 border-l border-white/10 pl-3">
+                    {item.children.map((child) => {
+                      const childActive = pathname === child.href;
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          onClick={onClose}
+                          className={`block rounded-md px-2.5 py-2 text-sm transition-colors ${
+                            childActive
+                              ? "bg-brand-600 text-white"
+                              : "text-white/50 hover:bg-white/10 hover:text-white"
+                          }`}
+                        >
+                          {child.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>

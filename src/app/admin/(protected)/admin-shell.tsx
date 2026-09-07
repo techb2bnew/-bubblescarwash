@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Sidebar from "./sidebar";
+import { ToastProvider } from "./_components/toast";
 
 export default function AdminShell({
   children,
@@ -12,6 +13,7 @@ export default function AdminShell({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
+    <ToastProvider>
     <div className="flex h-screen bg-gray-50">
       <Sidebar open={mobileOpen} onClose={() => setMobileOpen(false)} />
 
@@ -49,5 +51,6 @@ export default function AdminShell({
         </main>
       </div>
     </div>
+    </ToastProvider>
   );
 }

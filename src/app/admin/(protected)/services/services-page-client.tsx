@@ -1,31 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import type { AddOn, CategoryRow, Service, VehicleTypeRow } from "@/lib/types";
+import type { ServiceTemplate, VehicleTypeRow } from "@/lib/types";
 import ServicesTable from "./services-table";
 import ServiceForm from "./service-form";
 
 export default function ServicesPageClient({
   services,
-  inclusions,
   vehicleTypes,
-  categories,
 }: {
-  services: Service[];
-  inclusions: AddOn[];
+  services: ServiceTemplate[];
   vehicleTypes: VehicleTypeRow[];
-  categories: CategoryRow[];
 }) {
-  const [modal, setModal] = useState<"new" | Service | null>(null);
+  const [modal, setModal] = useState<"new" | ServiceTemplate | null>(null);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Services</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Prices are per vehicle type and service category.
-          </p>
+          <p className="mt-1 text-sm text-gray-500">Prices are per vehicle type.</p>
         </div>
         <button
           onClick={() => setModal("new")}
@@ -35,12 +29,7 @@ export default function ServicesPageClient({
         </button>
       </div>
 
-      <ServicesTable
-        services={services}
-        vehicleTypes={vehicleTypes}
-        categories={categories}
-        onEdit={(s) => setModal(s)}
-      />
+      <ServicesTable services={services} vehicleTypes={vehicleTypes} onEdit={(s) => setModal(s)} />
 
       {modal && (
         <div
@@ -48,7 +37,7 @@ export default function ServicesPageClient({
           onClick={() => setModal(null)}
         >
           <div
-            className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -65,9 +54,7 @@ export default function ServicesPageClient({
             </div>
             <ServiceForm
               service={modal === "new" ? undefined : modal}
-              inclusions={inclusions}
               vehicleTypes={vehicleTypes}
-              categories={categories}
               onDone={() => setModal(null)}
             />
           </div>

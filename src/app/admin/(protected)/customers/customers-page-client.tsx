@@ -1,10 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { CustomerSummary } from "@/lib/types";
 import { TableToolbar } from "../_components/table-toolbar";
 import { SortHeader } from "../_components/sort-header";
 import { Pagination } from "../_components/pagination";
+import { useConfirmDialog } from "../_components/confirm-dialog";
+import { EditButton, DeleteButton, ViewButton } from "../_components/action-icons";
+import { deleteCustomer } from "./actions";
+import CustomerForm from "./customer-form";
 
 const PAGE_SIZE = 10;
 
@@ -19,11 +24,20 @@ export default function CustomersPageClient({
 }: {
   customers: CustomerSummary[];
 }) {
+  const router = useRouter();
+  const { confirm, dialog } = useConfirmDialog();
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<string | null>("lastVisit");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<CustomerSummary | null>(null);
+  const [modal, setModal] = useState<"new" | CustomerSummary | null>(null);
+
+  async function handleDelete(id: string) {
+    if (!(await confirm("Delete this customer? Their booking history is kept, but they'll drop off this list."))) return;
+    await deleteCustomer(id);
+    router.refresh();
+  }
 
   function handleSort(key: string) {
     if (sortKey === key) {
@@ -80,11 +94,19 @@ export default function CustomersPageClient({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Everyone who has made a booking, with their history.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Everyone who has made a booking, with their history.
+          </p>
+        </div>
+        <button
+          onClick={() => setModal("new")}
+          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+        >
+          + Add Customer
+        </button>
       </div>
 
       <div className="space-y-3">
@@ -150,14 +172,17 @@ export default function CustomersPageClient({
                   <td className="px-4 py-3 font-medium text-gray-900">
                     ${c.totalSpent.toFixed(2)}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{c.lastVisit}</td>
+                  <td className="px-4 py-3 text-gray-600">{c.lastVisit || "—"}</td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => setSelected(c)}
-                      className="text-sm font-medium text-brand-600 hover:underline"
-                    >
-                      View History
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <ViewButton onClick={() => setSelected(c)} label="View history" />
+                      {c.id && (
+                        <>
+                          <EditButton onClick={() => setModal(c)} label="Edit customer" />
+                          <DeleteButton onClick={() => handleDelete(c.id!)} label="Delete customer" />
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -327,6 +352,37 @@ export default function CustomersPageClient({
           </div>
         </div>
       )}
+
+      {modal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={() => setModal(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {modal === "new" ? "Add a customer" : "Edit customer"}
+              </h2>
+              <button
+                onClick={() => setModal(null)}
+                aria-label="Close"
+                className="text-xl leading-none text-gray-400 hover:text-gray-600"
+              >
+                ×
+              </button>
+            </div>
+            <CustomerForm
+              customer={modal === "new" ? undefined : modal}
+              onDone={() => setModal(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {dialog}
     </div>
   );
 }

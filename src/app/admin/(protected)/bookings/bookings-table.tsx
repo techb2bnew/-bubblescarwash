@@ -31,12 +31,10 @@ const TYPE_OPTIONS = [
 
 export default function BookingsTable({
   bookings,
-  inclusionNames,
   blockedDates,
   settings,
 }: {
   bookings: Booking[];
-  inclusionNames: Record<string, string>;
   blockedDates: BlockedDate[];
   settings: BusinessSettings;
 }) {
@@ -271,7 +269,7 @@ export default function BookingsTable({
                     <>
                       {b.services.name}
                       <div className="text-xs uppercase tracking-wide text-gray-400">
-                        {b.services.vehicle_type}
+                        {b.vehicle_type}
                       </div>
                     </>
                   ) : (
@@ -280,9 +278,9 @@ export default function BookingsTable({
                 </td>
                 <td className="px-4 py-3">
                   <AddOnsBadge
-                    names={(b.services?.service_inclusions ?? [])
-                      .map((si) => inclusionNames[si.inclusion_id])
-                      .filter((name): name is string => Boolean(name))}
+                    names={(b.services?.inclusions ?? [])
+                      .filter((i) => i.active)
+                      .map((i) => i.name)}
                   />
                 </td>
                 <td className="px-4 py-3">

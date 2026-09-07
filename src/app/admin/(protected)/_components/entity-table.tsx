@@ -7,6 +7,7 @@ import { FilterSelect, TableToolbar } from "./table-toolbar";
 import { SortHeader } from "./sort-header";
 import { Pagination } from "./pagination";
 import { useConfirmDialog } from "./confirm-dialog";
+import { EditButton, DeleteButton } from "./action-icons";
 
 const PAGE_SIZE = 10;
 const ACTIVE_OPTIONS = [
@@ -175,19 +176,11 @@ export function EntityTable({
                     {e.active ? "Active" : "Inactive"}
                   </button>
                 </td>
-                <td className="space-x-3 px-4 py-3 text-right">
-                  <button
-                    onClick={() => onEdit(e)}
-                    className="text-sm font-medium text-blue-600 hover:underline"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(e.id)}
-                    className="text-sm font-medium text-red-600 hover:underline"
-                  >
-                    Delete
-                  </button>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <EditButton onClick={() => onEdit(e)} />
+                    <DeleteButton onClick={() => handleDelete(e.id)} />
+                  </div>
                 </td>
               </tr>
             ))}

@@ -1,10 +1,10 @@
 "use server";
 
-import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getStripeClient, getStripeCurrency } from "@/lib/stripe";
 import { getPaymentMode, type PaymentMode } from "@/lib/payment-mode";
 import { onGiftCardPurchased } from "@/lib/gift-card-sync";
+import { getSiteOrigin } from "@/lib/site-origin";
 import type { PaymentStatus } from "@/lib/types";
 
 export async function getGiftCardPaymentMode(): Promise<PaymentMode> {
@@ -19,16 +19,6 @@ export interface GiftCardPurchaseInput {
   recipient_name?: string;
   recipient_email?: string;
   message?: string;
-}
-
-async function getSiteOrigin(): Promise<string> {
-  const h = await headers();
-  const origin = h.get("origin");
-  if (origin) return origin;
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? "https";
-  if (host) return `${proto}://${host}`;
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 }
 
 export async function createGiftCardCheckoutSession(

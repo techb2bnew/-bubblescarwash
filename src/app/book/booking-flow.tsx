@@ -3,13 +3,10 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type {
-  AddOn,
   BlockedDate,
   BusinessSettings,
-  CategoryRow,
   Extra,
   Service,
-  ServiceCategory,
   VehicleType,
   VehicleTypeRow,
 } from "@/lib/types";
@@ -57,19 +54,15 @@ function formatExpiry(value: string): string {
 
 export default function BookingFlow({
   services,
-  inclusions,
   extras,
   vehicleTypes,
-  categories,
   settings,
   blockedDates,
   paymentMode,
 }: {
   services: Service[];
-  inclusions: AddOn[];
   extras: Extra[];
   vehicleTypes: VehicleTypeRow[];
-  categories: CategoryRow[];
   settings: BusinessSettings;
   blockedDates: BlockedDate[];
   paymentMode: PaymentMode;
@@ -77,7 +70,6 @@ export default function BookingFlow({
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [vehicle, setVehicle] = useState<VehicleType>(vehicleTypes[0]?.slug ?? "");
-  const [category, setCategory] = useState<ServiceCategory>(categories[0]?.slug ?? "");
   const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -125,19 +117,7 @@ export default function BookingFlow({
 
   const weeks = useMemo(() => getMonthGrid(cursor.year, cursor.month), [cursor]);
 
-  const tierServices = services.filter(
-    (s) => s.vehicle_type === vehicle && s.category === category,
-  );
-  const categoryInclusions = inclusions
-    .filter((i) => i.category === category && i.active)
-    .sort((a, b) => a.sort_order - b.sort_order);
-
-  function hasInclusion(service: Service, inclusionId: string) {
-    return (
-      service.service_inclusions?.some((si) => si.inclusion_id === inclusionId) ??
-      false
-    );
-  }
+  const vehicleServices = services.filter((s) => s.vehicle_type === vehicle);
 
   function toggleExtra(id: string) {
     setSelectedExtraIds((prev) =>
@@ -248,6 +228,7 @@ export default function BookingFlow({
     setError(null);
     const bookingInput = {
       service_id: selectedService.id,
+      vehicle_type: vehicle,
       booking_date: selectedDate,
       booking_time: `${selectedTime}:00`,
       customer_name: name,
@@ -319,113 +300,74 @@ export default function BookingFlow({
           </div>
 
           <p className="mb-2 text-sm font-medium text-gray-700">Select Service:</p>
-          <div className="mb-6 grid grid-cols-2 gap-2">
-            {categories.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => {
-                  setCategory(c.slug);
-                  setSelectedService(null);
-                }}
-                className={`rounded-md border py-3 text-sm font-medium ${
-                  category === c.slug
-                    ? "border-brand-600 bg-brand-50 text-brand-700"
-                    : "border-gray-300 text-gray-600 hover:border-gray-400"
-                }`}
-              >
-                {c.name} Service
-              </button>
-            ))}
-          </div>
-
-          {tierServices.length === 0 ? (
+          {vehicleServices.length === 0 ? (
             <p className="text-sm text-gray-400">
-              No services configured for this combination yet.
+              No services configured for this vehicle type yet.
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr>
-                    <th className="w-1/3" />
-                    {tierServices.map((s) => (
-                      <th
-                        key={s.id}
-                        className="border-l border-gray-100 p-0 text-center align-top"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => setSelectedService(s)}
-                          className="flex w-full flex-col items-center gap-1 p-3"
-                        >
-                          <span
-                            className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
-                              selectedService?.id === s.id
-                                ? "border-brand-600"
-                                : "border-gray-300"
-                            }`}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {vehicleServices.map((s) => {
+                const activeInclusions = (s.inclusions ?? [])
+                  .filter((i) => i.active)
+                  .sort((a, b) => a.sort_order - b.sort_order);
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSelectedService(s)}
+                    className={`rounded-lg border p-4 text-left ${
+                      selectedService?.id === s.id
+                        ? "border-brand-600 bg-brand-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-semibold text-gray-900">{s.name}</span>
+                      {s.discount_active && s.discount_percent > 0 ? (
+                        <span className="flex shrink-0 items-baseline gap-1.5">
+                          <span className="text-xs text-gray-400 line-through">
+                            ${s.price.toFixed(2)}
+                          </span>
+                          <span className="font-bold text-brand-600">
+                            ${s.effective_price.toFixed(2)}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="shrink-0 font-bold text-brand-600">
+                          ${s.price.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">{s.duration_minutes} min</p>
+                    {activeInclusions.length > 0 && (
+                      <ul className="mt-2 space-y-1">
+                        {activeInclusions.map((inc) => (
+                          <li
+                            key={inc.id}
+                            className="flex items-center gap-1.5 text-xs text-gray-600"
                           >
-                            {selectedService?.id === s.id && (
-                              <span className="h-2.5 w-2.5 rounded-full bg-brand-600" />
-                            )}
-                          </span>
-                          <span className="font-semibold text-gray-900">
-                            {s.name}
-                          </span>
-                          {s.discount_active && s.discount_percent > 0 ? (
-                            <span className="flex items-baseline gap-1.5">
-                              <span className="text-xs text-gray-400 line-through">
-                                ${s.price.toFixed(2)}
-                              </span>
-                              <span className="font-bold text-brand-600">
-                                ${s.effective_price.toFixed(2)}
-                              </span>
-                            </span>
-                          ) : (
-                            <span className="font-bold text-brand-600">
-                              ${s.price.toFixed(2)}
-                            </span>
-                          )}
-                        </button>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {categoryInclusions.map((inc, i) => (
-                    <tr key={inc.id} className={i % 2 === 0 ? "bg-gray-50" : ""}>
-                      <td className="p-2 pl-3 text-xs text-gray-600">
-                        {inc.name}
-                      </td>
-                      {tierServices.map((s) => (
-                        <td
-                          key={s.id}
-                          className="border-l border-gray-100 p-2 text-center"
-                        >
-                          {hasInclusion(s, inc.id) ? (
-                            <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-white">
+                            <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
                               <svg
-                                width="10"
-                                height="10"
+                                width="8"
+                                height="8"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
-                                strokeWidth="3"
+                                strokeWidth="4"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                               >
                                 <path d="M20 6 9 17l-5-5" />
                               </svg>
                             </span>
-                          ) : (
-                            <span className="inline-block h-2 w-2 rounded-full bg-gray-200" />
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                            {inc.name}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
 

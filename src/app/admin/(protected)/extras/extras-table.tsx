@@ -8,6 +8,7 @@ import { FilterSelect, TableToolbar } from "../_components/table-toolbar";
 import { SortHeader } from "../_components/sort-header";
 import { Pagination } from "../_components/pagination";
 import { useConfirmDialog } from "../_components/confirm-dialog";
+import { EditButton, DeleteButton } from "../_components/action-icons";
 
 const PAGE_SIZE = 10;
 const VISIBILITY_OPTIONS = [
@@ -176,19 +177,11 @@ export default function ExtrasTable({
                     {e.active ? "Visible" : "Hidden"}
                   </button>
                 </td>
-                <td className="space-x-3 px-4 py-3 text-right">
-                  <button
-                    onClick={() => onEdit(e)}
-                    className="text-sm font-medium text-blue-600 hover:underline"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(e.id)}
-                    className="text-sm font-medium text-red-600 hover:underline"
-                  >
-                    Delete
-                  </button>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <EditButton onClick={() => onEdit(e)} />
+                    <DeleteButton onClick={() => handleDelete(e.id)} />
+                  </div>
                 </td>
               </tr>
             ))}

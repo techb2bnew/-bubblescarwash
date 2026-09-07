@@ -1,21 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import type { AddOn, CategoryRow, ServiceCategory } from "@/lib/types";
+import Link from "next/link";
+import type { AddOn } from "@/lib/types";
 import AddOnsTable from "./addons-table";
 import AddOnForm from "./addon-form";
 
+export type AddOnWithService = AddOn & { services: { id: string; name: string } | null };
+export type ServiceOption = { id: string; name: string };
+
 export default function AddOnsPageClient({
   addOns,
-  categories,
+  services,
 }: {
-  addOns: AddOn[];
-  categories: CategoryRow[];
+  addOns: AddOnWithService[];
+  services: ServiceOption[];
 }) {
-  const [tab, setTab] = useState<ServiceCategory>(categories[0]?.slug ?? "");
-  const [modal, setModal] = useState<"new" | AddOn | null>(null);
-
-  const visibleAddOns = addOns.filter((a) => a.category === tab);
+  const [modal, setModal] = useState<"new" | AddOnWithService | null>(null);
 
   return (
     <div className="space-y-6">
@@ -23,34 +24,32 @@ export default function AddOnsPageClient({
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Add-Ons</h1>
           <p className="mt-1 text-sm text-gray-500">
-            The feature checklist shown on each service&apos;s comparison table.
+            Every add-on across all services. Each one belongs to exactly one
+            service — you can also manage a service&apos;s own add-ons from
+            inside its edit form on the Services page.
           </p>
         </div>
         <button
           onClick={() => setModal("new")}
-          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          disabled={services.length === 0}
+          title={services.length === 0 ? "Add a service first — an add-on must belong to one" : undefined}
+          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
         >
           + Add Add-On
         </button>
       </div>
 
-      <div className="flex gap-2 border-b border-gray-200">
-        {categories.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => setTab(c.slug)}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${
-              tab === c.slug
-                ? "border-brand-600 text-brand-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            {c.name}
-          </button>
-        ))}
-      </div>
+      {services.length === 0 && (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          You don&apos;t have any services yet — add one on the{" "}
+          <Link href="/admin/services" className="font-medium underline">
+            Services
+          </Link>{" "}
+          page first, since every add-on has to belong to one.
+        </p>
+      )}
 
-      <AddOnsTable addOns={visibleAddOns} onEdit={(a) => setModal(a)} />
+      <AddOnsTable addOns={addOns} services={services} onEdit={(a) => setModal(a)} />
 
       {modal && (
         <div
@@ -75,8 +74,7 @@ export default function AddOnsPageClient({
             </div>
             <AddOnForm
               addOn={modal === "new" ? undefined : modal}
-              categories={categories}
-              defaultCategory={tab}
+              services={services}
               onDone={() => setModal(null)}
             />
           </div>

@@ -79,6 +79,12 @@ export function generateTimeSlots(
   return slots;
 }
 
+/** "HH:MM" (or "HH:MM:SS") to minutes since midnight. */
+export function toMinutes(time: string): number {
+  const [h, m] = time.slice(0, 5).split(":").map(Number);
+  return h * 60 + m;
+}
+
 /** Clock-hour bucket for capacity ("09:00" and "09:30" both map to "09:00"). */
 export function hourBucketKey(time: string): string {
   const [h] = time.split(":").map(Number);
