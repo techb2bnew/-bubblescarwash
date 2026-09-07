@@ -85,6 +85,145 @@ function getVehicleTypeIcon(name: string) {
   );
 }
 
+// A distinct icon per add-on, matched by phrase in its (admin-configured, so
+// arbitrary) name — checked most-specific-first so near-identical extras
+// ("Mats Steam Clean" vs "Carpet Steam Clean") still get visually different
+// icons instead of all collapsing onto one generic symbol.
+function getExtraIcon(name: string) {
+  const lower = name.toLowerCase();
+
+  if (lower.includes("mag wheel")) {
+    // alloy rim: spoked wheel
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M12 12 12 5M12 12l6 3.5M12 12l-6 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.6" />
+      </svg>
+    );
+  }
+  if (lower.includes("wheels detailed")) {
+    // tyre: circle with tread dashes
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M12 4v2M12 18v2M4 12h2M18 12h2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (lower.includes("leather seats") || lower.includes("leather treatment")) {
+    // stitched seat back
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <rect x="6" y="4" width="12" height="16" rx="3" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M9 4v16M15 4v16" stroke="currentColor" strokeWidth="1.2" strokeDasharray="1.5 2" />
+      </svg>
+    );
+  }
+  if (lower.includes("cloth seat") || lower.includes("seats steam")) {
+    // seat + steam wisps
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <path d="M7 20v-7a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M9 4c-.8 1-.8 1.6 0 2.6M13 4c-.8 1-.8 1.6 0 2.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (lower.includes("carpet extraction")) {
+    // vacuum nozzle
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <rect x="4" y="10" width="6" height="9" rx="2" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M10 13h5a4 4 0 0 0 4-4V7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (lower.includes("carpet steam")) {
+    // floor with steam
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <path d="M3 17h18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <path d="M8 5c-1 1.4-1 2.2 0 3.6M12 5c-1 1.4-1 2.2 0 3.6M16 5c-1 1.4-1 2.2 0 3.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        <path d="M3 17V9h18v8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (lower.includes("mats steam") || lower.includes("mat")) {
+    // floor mat grid
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <rect x="4" y="6" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M4 10h16M4 14h16" stroke="currentColor" strokeWidth="1.4" />
+      </svg>
+    );
+  }
+  if (lower.includes("protective wax") || lower.includes("protect")) {
+    // shield
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <path d="M12 3 3 7.5v5c0 5 4 8.5 9 10 5-1.5 9-5 9-10v-5L12 3Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (lower.includes("hand wax")) {
+    // hand with sparkle
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <path d="M8 13V6.5a1.5 1.5 0 0 1 3 0V11M11 11V5a1.5 1.5 0 0 1 3 0v6M14 12V7a1.5 1.5 0 0 1 3 0v7c0 3-2 5-5.5 5-2.5 0-3.7-1-4.5-2.5L5 15" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (lower.includes("head light")) {
+    // beam of light
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <circle cx="6" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M9 10l10-3M9 12h11M9 14l10 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (lower.includes("clay bar")) {
+    // rounded bar
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <rect x="4" y="9" width="16" height="6" rx="3" stroke="currentColor" strokeWidth="1.6" />
+      </svg>
+    );
+  }
+  if (lower.includes("cut") && lower.includes("polish")) {
+    // buffer pad
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <circle cx="12" cy="12" r="7" stroke="currentColor" strokeWidth="1.6" />
+        <circle cx="12" cy="12" r="7" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 3" />
+      </svg>
+    );
+  }
+  if (lower.includes("interior detail")) {
+    // steering wheel
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.6" />
+        <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M12 6v4M8 15l3-1.5M16 15l-3-1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (lower.includes("full detail")) {
+    // sparkle burst
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <path d="M12 3v5M12 16v5M3 12h5M16 12h5M6 6l3.5 3.5M14.5 14.5 18 18M18 6l-3.5 3.5M9.5 14.5 6 18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 type Step = 1 | 2 | 3;
 
 const PAYMENT_METHODS = [
@@ -702,16 +841,25 @@ export default function BookingFlow({
                         : "border-gray-200 hover:border-brand-200 hover:shadow-md"
                     }`}
                   >
-                    <div className="min-w-0">
-                      <p className="font-bold text-gray-900">{extra.name}</p>
-                      {extra.description && (
-                        <p className="mt-0.5 text-xs text-gray-500">
-                          {extra.description}
+                    <div className="flex min-w-0 gap-3">
+                      <span
+                        className={`flex h-9 w-9 flex-none items-center justify-center rounded-lg ${
+                          checked ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-600"
+                        }`}
+                      >
+                        {getExtraIcon(extra.name)}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="font-bold text-gray-900">{extra.name}</p>
+                        {extra.description && (
+                          <p className="mt-0.5 text-xs text-gray-500">
+                            {extra.description}
+                          </p>
+                        )}
+                        <p className="mt-2 text-sm font-extrabold text-brand-600">
+                          ${extra.price.toFixed(2)}
                         </p>
-                      )}
-                      <p className="mt-2 text-sm font-extrabold text-brand-600">
-                        ${extra.price.toFixed(2)}
-                      </p>
+                      </div>
                     </div>
                     <span
                       className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-md border-2 transition ${
