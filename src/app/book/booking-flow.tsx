@@ -43,7 +43,13 @@ const BOOKING_LIMIT = 5;
 // "SUV/4WD" an actual SUV, etc. Each car is orange to match the Bubbles
 // brand palette. Falls back to cycling through the set for any name that
 // doesn't match a keyword.
-const VEHICLE_TYPE_PHOTOS: { keywords: string[]; src: string; alt: string; position: string }[] = [
+const VEHICLE_TYPE_PHOTOS: {
+  keywords: string[];
+  src: string;
+  alt: string;
+  position: string;
+  fit?: "cover" | "contain";
+}[] = [
   {
     keywords: ["sedan"],
     src: "https://images.pexels.com/photos/12590806/pexels-photo-12590806.jpeg",
@@ -64,9 +70,10 @@ const VEHICLE_TYPE_PHOTOS: { keywords: string[]; src: string; alt: string; posit
   },
   {
     keywords: ["van", "minibus", "xxl", "7 seat", "7seat"],
-    src: "https://images.pexels.com/photos/28087030/pexels-photo-28087030.jpeg",
-    alt: "Orange van, side profile",
-    position: "center 70%",
+    src: "https://images.pexels.com/photos/36228059/pexels-photo-36228059.jpeg",
+    alt: "Orange van, side profile on the highway",
+    position: "center center",
+    fit: "contain",
   },
 ];
 
@@ -407,14 +414,14 @@ export default function BookingFlow({
                       key={v.id}
                       className={`absolute inset-0 transition-opacity duration-500 ${
                         vehicle === v.slug ? "opacity-100" : "pointer-events-none opacity-0"
-                      }`}
+                      } ${photo.fit === "contain" ? "bg-gray-950" : ""}`}
                     >
                       <Image
                         src={photo.src}
                         alt={`${photo.alt} — ${v.name}`}
                         fill
                         sizes="(max-width: 768px) 100vw, 700px"
-                        className="object-cover"
+                        className={photo.fit === "contain" ? "object-contain" : "object-cover"}
                         style={{ objectPosition: photo.position }}
                       />
                     </div>
