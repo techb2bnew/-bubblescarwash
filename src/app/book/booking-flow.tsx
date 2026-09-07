@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type {
   AddOn,
@@ -38,49 +37,52 @@ import {
 
 const BOOKING_LIMIT = 5;
 
-// A real photo per vehicle body type, matched by keywords in the
-// admin-configured vehicle type name — so "Sedan" shows an actual sedan,
-// "SUV/4WD" an actual SUV, etc. Each car is orange to match the Bubbles
-// brand palette. Falls back to cycling through the set for any name that
-// doesn't match a keyword.
-const VEHICLE_TYPE_PHOTOS: {
-  keywords: string[];
-  src: string;
-  alt: string;
-  position: string;
-  fit?: "cover" | "contain";
-}[] = [
-  {
-    keywords: ["sedan"],
-    src: "https://images.pexels.com/photos/12590806/pexels-photo-12590806.jpeg",
-    alt: "Orange sedan, close-up side profile",
-    position: "center 40%",
-  },
-  {
-    keywords: ["suv", "4wd"],
-    src: "https://images.pexels.com/photos/19923026/pexels-photo-19923026.jpeg",
-    alt: "Orange SUV, side profile",
-    position: "center 55%",
-  },
-  {
-    keywords: ["pickup", "x-large", "xlarge", "ute"],
-    src: "https://images.pexels.com/photos/14156803/pexels-photo-14156803.jpeg",
-    alt: "Orange pickup truck, side profile",
-    position: "center 55%",
-  },
-  {
-    keywords: ["van", "minibus", "xxl", "7 seat", "7seat"],
-    src: "https://images.pexels.com/photos/36228059/pexels-photo-36228059.jpeg",
-    alt: "Orange van, side profile on the highway",
-    position: "center center",
-    fit: "contain",
-  },
-];
-
-function getVehicleTypePhoto(name: string, fallbackIndex: number) {
+// A simple car-silhouette icon per vehicle body type, matched by keywords in
+// the admin-configured vehicle type name — clean and consistent instead of
+// relying on stock photos that vary wildly in quality/crop.
+function getVehicleTypeIcon(name: string) {
   const lower = name.toLowerCase();
-  const match = VEHICLE_TYPE_PHOTOS.find((p) => p.keywords.some((k) => lower.includes(k)));
-  return match ?? VEHICLE_TYPE_PHOTOS[fallbackIndex % VEHICLE_TYPE_PHOTOS.length];
+  if (lower.includes("van") || lower.includes("minibus") || lower.includes("xxl") || lower.includes("7 seat") || lower.includes("7seat")) {
+    return (
+      <svg viewBox="0 0 48 24" fill="none" className="h-8 w-14">
+        <path d="M3 17V9a2 2 0 0 1 2-2h26l9 6v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M3 17h37" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M22 7v10M31 13v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <circle cx="12" cy="19" r="2.4" stroke="currentColor" strokeWidth="1.8" />
+        <circle cx="33" cy="19" r="2.4" stroke="currentColor" strokeWidth="1.8" />
+      </svg>
+    );
+  }
+  if (lower.includes("pickup") || lower.includes("x-large") || lower.includes("xlarge") || lower.includes("ute")) {
+    return (
+      <svg viewBox="0 0 48 24" fill="none" className="h-8 w-14">
+        <path d="M3 17v-5l6-5h9v10M25 17V9h8l9 5v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M3 17h39" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <circle cx="13" cy="19" r="2.4" stroke="currentColor" strokeWidth="1.8" />
+        <circle cx="34" cy="19" r="2.4" stroke="currentColor" strokeWidth="1.8" />
+      </svg>
+    );
+  }
+  if (lower.includes("suv") || lower.includes("4wd")) {
+    return (
+      <svg viewBox="0 0 48 24" fill="none" className="h-8 w-14">
+        <path d="M4 17v-4l4-6h20l8 5h8v5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M4 17h40" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M11 7v6M28 7v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <circle cx="13" cy="19" r="2.4" stroke="currentColor" strokeWidth="1.8" />
+        <circle cx="35" cy="19" r="2.4" stroke="currentColor" strokeWidth="1.8" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 48 24" fill="none" className="h-8 w-14">
+      <path d="M5 17v-3l5-7h18l7 6h8v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 17h38" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M12 7l-2 5M24 7v5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="14" cy="19" r="2.4" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="34" cy="19" r="2.4" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  );
 }
 
 type Step = 1 | 2 | 3;
@@ -320,7 +322,7 @@ export default function BookingFlow({
   const stepLabels = ["Vehicle & Service", "Add-ons", "Your Details"];
 
   return (
-    <div className="mx-auto max-w-[1600px]">
+    <div className="mx-auto max-w-3xl">
       <div className="mb-10 flex items-center justify-center">
         {[1, 2, 3].map((n) => (
           <div key={n} className="flex items-center">
@@ -371,60 +373,29 @@ export default function BookingFlow({
           </h2>
 
           {vehicleTypes.length > 0 && (
-            <div
-              className="relative mb-7 overflow-hidden rounded-2xl"
-              style={{
-                backgroundColor: "#0b1220",
-                backgroundImage:
-                  "repeating-linear-gradient(115deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 60px)",
-              }}
-            >
-              <div className="relative px-5 pt-8 text-center sm:px-8 sm:pt-10">
-                <span className="text-xs font-bold uppercase tracking-[0.2em] text-brand-400">
-                  Step 01
-                </span>
-                <h3 className="mt-2 text-2xl font-extrabold text-white sm:text-3xl">
-                  Choose Your Car Type
-                </h3>
-                <div className="mt-6 inline-flex flex-wrap justify-center gap-2 rounded-full bg-white/5 p-1.5 ring-1 ring-white/10">
-                  {vehicleTypes.map((v) => (
+            <div className="mb-7">
+              <p className="mb-4 text-sm font-semibold text-gray-700">What are you driving?</p>
+              <div className="grid grid-cols-2 gap-3">
+                {vehicleTypes.map((v) => {
+                  const active = vehicle === v.slug;
+                  return (
                     <button
                       key={v.id}
                       onClick={() => {
                         setVehicle(v.slug);
                         setSelectedService(null);
                       }}
-                      className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
-                        vehicle === v.slug
-                          ? "bg-brand-600 text-white shadow-sm"
-                          : "text-gray-300 hover:bg-white/10 hover:text-white"
+                      className={`flex flex-col items-center gap-2 rounded-2xl border-2 px-4 py-6 text-center transition ${
+                        active
+                          ? "border-brand-600 bg-brand-50 shadow-sm shadow-brand-600/10"
+                          : "border-gray-200 hover:border-brand-200 hover:bg-gray-50"
                       }`}
                     >
-                      {v.name}
+                      <span className={active ? "text-brand-600" : "text-gray-400"}>
+                        {getVehicleTypeIcon(v.name)}
+                      </span>
+                      <span className="text-sm font-bold text-gray-900">{v.name}</span>
                     </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="relative mt-4 h-64 sm:h-80">
-                {vehicleTypes.map((v, i) => {
-                  const photo = getVehicleTypePhoto(v.name, i);
-                  return (
-                    <div
-                      key={v.id}
-                      className={`absolute inset-0 transition-opacity duration-500 ${
-                        vehicle === v.slug ? "opacity-100" : "pointer-events-none opacity-0"
-                      } ${photo.fit === "contain" ? "px-[2%]" : ""}`}
-                    >
-                      <Image
-                        src={photo.src}
-                        alt={`${photo.alt} — ${v.name}`}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 700px"
-                        className={photo.fit === "contain" ? "object-contain" : "object-cover"}
-                        style={{ objectPosition: photo.position }}
-                      />
-                    </div>
                   );
                 })}
               </div>
