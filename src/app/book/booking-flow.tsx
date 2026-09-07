@@ -368,9 +368,12 @@ export default function BookingFlow({
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-600">
             Get Started
           </p>
-          <h2 className="mb-6 mt-1.5 text-2xl font-extrabold text-gray-900">
+          <h2 className="mt-1.5 text-2xl font-extrabold text-gray-900">
             Select Vehicle &amp; <span className="wave-word">Service</span>
           </h2>
+          <p className="mb-6 mt-1 text-sm text-gray-500">
+            Choose the vehicle that best matches what you drive.
+          </p>
 
           {vehicleTypes.length > 0 && (
             <div className="mb-7">
@@ -385,10 +388,10 @@ export default function BookingFlow({
                         setVehicle(v.slug);
                         setSelectedService(null);
                       }}
-                      className={`flex flex-col items-center gap-2 rounded-2xl border-2 px-4 py-6 text-center transition ${
+                      className={`flex flex-col items-center gap-2 rounded-2xl border-2 px-4 py-6 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
                         active
-                          ? "border-brand-600 bg-brand-50 shadow-sm shadow-brand-600/10"
-                          : "border-gray-200 hover:border-brand-200 hover:bg-gray-50"
+                          ? "border-brand-600 bg-brand-50 shadow-brand-600/10"
+                          : "border-gray-200 hover:border-brand-200"
                       }`}
                     >
                       <span className={active ? "text-brand-600" : "text-gray-400"}>
@@ -411,9 +414,9 @@ export default function BookingFlow({
                   setCategory(c.slug);
                   setSelectedService(null);
                 }}
-                className={`rounded-xl border-2 py-3.5 text-sm font-semibold transition ${
+                className={`rounded-xl border-2 py-3.5 text-sm font-semibold shadow-sm transition ${
                   category === c.slug
-                    ? "border-brand-600 bg-brand-50 text-brand-700 shadow-sm"
+                    ? "border-brand-600 bg-brand-50 text-brand-700"
                     : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
                 }`}
               >
@@ -429,7 +432,7 @@ export default function BookingFlow({
           ) : (
             <div
               className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${
-                tierServices.length >= 3 ? "lg:grid-cols-3" : ""
+                tierServices.length >= 4 ? "lg:grid-cols-4" : tierServices.length >= 3 ? "lg:grid-cols-3" : ""
               }`}
             >
               {tierServices.map((s, si) => {
@@ -441,10 +444,10 @@ export default function BookingFlow({
                     key={s.id}
                     type="button"
                     onClick={() => setSelectedService(s)}
-                    className={`relative flex flex-col rounded-2xl border-2 p-5 text-left transition ${
+                    className={`relative flex flex-col rounded-2xl border-2 p-5 text-left shadow-sm transition hover:-translate-y-0.5 ${
                       active
                         ? "border-brand-600 bg-brand-50/50 shadow-lg shadow-brand-600/10"
-                        : "border-gray-200 hover:border-brand-200 hover:shadow-sm"
+                        : "border-gray-200 hover:border-brand-200 hover:shadow-md"
                     }`}
                   >
                     {popular && (
@@ -624,6 +627,35 @@ export default function BookingFlow({
                   </p>
                 )}
               </div>
+
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 shadow-sm md:w-64 md:flex-none">
+                <p className="text-xs font-bold uppercase tracking-wide text-brand-600">
+                  Your Booking
+                </p>
+                <div className="mt-3 space-y-2 text-sm text-gray-700">
+                  <p>
+                    <span className="text-gray-400">Vehicle: </span>
+                    {vehicleTypes.find((v) => v.slug === vehicle)?.name ?? "—"}
+                  </p>
+                  <p>
+                    <span className="text-gray-400">Service: </span>
+                    {selectedService?.name ?? "—"}
+                  </p>
+                  <p>
+                    <span className="text-gray-400">Date: </span>
+                    {selectedDate ?? "—"}
+                  </p>
+                  <p>
+                    <span className="text-gray-400">Time: </span>
+                    {selectedTime ? formatTimeLabel(selectedTime) : "—"}
+                  </p>
+                </div>
+                {selectedService && (
+                  <p className="mt-3 border-t border-gray-200 pt-3 text-base font-extrabold text-brand-600">
+                    ${selectedService.effective_price.toFixed(2)}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
@@ -664,10 +696,10 @@ export default function BookingFlow({
                 return (
                   <label
                     key={extra.id}
-                    className={`flex cursor-pointer items-start justify-between gap-3 rounded-2xl border-2 p-4 transition ${
+                    className={`flex cursor-pointer items-start justify-between gap-3 rounded-2xl border-2 p-4 shadow-sm transition hover:-translate-y-0.5 ${
                       checked
-                        ? "border-brand-600 bg-brand-50/50 shadow-sm shadow-brand-600/10"
-                        : "border-gray-200 hover:border-brand-200 hover:shadow-sm"
+                        ? "border-brand-600 bg-brand-50/50 shadow-brand-600/10"
+                        : "border-gray-200 hover:border-brand-200 hover:shadow-md"
                     }`}
                   >
                     <div className="min-w-0">
@@ -997,6 +1029,53 @@ export default function BookingFlow({
           </div>
         </div>
       )}
+
+      <div className="mt-10 grid grid-cols-2 gap-4 border-t border-gray-100 pt-8 sm:grid-cols-4">
+        {[
+          {
+            label: "Trusted by 5,000+ Happy Customers",
+            icon: (
+              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+                <circle cx="12" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.6" />
+                <path d="M5 20c0-3.6 3-6 7-6s7 2.4 7 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+            ),
+          },
+          {
+            label: "High Quality Care & Products",
+            icon: (
+              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+                <path d="M12 3 3 7.5v5c0 5 4 8.5 9 10 5-1.5 9-5 9-10v-5L12 3Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+              </svg>
+            ),
+          },
+          {
+            label: "Safe for Your Car & the Environment",
+            icon: (
+              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+                <path d="M5 19c0-8 4-14 14-14 0 10-6 14-14 14Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                <path d="M6 18c3-3 5-6 12-11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+            ),
+          },
+          {
+            label: "Save Time with Online Booking",
+            icon: (
+              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+                <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.6" />
+                <path d="M12 7.5V12l3 2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ),
+          },
+        ].map((item) => (
+          <div key={item.label} className="flex flex-col items-center gap-2 text-center">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-50 text-brand-600">
+              {item.icon}
+            </span>
+            <p className="text-xs font-semibold text-gray-600">{item.label}</p>
+          </div>
+        ))}
+      </div>
 
       {limitConfirmCount !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
