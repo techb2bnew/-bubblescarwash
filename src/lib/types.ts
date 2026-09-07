@@ -187,6 +187,17 @@ export interface Booking {
   booking_extras?: BookingExtra[];
 }
 
+/** A stored admin notification (renamed to avoid colliding with the browser's global `Notification`). */
+export interface NotificationRecord {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  data: Record<string, string>;
+  read_at: string | null;
+  created_at: string;
+}
+
 export interface CustomerSummary {
   key: string;
   name: string;

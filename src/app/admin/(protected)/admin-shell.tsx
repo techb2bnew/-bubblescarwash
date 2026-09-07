@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Sidebar from "./sidebar";
+import NotificationBell from "./notifications/notification-bell";
 
 export default function AdminShell({
   children,
@@ -16,11 +17,11 @@ export default function AdminShell({
       <Sidebar open={mobileOpen} onClose={() => setMobileOpen(false)} />
 
       <div className="flex h-screen flex-1 flex-col overflow-hidden">
-        <header className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 md:hidden">
+        <header className="flex items-center gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3">
           <button
             onClick={() => setMobileOpen(true)}
             aria-label="Open menu"
-            className="rounded-md p-1.5 text-gray-600 hover:bg-gray-100"
+            className="rounded-md p-1.5 text-gray-600 hover:bg-gray-100 md:hidden"
           >
             <svg
               width="22"
@@ -39,9 +40,12 @@ export default function AdminShell({
             alt="Bubbles Car Wash & Cafe"
             width={641}
             height={428}
-            className="h-8 w-auto"
+            className="h-8 w-auto md:hidden"
           />
-          <span className="text-sm font-semibold text-gray-900">Admin</span>
+          <span className="text-sm font-semibold text-gray-900 md:hidden">Admin</span>
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 md:px-8 md:py-8">

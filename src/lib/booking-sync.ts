@@ -10,6 +10,7 @@ import {
   sendBookingRescheduledEmails,
   type BookingEmailDetails,
 } from "@/lib/email";
+import { notifyAdmins } from "@/lib/push-notifications";
 
 export interface BookingNotificationInput {
   bookingId: string;
@@ -178,6 +179,13 @@ export async function onBookingCreated(
       const emailDetails = buildEmailDetails(booking, business, calendarLink);
       await sendBookingCreatedEmails(emailDetails, adminEmail);
     }
+
+    await notifyAdmins({
+      type: "booking_created",
+      title: "New booking",
+      body: `${booking.customer_name} — ${booking.services?.name ?? "Booking"} on ${booking.booking_date}`,
+      data: { bookingId: input.bookingId },
+    });
   } catch (err) {
     console.error("[booking-sync] onBookingCreated failed:", err);
   }
