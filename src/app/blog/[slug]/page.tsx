@@ -1,4 +1,5 @@
 import Image from "next/image";
+import MarqueeBand from "../../_components/marquee-band";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import SiteHeader from "../../_components/site-header";
@@ -62,6 +63,8 @@ export default async function BlogPostPage({
           </div>
         </div>
       </section>
+
+      <MarqueeBand />
 
       <section className="bg-white py-14">
         <div className="mx-auto grid max-w-[1100px] grid-cols-1 gap-10 px-4 sm:px-8 lg:grid-cols-[1fr_300px]">

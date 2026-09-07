@@ -1,4 +1,5 @@
 import Image from "next/image";
+import MarqueeBand from "../_components/marquee-band";
 import Link from "next/link";
 import SiteHeader from "../_components/site-header";
 import SiteFooter from "../_components/site-footer";
@@ -80,6 +81,8 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
+
+      <MarqueeBand />
 
       <section className="bg-white py-20">
         <div className="mx-auto max-w-4xl px-4 sm:px-8">
