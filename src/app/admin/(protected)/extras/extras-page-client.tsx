@@ -12,7 +12,7 @@ export default function ExtrasPageClient({ extras }: { extras: Extra[] }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Extras</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Add-Ons</h1>
           <p className="mt-1 text-sm text-gray-500">
             Optional priced add-ons customers can select during booking, after
             choosing a date and time.
@@ -22,7 +22,7 @@ export default function ExtrasPageClient({ extras }: { extras: Extra[] }) {
           onClick={() => setModal("new")}
           className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
         >
-          + Add Extra
+          + Add Add-On
         </button>
       </div>
 
@@ -39,7 +39,7 @@ export default function ExtrasPageClient({ extras }: { extras: Extra[] }) {
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">
-                {modal === "new" ? "Add an extra" : "Edit extra"}
+                {modal === "new" ? "Add an add-on" : "Edit add-on"}
               </h2>
               <button
                 onClick={() => setModal(null)}

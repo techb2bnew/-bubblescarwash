@@ -237,8 +237,8 @@ export default function BookingsTable({
               />
               <th className="px-4 py-3">Contact</th>
               <th className="px-4 py-3">Service</th>
+              <th className="px-4 py-3">Inclusions</th>
               <th className="px-4 py-3">Add-Ons</th>
-              <th className="px-4 py-3">Extras</th>
               <SortHeader
                 label="Amount"
                 sortKey="price"

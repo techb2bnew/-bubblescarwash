@@ -33,7 +33,7 @@ export default function ExtrasTable({
   const [page, setPage] = useState(1);
 
   async function handleDelete(id: string) {
-    if (!(await confirm("Delete this extra? This cannot be undone."))) return;
+    if (!(await confirm("Delete this add-on? This cannot be undone."))) return;
     await deleteExtra(id);
     router.refresh();
   }
@@ -99,7 +99,7 @@ export default function ExtrasTable({
           setSearch(v);
           setPage(1);
         }}
-        searchPlaceholder="Search extras..."
+        searchPlaceholder="Search add-ons..."
         hasActiveFilters={hasActiveFilters}
         onClear={() => {
           setSearch("");
@@ -123,7 +123,7 @@ export default function ExtrasTable({
           <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
             <tr>
               <SortHeader
-                label="Extra"
+                label="Add-On"
                 sortKey="name"
                 currentSort={sortKey}
                 currentDir={sortDir}
@@ -189,8 +189,8 @@ export default function ExtrasTable({
               <tr>
                 <td colSpan={5} className="px-4 py-10 text-center text-gray-400">
                   {extras.length === 0
-                    ? 'No extras yet — click "Add Extra" to create one.'
-                    : "No extras match your search/filters."}
+                    ? 'No add-ons yet — click "Add Add-On" to create one.'
+                    : "No add-ons match your search/filters."}
                 </td>
               </tr>
             )}
