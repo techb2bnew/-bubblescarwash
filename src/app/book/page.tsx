@@ -11,6 +11,7 @@ import type {
 } from "@/lib/types";
 import SiteHeader from "../_components/site-header";
 import SiteFooter from "../_components/site-footer";
+import TypewriterWord from "../_components/typewriter-word";
 import { getBookingPaymentMode } from "./actions";
 import BookingFlow from "./booking-flow";
 
@@ -67,7 +68,7 @@ export default async function BookPage() {
               Book Online
             </span>
             <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">
-              Reserve Your <span className="wave-word wave-word-dark">Wash</span>
+              Reserve Your <TypewriterWord text="Wash" className="wave-word wave-word-dark" />
             </h1>
             <p className="mt-2 max-w-md text-sm text-gray-300">
               Pick your vehicle, service and a time that suits you.
