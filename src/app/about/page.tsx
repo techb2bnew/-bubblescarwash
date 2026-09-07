@@ -101,7 +101,7 @@ export default function AboutPage() {
 
       <section className="overflow-hidden bg-white py-20">
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 items-start gap-12 px-4 sm:px-8 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
-          <div className="relative mx-auto w-full max-w-md lg:mx-0 lg:sticky lg:top-24">
+          <div className="relative mx-auto w-full max-w-lg lg:mx-0 lg:max-w-none lg:sticky lg:top-24">
             <div className="pointer-events-none absolute -top-10 left-6 h-40 w-40 rounded-full bg-brand-100/70" />
             <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[2.5rem] shadow-xl shadow-gray-900/10">
               <Image
