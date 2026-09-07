@@ -161,7 +161,7 @@ export async function setBoothCapacity(
     throw new Error("Start time must be before end time.");
   }
 
-  const endDate = hours ? startDate : boothPeriodEndDate(startDate, duration);
+  const endDate = boothPeriodEndDate(startDate, duration);
   const peak = await peakHourlyBookings(startDate, endDate, hours);
   if (peak && boothCount < peak.count) {
     throw new Error(

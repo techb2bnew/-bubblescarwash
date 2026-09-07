@@ -43,11 +43,11 @@ export default function AddOnsTable({
   const [page, setPage] = useState(1);
 
   async function handleDelete(id: string) {
-    if (!(await confirm("Delete this add-on? This cannot be undone."))) return;
+    if (!(await confirm("Delete this inclusion? This cannot be undone."))) return;
     try {
       await deleteServiceAddOn(id);
       router.refresh();
-      showToast("Add-on deleted.");
+      showToast("Inclusion deleted.");
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Something went wrong", "error");
     }
@@ -115,7 +115,7 @@ export default function AddOnsTable({
           setSearch(v);
           setPage(1);
         }}
-        searchPlaceholder="Search add-ons..."
+        searchPlaceholder="Search inclusions..."
         hasActiveFilters={hasActiveFilters}
         onClear={clearFilters}
       >
@@ -144,7 +144,7 @@ export default function AddOnsTable({
           <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
             <tr>
               <SortHeader
-                label="Add-On"
+                label="Inclusion"
                 sortKey="name"
                 currentSort={sortKey}
                 currentDir={sortDir}
@@ -190,8 +190,8 @@ export default function AddOnsTable({
               <tr>
                 <td colSpan={4} className="px-4 py-10 text-center text-gray-400">
                   {addOns.length === 0
-                    ? 'No add-ons yet — click "Add Add-On" to create one.'
-                    : "No add-ons match your search/filters."}
+                    ? 'No inclusions yet — click "Add Inclusion" to create one.'
+                    : "No inclusions match your search/filters."}
                 </td>
               </tr>
             )}

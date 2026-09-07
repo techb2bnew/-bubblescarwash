@@ -32,6 +32,20 @@ import { useToast } from "../_components/toast";
 
 type ActiveOp = "booths" | "hours" | "close" | "slots" | "weekly" | null;
 
+interface CapacityRow {
+  id: string;
+  count: number;
+  /** Blank startTime/endTime means the row applies all day. */
+  startTime: string;
+  endTime: string;
+}
+
+let capacityRowSeq = 0;
+function newCapacityRow(count: number): CapacityRow {
+  capacityRowSeq += 1;
+  return { id: `row-${capacityRowSeq}`, count, startTime: "", endTime: "" };
+}
+
 function ChevronIcon({ open }: { open: boolean }) {
   return (
     <svg
@@ -94,11 +108,9 @@ export default function SetOperationsView({
   const [savingWeekly, setSavingWeekly] = useState(false);
   const [weeklyError, setWeeklyError] = useState<string | null>(null);
 
-  const [boothInputCount, setBoothInputCount] = useState(2);
-  const [boothDuration, setBoothDuration] = useState<BoothCapacityDuration | "hours">("week");
+  const [boothDuration, setBoothDuration] = useState<BoothCapacityDuration>("day");
   const [boothStartDate, setBoothStartDate] = useState(() => toDateKey(today));
-  const [boothHourStart, setBoothHourStart] = useState("11:00");
-  const [boothHourEnd, setBoothHourEnd] = useState("15:00");
+  const [capacityRows, setCapacityRows] = useState<CapacityRow[]>([newCapacityRow(1)]);
   const [savingBooths, setSavingBooths] = useState(false);
   const [boothError, setBoothError] = useState<string | null>(null);
 
@@ -188,22 +200,59 @@ export default function SetOperationsView({
     return `${label} (${count}/${boothCount} hr)`;
   }
 
+  function addCapacityRow() {
+    setBoothError(null);
+    setCapacityRows((prev) => [...prev, newCapacityRow(prev[prev.length - 1]?.count ?? 1)]);
+  }
+
+  function removeCapacityRow(id: string) {
+    setBoothError(null);
+    setCapacityRows((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev));
+  }
+
+  function updateCapacityRow(id: string, patch: Partial<CapacityRow>) {
+    setBoothError(null);
+    setCapacityRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  }
+
   async function handleSetBoothCapacity() {
-    const startDate = boothDuration === "hours" ? selected : boothStartDate;
+    const startDate = boothStartDate;
     if (!startDate) return;
-    if (boothDuration === "hours" && boothHourStart >= boothHourEnd) {
-      setBoothError("Start time must be before end time.");
-      return;
+
+    for (let i = 0; i < capacityRows.length; i++) {
+      const row = capacityRows[i];
+      const label = capacityRows.length > 1 ? `Row ${i + 1}: ` : "";
+      if (row.count < 1) {
+        setBoothError(`${label}Capacity must be at least 1.`);
+        return;
+      }
+      if (Boolean(row.startTime) !== Boolean(row.endTime)) {
+        setBoothError(`${label}Pick both a start and end time, or leave both blank for all day.`);
+        return;
+      }
+      if (row.startTime && row.endTime && row.startTime >= row.endTime) {
+        setBoothError(`${label}Start time must be before end time.`);
+        return;
+      }
     }
+
     setSavingBooths(true);
     setBoothError(null);
     try {
-      await setBoothCapacity(
-        startDate,
-        boothInputCount,
-        boothDuration === "hours" ? "day" : boothDuration,
-        boothDuration === "hours" ? { startTime: boothHourStart, endTime: boothHourEnd } : undefined,
-      );
+      for (let i = 0; i < capacityRows.length; i++) {
+        const row = capacityRows[i];
+        try {
+          await setBoothCapacity(
+            startDate,
+            row.count,
+            boothDuration,
+            row.startTime && row.endTime ? { startTime: row.startTime, endTime: row.endTime } : undefined,
+          );
+        } catch (err) {
+          const base = err instanceof Error ? err.message : "Something went wrong";
+          throw new Error(capacityRows.length > 1 ? `Row ${i + 1}: ${base}` : base);
+        }
+      }
       const result = await getDateAvailability(selected);
       setBookedTimes(result.bookedTimes);
       setBoothCount(result.boothCount);
@@ -362,7 +411,12 @@ export default function SetOperationsView({
   }
 
   function openBooths() {
-    setBoothStartDate(selected);
+    if (activeOp !== "booths") {
+      setBoothStartDate(selected);
+      setBoothDuration("day");
+      setCapacityRows([newCapacityRow(boothCount)]);
+      setBoothError(null);
+    }
     setActiveOp(activeOp === "booths" ? null : "booths");
   }
 
@@ -416,37 +470,20 @@ export default function SetOperationsView({
           {activeOp === "booths" && (
             <div className="mt-3  space-y-3">
               <p className="text-xs text-gray-500">
-                Set how many bookings can run in the same clock hour (e.g. 9:00 and 9:30
-                share one pool). Currently <strong>{boothCount}</strong> per hour on this
-                date.
+                Set how many bookings can run at once, all day or in specific hour
+                windows (e.g. 5 bookings 9:00–11:00, 3 bookings 2:00–5:00). Currently{" "}
+                <strong>{boothCount}</strong> per hour on this date.
               </p>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">
-                  Max Number of Bookings in 1 Hour
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={boothInputCount}
-                  onChange={(e) => {
-                    setBoothError(null);
-                    setBoothInputCount(Math.max(1, Number(e.target.value) || 1));
-                  }}
-                  className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                />
-              </div>
+
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600">Apply for</label>
-                <div className="grid grid-cols-5 gap-1.5">
+                <div className="grid grid-cols-4 gap-1.5">
                   {(
                     [
-                      ["hours", "Custom Hours"],
                       ["day", "1 Day"],
                       ["week", "1 Week"],
                       ["month", "1 Month"],
                       ["ongoing", "Ongoing"],
-                      
                     ] as const
                   ).map(([value, label]) => (
                     <button
@@ -467,83 +504,125 @@ export default function SetOperationsView({
                   ))}
                 </div>
               </div>
-              {boothDuration === "hours" ? (
-                <p className="text-xs text-gray-500">
-                  Applies on <strong>{formatDateLong(selected)}</strong> only, between the times
-                  below.
-                </p>
-              ) : (
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">
-                    {boothDuration === "day" ? "Select day" : "Start date"}
-                  </label>
-                  <input
-                    type="date"
-                    value={boothStartDate}
-                    min={toDateKey(today)}
-                    onChange={(e) => {
-                      setBoothError(null);
-                      setBoothStartDate(e.target.value);
-                    }}
-                    className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    {boothDuration === "day" ? (
-                      <>
-                        Applies on <strong>{formatDateLong(boothStartDate)}</strong> only
-                      </>
-                    ) : isOngoingBoothPeriod(boothDuration) ? (
-                      <>
-                        From <strong>{formatDateLong(boothStartDate)}</strong> onward — no end date
-                      </>
-                    ) : (
-                      <>
-                        From <strong>{formatDateLong(boothStartDate)}</strong> until{" "}
-                        <strong>{formatDateLong(boothPeriodEndDate(boothStartDate, boothDuration))}</strong>
-                      </>
-                    )}
-                  </p>
-                </div>
-              )}
-              {boothDuration === "hours" && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">Start time</label>
-                    <input
-                      type="time"
-                      value={boothHourStart}
-                      onChange={(e) => {
-                        setBoothError(null);
-                        setBoothHourStart(e.target.value);
-                      }}
-                      className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">End time</label>
-                    <input
-                      type="time"
-                      value={boothHourEnd}
-                      onChange={(e) => {
-                        setBoothError(null);
-                        setBoothHourEnd(e.target.value);
-                      }}
-                      className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                    />
-                  </div>
-                  {boothHourStart >= boothHourEnd && (
-                    <p className="col-span-2 text-xs text-red-600">Start time must be before end time.</p>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  {boothDuration === "day" ? "Select day" : "Start date"}
+                </label>
+                <input
+                  type="date"
+                  value={boothStartDate}
+                  min={toDateKey(today)}
+                  onChange={(e) => {
+                    setBoothError(null);
+                    setBoothStartDate(e.target.value);
+                  }}
+                  className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  {boothDuration === "day" ? (
+                    <>
+                      Applies on <strong>{formatDateLong(boothStartDate)}</strong> only
+                    </>
+                  ) : isOngoingBoothPeriod(boothDuration) ? (
+                    <>
+                      From <strong>{formatDateLong(boothStartDate)}</strong> onward — no end date
+                    </>
+                  ) : (
+                    <>
+                      From <strong>{formatDateLong(boothStartDate)}</strong> until{" "}
+                      <strong>{formatDateLong(boothPeriodEndDate(boothStartDate, boothDuration))}</strong>
+                    </>
                   )}
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Hours &amp; Capacity</label>
+                <p className="mb-2 text-xs text-gray-500">
+                  Leave From/To as &ldquo;All day&rdquo; to cover the whole day, or set a specific
+                  window — add more rows for additional windows, each with its own capacity.
+                </p>
+                <div className="space-y-2">
+                  {capacityRows.map((row, i) => (
+                    <div
+                      key={row.id}
+                      className="flex flex-wrap items-end gap-2 rounded-md border border-gray-200 p-2"
+                    >
+                      <div>
+                        <label className="mb-1 block text-xs text-gray-500">Capacity</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={20}
+                          value={row.count}
+                          onChange={(e) =>
+                            updateCapacityRow(row.id, { count: Math.max(1, Number(e.target.value) || 1) })
+                          }
+                          className="w-20 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs text-gray-500">From</label>
+                        <select
+                          value={row.startTime}
+                          onChange={(e) => updateCapacityRow(row.id, { startTime: e.target.value })}
+                          className="rounded-md border border-gray-300 px-2 py-1.5 text-xs text-gray-700"
+                        >
+                          <option value="">All day</option>
+                          {timeSlots.map((t) => (
+                            <option key={t} value={t}>
+                              {formatTimeLabel(t)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs text-gray-500">To</label>
+                        <select
+                          value={row.endTime}
+                          onChange={(e) => updateCapacityRow(row.id, { endTime: e.target.value })}
+                          className="rounded-md border border-gray-300 px-2 py-1.5 text-xs text-gray-700"
+                        >
+                          <option value="">All day</option>
+                          {timeSlots.map((t) => (
+                            <option key={t} value={t}>
+                              {formatTimeLabel(t)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {capacityRows.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeCapacityRow(row.id)}
+                          className="rounded-md border border-gray-300 px-2 py-1.5 text-xs text-gray-500 hover:border-red-300 hover:text-red-600"
+                        >
+                          Remove
+                        </button>
+                      )}
+                      {row.startTime && row.endTime && row.startTime >= row.endTime && (
+                        <p className="w-full text-xs text-red-600">
+                          Row {i + 1}: start time must be before end time.
+                        </p>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              )}
+                <button
+                  type="button"
+                  onClick={addCapacityRow}
+                  className="mt-2 rounded-md border border-dashed border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-brand-400 hover:text-brand-700"
+                >
+                  + Add custom hours
+                </button>
+              </div>
+
               {boothError && <p className="text-sm text-red-600">{boothError}</p>}
               <button
                 type="button"
                 onClick={handleSetBoothCapacity}
-                disabled={
-                  savingBooths ||
-                  (boothDuration === "hours" ? boothHourStart >= boothHourEnd : !boothStartDate)
-                }
+                disabled={savingBooths || !boothStartDate}
                 className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
               >
                 {savingBooths ? "Saving..." : "Apply Capacity"}

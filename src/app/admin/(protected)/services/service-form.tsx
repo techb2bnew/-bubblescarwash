@@ -354,7 +354,7 @@ export default function ServiceForm({
             )}
             <p className="mt-1 text-xs text-gray-500">
               One service, priced per vehicle type checked — all sharing this name, duration,
-              discount, and add-ons.
+              discount, and inclusions.
             </p>
           </>
         )}
@@ -402,10 +402,10 @@ export default function ServiceForm({
       </div>
 
       <div className="border-t border-gray-100 pt-4">
-        <label className="mb-1 block text-xs font-medium text-gray-600">Add-Ons</label>
+        <label className="mb-1 block text-xs font-medium text-gray-600">Inclusions</label>
         {!service && (
           <p className="mb-2 text-xs text-gray-400">
-            Add-ons entered here are saved together with the service below.
+            Inclusions entered here are saved together with the service below.
           </p>
         )}
         {addOns.length > 0 && (
@@ -436,7 +436,7 @@ export default function ServiceForm({
                 <button
                   type="button"
                   onClick={() => handleDeleteAddOn(a)}
-                  aria-label="Delete add-on"
+                  aria-label="Delete inclusion"
                   className="text-red-600 hover:text-red-700"
                 >
                   <svg

@@ -60,7 +60,7 @@ export default function AddOnForm({
         </select>
         {addOn && (
           <p className="mt-1 text-xs text-gray-400">
-            An add-on can&apos;t be moved to a different service — delete and re-add it under
+            An inclusion can&apos;t be moved to a different service — delete and re-add it under
             the right one instead.
           </p>
         )}
@@ -84,7 +84,7 @@ export default function AddOnForm({
         disabled={saving || !serviceId}
         className="w-full rounded-md bg-brand-600 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
       >
-        {saving ? "Saving..." : addOn ? "Update Add-On" : "Add Add-On"}
+        {saving ? "Saving..." : addOn ? "Update Inclusion" : "Add Inclusion"}
       </button>
     </form>
   );

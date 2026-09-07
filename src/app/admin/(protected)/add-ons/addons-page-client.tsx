@@ -22,20 +22,20 @@ export default function AddOnsPageClient({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Add-Ons</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Inclusions</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Every add-on across all services. Each one belongs to exactly one
-            service — you can also manage a service&apos;s own add-ons from
+            Every inclusion across all services. Each one belongs to exactly one
+            service — you can also manage a service&apos;s own inclusions from
             inside its edit form on the Services page.
           </p>
         </div>
         <button
           onClick={() => setModal("new")}
           disabled={services.length === 0}
-          title={services.length === 0 ? "Add a service first — an add-on must belong to one" : undefined}
+          title={services.length === 0 ? "Add a service first — an inclusion must belong to one" : undefined}
           className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
         >
-          + Add Add-On
+          + Add Inclusion
         </button>
       </div>
 
@@ -45,7 +45,7 @@ export default function AddOnsPageClient({
           <Link href="/admin/services" className="font-medium underline">
             Services
           </Link>{" "}
-          page first, since every add-on has to belong to one.
+          page first, since every inclusion has to belong to one.
         </p>
       )}
 
@@ -62,7 +62,7 @@ export default function AddOnsPageClient({
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">
-                {modal === "new" ? "Add an add-on" : "Edit add-on"}
+                {modal === "new" ? "Add an inclusion" : "Edit inclusion"}
               </h2>
               <button
                 onClick={() => setModal(null)}
