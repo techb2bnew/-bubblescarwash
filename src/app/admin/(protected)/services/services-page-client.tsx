@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import type { ServiceTemplate, VehicleTypeRow } from "@/lib/types";
+import type { ServiceCategoryRow, ServiceTemplate, VehicleTypeRow } from "@/lib/types";
 import ServicesTable from "./services-table";
 import ServiceForm from "./service-form";
 
 export default function ServicesPageClient({
   services,
   vehicleTypes,
+  categories,
 }: {
   services: ServiceTemplate[];
   vehicleTypes: VehicleTypeRow[];
+  categories: ServiceCategoryRow[];
 }) {
   const [modal, setModal] = useState<"new" | ServiceTemplate | null>(null);
 
@@ -29,7 +31,12 @@ export default function ServicesPageClient({
         </button>
       </div>
 
-      <ServicesTable services={services} vehicleTypes={vehicleTypes} onEdit={(s) => setModal(s)} />
+      <ServicesTable
+        services={services}
+        vehicleTypes={vehicleTypes}
+        categories={categories}
+        onEdit={(s) => setModal(s)}
+      />
 
       {modal && (
         <div
@@ -55,6 +62,8 @@ export default function ServicesPageClient({
             <ServiceForm
               service={modal === "new" ? undefined : modal}
               vehicleTypes={vehicleTypes}
+              categories={categories}
+              allServices={services}
               onDone={() => setModal(null)}
             />
           </div>

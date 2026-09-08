@@ -18,6 +18,11 @@ const VISIBILITY_OPTIONS = [
   { value: "hidden", label: "Hidden" },
 ];
 
+interface AddOnGroup {
+  name: string;
+  instances: AddOnWithService[];
+}
+
 export default function AddOnsTable({
   addOns,
   services,
@@ -38,7 +43,6 @@ export default function AddOnsTable({
   const [search, setSearch] = useState("");
   const [service, setService] = useState("all");
   const [visibility, setVisibility] = useState("all");
-  const [sortKey, setSortKey] = useState<string | null>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
 
@@ -62,17 +66,12 @@ export default function AddOnsTable({
     }
   }
 
-  function handleSort(key: string) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
+  function handleSort() {
+    setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     setPage(1);
   }
 
-  const filtered = useMemo(() => {
+  const groups = useMemo(() => {
     let result = addOns;
     const q = search.trim().toLowerCase();
     if (q) result = result.filter((a) => a.name.toLowerCase().includes(q));
@@ -80,23 +79,24 @@ export default function AddOnsTable({
     if (visibility === "visible") result = result.filter((a) => a.active);
     if (visibility === "hidden") result = result.filter((a) => !a.active);
 
-    if (sortKey) {
-      result = [...result].sort((a, b) => {
-        const av =
-          sortKey === "name" ? a.name.toLowerCase() : (a.services?.name.toLowerCase() ?? "");
-        const bv =
-          sortKey === "name" ? b.name.toLowerCase() : (b.services?.name.toLowerCase() ?? "");
-        if (av < bv) return sortDir === "asc" ? -1 : 1;
-        if (av > bv) return sortDir === "asc" ? 1 : -1;
-        return 0;
-      });
+    const byName = new Map<string, AddOnGroup>();
+    for (const a of result) {
+      const key = a.name.trim().toLowerCase();
+      const existing = byName.get(key);
+      if (existing) existing.instances.push(a);
+      else byName.set(key, { name: a.name, instances: [a] });
     }
-    return result;
-  }, [addOns, search, service, visibility, sortKey, sortDir]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    return Array.from(byName.values()).sort((a, b) =>
+      sortDir === "asc"
+        ? a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+        : b.name.toLowerCase().localeCompare(a.name.toLowerCase()),
+    );
+  }, [addOns, search, service, visibility, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(groups.length / PAGE_SIZE));
   const clampedPage = Math.min(page, totalPages);
-  const paged = filtered.slice((clampedPage - 1) * PAGE_SIZE, clampedPage * PAGE_SIZE);
+  const paged = groups.slice((clampedPage - 1) * PAGE_SIZE, clampedPage * PAGE_SIZE);
 
   const hasActiveFilters = search.trim() !== "" || service !== "all" || visibility !== "all";
 
@@ -146,49 +146,47 @@ export default function AddOnsTable({
               <SortHeader
                 label="Inclusion"
                 sortKey="name"
-                currentSort={sortKey}
+                currentSort="name"
                 currentDir={sortDir}
                 onSort={handleSort}
               />
-              <SortHeader
-                label="Service"
-                sortKey="service"
-                currentSort={sortKey}
-                currentDir={sortDir}
-                onSort={handleSort}
-              />
-              <th className="w-28 px-4 py-3">Visible</th>
-              <th className="w-28 px-4 py-3" />
+              <th className="px-4 py-3">Used On</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {paged.map((a) => (
-              <tr key={a.id} className={`hover:bg-gray-50/60 ${a.active ? "" : "opacity-50"}`}>
-                <td className="px-4 py-3 font-medium text-gray-900">{a.name}</td>
-                <td className="px-4 py-3 text-gray-600">{a.services?.name ?? "—"}</td>
+            {paged.map((g) => (
+              <tr key={g.name.toLowerCase()} className="hover:bg-gray-50/60">
+                <td className="px-4 py-3 font-medium text-gray-900">{g.name}</td>
                 <td className="px-4 py-3">
-                  <button
-                    onClick={() => handleToggle(a)}
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                      a.active
-                        ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-200"
-                        : "bg-gray-100 text-gray-500 ring-1 ring-inset ring-gray-200"
-                    }`}
-                  >
-                    {a.active ? "Visible" : "Hidden"}
-                  </button>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <EditButton onClick={() => onEdit(a)} />
-                    <DeleteButton onClick={() => handleDelete(a.id)} />
+                  <div className="flex flex-wrap gap-1.5">
+                    {g.instances.map((instance) => (
+                      <div
+                        key={instance.id}
+                        className={`inline-flex items-center gap-0.5 rounded-full py-1 pl-2.5 pr-1 text-xs font-medium ${
+                          instance.active
+                            ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-200"
+                            : "bg-gray-100 text-gray-500 ring-1 ring-inset ring-gray-200"
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleToggle(instance)}
+                          title={instance.active ? "Visible — click to hide" : "Hidden — click to show"}
+                          className="hover:underline"
+                        >
+                          {instance.services?.name ?? "—"}
+                        </button>
+                        <EditButton onClick={() => onEdit(instance)} />
+                        <DeleteButton onClick={() => handleDelete(instance.id)} />
+                      </div>
+                    ))}
                   </div>
                 </td>
               </tr>
             ))}
             {paged.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={2} className="px-4 py-10 text-center text-gray-400">
                   {addOns.length === 0
                     ? 'No inclusions yet — click "Add Inclusion" to create one.'
                     : "No inclusions match your search/filters."}
@@ -200,7 +198,7 @@ export default function AddOnsTable({
         <Pagination
           page={clampedPage}
           totalPages={totalPages}
-          totalItems={filtered.length}
+          totalItems={groups.length}
           pageSize={PAGE_SIZE}
           onPageChange={setPage}
         />

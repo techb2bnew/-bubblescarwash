@@ -6,6 +6,7 @@ import type { VehicleType } from "@/lib/types";
 
 export interface ServiceTemplateInput {
   name: string;
+  category_id: string;
   duration_minutes: number;
 }
 

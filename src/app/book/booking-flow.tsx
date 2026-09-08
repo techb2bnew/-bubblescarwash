@@ -7,6 +7,7 @@ import type {
   BusinessSettings,
   Extra,
   Service,
+  ServiceCategoryRow,
   VehicleType,
   VehicleTypeRow,
 } from "@/lib/types";
@@ -59,6 +60,7 @@ export default function BookingFlow({
   services,
   extras,
   vehicleTypes,
+  categories,
   settings,
   blockedDates,
   paymentMode,
@@ -66,6 +68,7 @@ export default function BookingFlow({
   services: Service[];
   extras: Extra[];
   vehicleTypes: VehicleTypeRow[];
+  categories: ServiceCategoryRow[];
   settings: BusinessSettings;
   blockedDates: BlockedDate[];
   paymentMode: PaymentMode;
@@ -73,6 +76,7 @@ export default function BookingFlow({
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [vehicle, setVehicle] = useState<VehicleType>(vehicleTypes[0]?.slug ?? "");
+  const [category, setCategory] = useState<string>(categories[0]?.id ?? "");
   const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -131,7 +135,9 @@ export default function BookingFlow({
 
   const weeks = useMemo(() => getMonthGrid(cursor.year, cursor.month), [cursor]);
 
-  const vehicleServices = services.filter((s) => s.vehicle_type === vehicle);
+  const vehicleServices = services.filter(
+    (s) => s.vehicle_type === vehicle && (!category || s.category_id === category),
+  );
 
   function toggleExtra(id: string) {
     setSelectedExtraIds((prev) =>
@@ -367,6 +373,30 @@ export default function BookingFlow({
               </button>
             ))}
           </div>
+
+          {categories.length > 1 && (
+            <>
+              <p className="mb-2 text-sm font-medium text-gray-700">Select Category:</p>
+              <div className="mb-6 flex flex-wrap gap-2">
+                {categories.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => {
+                      setCategory(c.id);
+                      setSelectedService(null);
+                    }}
+                    className={`rounded-md border px-4 py-2 text-sm font-medium ${
+                      category === c.id
+                        ? "border-brand-600 bg-brand-50 text-brand-700"
+                        : "border-gray-300 text-gray-600 hover:border-gray-400"
+                    }`}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           <p className="mb-2 text-sm font-medium text-gray-700">Select Service:</p>
           {vehicleServices.length === 0 ? (

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { AddOn, ServicePrice, ServiceTemplate, VehicleTypeRow } from "@/lib/types";
+import type { AddOn, ServiceCategoryRow, ServicePrice, ServiceTemplate, VehicleTypeRow } from "@/lib/types";
 import {
   createServiceAddOn,
   createServicePrice,
@@ -19,17 +19,25 @@ import { useToast } from "../_components/toast";
 export default function ServiceForm({
   service,
   vehicleTypes,
+  categories,
+  allServices,
   onDone,
 }: {
   service?: ServiceTemplate;
   vehicleTypes: VehicleTypeRow[];
+  categories: ServiceCategoryRow[];
+  allServices: ServiceTemplate[];
   onDone?: () => void;
 }) {
   const router = useRouter();
   const showToast = useToast();
   const activeVehicleTypes = vehicleTypes.filter((v) => v.active);
+  const activeCategories = categories.filter((c) => c.active);
 
   const [name, setName] = useState(service?.name ?? "");
+  const [categoryId, setCategoryId] = useState(
+    service?.category_id ?? activeCategories[0]?.id ?? "",
+  );
   const [durationMinutes, setDurationMinutes] = useState(service?.duration_minutes ?? 30);
 
   const [saving, setSaving] = useState(false);
@@ -50,8 +58,25 @@ export default function ServiceForm({
 
   const [addOns, setAddOns] = useState<AddOn[]>(service?.inclusions ?? []);
   const [newAddOnName, setNewAddOnName] = useState("");
+  const [existingAddOnPick, setExistingAddOnPick] = useState("");
   const [addOnError, setAddOnError] = useState<string | null>(null);
   const [addOnBusy, setAddOnBusy] = useState(false);
+
+  // Every distinct inclusion name already used on another service, so one
+  // can be reused here instead of retyping it — excludes names already on
+  // this service.
+  const currentAddOnNames = new Set(addOns.map((a) => a.name.toLowerCase()));
+  const existingAddOnNames: string[] = [];
+  const seenAddOnNames = new Set<string>();
+  for (const s of allServices) {
+    for (const a of s.inclusions ?? []) {
+      const key = a.name.toLowerCase();
+      if (seenAddOnNames.has(key) || currentAddOnNames.has(key)) continue;
+      seenAddOnNames.add(key);
+      existingAddOnNames.push(a.name);
+    }
+  }
+  existingAddOnNames.sort((a, b) => a.localeCompare(b));
 
   const pricedVehicleTypes = new Set(prices.map((p) => p.vehicle_type));
   const unpricedVehicleTypes = activeVehicleTypes.filter((v) => !pricedVehicleTypes.has(v.slug));
@@ -70,9 +95,14 @@ export default function ServiceForm({
     setSaving(true);
     setError(null);
     try {
+      if (!categoryId) {
+        setError("Select a category.");
+        return;
+      }
       if (service) {
         await updateServiceTemplate(service.id, {
           name,
+          category_id: categoryId,
           duration_minutes: durationMinutes,
         });
         router.refresh();
@@ -87,6 +117,7 @@ export default function ServiceForm({
 
         const { id } = await createServiceTemplate({
           name,
+          category_id: categoryId,
           duration_minutes: durationMinutes,
         });
         for (const [vehicleType, priceStr] of entries) {
@@ -148,8 +179,8 @@ export default function ServiceForm({
   /** While creating, add-ons are staged locally and only saved once the
    * template is created; once editing an existing service, each change
    * hits the server immediately since a real service id already exists. */
-  async function handleAddAddOn() {
-    const name = newAddOnName.trim();
+  async function handleAddAddOn(nameOverride?: string) {
+    const name = (nameOverride ?? newAddOnName).trim();
     if (!name) return;
 
     if (!service) {
@@ -158,6 +189,7 @@ export default function ServiceForm({
         { id: crypto.randomUUID(), service_id: "", name, sort_order: prev.length, active: true },
       ]);
       setNewAddOnName("");
+      setExistingAddOnPick("");
       return;
     }
 
@@ -170,6 +202,7 @@ export default function ServiceForm({
         { id, service_id: service.id, name, sort_order: prev.length, active: true },
       ]);
       setNewAddOnName("");
+      setExistingAddOnPick("");
       router.refresh();
     } catch (err) {
       setAddOnError(err instanceof Error ? err.message : "Something went wrong");
@@ -225,6 +258,28 @@ export default function ServiceForm({
           placeholder="e.g. Express Wash"
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
         />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs font-medium text-gray-600">Category</label>
+        {activeCategories.length === 0 ? (
+          <p className="text-xs text-gray-400">
+            No categories yet — add one on the Categories page first.
+          </p>
+        ) : (
+          <select
+            required
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          >
+            {activeCategories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       <div>
@@ -422,6 +477,30 @@ export default function ServiceForm({
             ))}
           </div>
         )}
+        {existingAddOnNames.length > 0 && (
+          <div className="mb-2 flex gap-2">
+            <select
+              value={existingAddOnPick}
+              onChange={(e) => setExistingAddOnPick(e.target.value)}
+              className="flex-1 rounded-md border border-gray-300 px-2 py-2 text-sm"
+            >
+              <option value="">Add from existing inclusions...</option>
+              {existingAddOnNames.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => handleAddAddOn(existingAddOnPick)}
+              disabled={addOnBusy || !existingAddOnPick}
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              + Add
+            </button>
+          </div>
+        )}
         <div className="flex gap-2">
           <input
             value={newAddOnName}
@@ -437,7 +516,7 @@ export default function ServiceForm({
           />
           <button
             type="button"
-            onClick={handleAddAddOn}
+            onClick={() => handleAddAddOn()}
             disabled={addOnBusy || !newAddOnName.trim()}
             className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >
