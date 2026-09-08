@@ -7,6 +7,7 @@ import type {
   BlockedDate,
   BusinessSettings,
   Customer,
+  Extra,
   HoursSource,
   Service,
   VehicleTypeRow,
@@ -34,6 +35,7 @@ export default function CalendarView({
   services,
   vehicleTypes,
   customers,
+  extras,
   googleCalendarEmbedUrl,
   paymentMode,
 }: {
@@ -42,6 +44,7 @@ export default function CalendarView({
   services: Service[];
   vehicleTypes: VehicleTypeRow[];
   customers: Pick<Customer, "id" | "name" | "phone" | "email">[];
+  extras: Extra[];
   googleCalendarEmbedUrl: string | null;
   paymentMode: PaymentMode;
 }) {
@@ -320,6 +323,7 @@ export default function CalendarView({
                     services={services}
                     vehicleTypes={vehicleTypes}
                     customers={customers}
+                    extras={extras}
                     bookingDate={selected}
                     timeSlots={timeSlots}
                     bookedTimes={bookedTimes}

@@ -75,6 +75,65 @@ export async function previewGiftCard(code: string): Promise<GiftCardPreview> {
   return { valid: true, value: row.value };
 }
 
+export interface DiscountPreview {
+  valid: boolean;
+  reason?: "not found" | "inactive" | "expired" | "limit reached";
+  discountType?: "percent" | "fixed";
+  value?: number;
+  name?: string;
+}
+
+/**
+ * Read-only, non-binding preview for a typed-in coupon code — mirrors
+ * previewGiftCard. Doesn't check the per-customer limit (email/phone may
+ * not be entered yet); that's still enforced atomically inside
+ * create_booking at submit time.
+ */
+export async function previewDiscount(code: string): Promise<DiscountPreview> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .rpc("preview_discount_by_code", { p_code: code })
+    .maybeSingle();
+  if (error || !data) return { valid: false, reason: "not found" };
+
+  const row = data as {
+    discount_type: "percent" | "fixed";
+    value: number;
+    name: string;
+    valid: boolean;
+    reason: "not found" | "inactive" | "expired" | "limit reached" | null;
+  };
+  if (!row.valid) return { valid: false, reason: row.reason ?? "not found" };
+  return { valid: true, discountType: row.discount_type, value: row.value, name: row.name };
+}
+
+export interface CustomerDiscountPreview {
+  discountType: "percent" | "fixed";
+  value: number;
+  name: string;
+}
+
+/**
+ * Checks whether the entered email/phone matches a customer-targeted
+ * discount, purely to show a "you have a discount" banner — the actual
+ * application always happens automatically and authoritatively inside
+ * create_booking, with or without this preview.
+ */
+export async function previewCustomerDiscount(
+  email: string,
+  phone: string,
+): Promise<CustomerDiscountPreview | null> {
+  if (!email.trim() && !phone.trim()) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .rpc("preview_customer_discount", { p_email: email, p_phone: phone })
+    .maybeSingle();
+  if (error || !data) return null;
+
+  const row = data as { discount_type: "percent" | "fixed"; value: number; name: string };
+  return { discountType: row.discount_type, value: row.value, name: row.name };
+}
+
 export async function countBookingsByEmail(email: string): Promise<number> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("count_bookings_by_email", {
@@ -94,6 +153,7 @@ export interface CreateBookingInput {
   customer_email: string;
   extra_ids?: string[];
   gift_card_code?: string;
+  discount_code?: string;
 }
 
 /**
@@ -125,6 +185,7 @@ export async function createCheckoutSession(
     p_customer_email: input.customer_email,
     p_extra_ids: input.extra_ids ?? [],
     p_gift_card_code: input.gift_card_code || null,
+    p_discount_code: input.discount_code || null,
   });
   if (error) throw new Error(error.message);
   const bookingId = data as string;
@@ -229,6 +290,7 @@ export async function createBookingSimple(
     p_customer_email: input.customer_email,
     p_extra_ids: input.extra_ids ?? [],
     p_gift_card_code: input.gift_card_code || null,
+    p_discount_code: input.discount_code || null,
   });
   if (error) throw new Error(error.message);
   const bookingId = data as string;

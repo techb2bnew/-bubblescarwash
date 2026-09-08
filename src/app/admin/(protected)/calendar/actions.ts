@@ -383,6 +383,7 @@ export interface AdminBookingInput {
   customer_name: string;
   customer_phone: string;
   customer_email: string;
+  extra_ids?: string[];
   /** Walk-in override: bypass create_booking's slot/capacity validation (a raw insert). */
   overrideAvailability: boolean;
 }
@@ -409,6 +410,7 @@ export async function createBookingAdminPayLater(
       p_customer_name: input.customer_name,
       p_customer_phone: input.customer_phone,
       p_customer_email: input.customer_email,
+      p_extra_ids: input.extra_ids ?? [],
     });
     if (error) throw new Error(error.message);
     bookingId = data as string;
@@ -421,6 +423,17 @@ export async function createBookingAdminPayLater(
       .single();
     if (priceError) throw new Error(priceError.message);
 
+    let extraRows: { id: string; name: string; price: number }[] = [];
+    if (input.extra_ids && input.extra_ids.length > 0) {
+      const { data: extrasData, error: extrasError } = await supabase
+        .from("extras")
+        .select("id, name, price")
+        .in("id", input.extra_ids);
+      if (extrasError) throw new Error(extrasError.message);
+      extraRows = extrasData ?? [];
+    }
+    const extrasTotal = extraRows.reduce((sum, e) => sum + e.price, 0);
+
     const { data, error } = await supabase
       .from("bookings")
       .insert({
@@ -431,13 +444,25 @@ export async function createBookingAdminPayLater(
         customer_name: input.customer_name,
         customer_phone: input.customer_phone,
         customer_email: input.customer_email,
-        price: servicePrice?.price ?? null,
+        price: servicePrice.price + extrasTotal,
         booking_type: "offline",
       })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
     bookingId = data.id;
+
+    if (extraRows.length > 0) {
+      const { error: extrasInsertError } = await supabase.from("booking_extras").insert(
+        extraRows.map((e) => ({
+          booking_id: bookingId,
+          extra_id: e.id,
+          name: e.name,
+          price: e.price,
+        })),
+      );
+      if (extrasInsertError) throw new Error(extrasInsertError.message);
+    }
   }
 
   await onBookingCreated({
@@ -485,6 +510,7 @@ export async function createBookingAdminCheckout(
     p_customer_name: input.customer_name,
     p_customer_phone: input.customer_phone,
     p_customer_email: input.customer_email,
+    p_extra_ids: input.extra_ids ?? [],
   });
   if (error) throw new Error(error.message);
   const bookingId = data as string;
@@ -497,8 +523,11 @@ export async function createBookingAdminCheckout(
     if (priceError) throw new Error(priceError.message);
     if (price == null) throw new Error("Could not price this booking.");
 
+    const extraCount = input.extra_ids?.length ?? 0;
     const serviceName = service?.name ?? "Car Wash";
-    const description = `${input.booking_date} at ${input.booking_time.slice(0, 5)}`;
+    const description = `${input.booking_date} at ${input.booking_time.slice(0, 5)}${
+      extraCount > 0 ? ` + ${extraCount} extra${extraCount === 1 ? "" : "s"}` : ""
+    }`;
 
     const origin = await getSiteOrigin();
     const session = await stripe.checkout.sessions.create({

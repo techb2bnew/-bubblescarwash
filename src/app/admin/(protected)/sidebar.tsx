@@ -75,6 +75,13 @@ const NAV_ITEMS = [
     ),
   },
   {
+    href: "/admin/discounts",
+    label: "Discounts",
+    icon: (
+      <path d="M9.5 4h5.7a2 2 0 0 1 1.4.6l4.8 4.8a2 2 0 0 1 0 2.8l-6.7 6.7a2 2 0 0 1-2.8 0L4.8 11.7A2 2 0 0 1 4 10.3V6a2 2 0 0 1 2-2h3.5ZM8.5 8.5h.01M9 15l6-6" />
+    ),
+  },
+  {
     href: "/admin/payments",
     label: "Payments",
     icon: (

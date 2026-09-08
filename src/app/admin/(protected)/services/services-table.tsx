@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ServiceTemplate, VehicleTypeRow } from "@/lib/types";
-import { computeEffectivePrice } from "@/lib/pricing";
 import { deleteServiceTemplate, toggleServiceActive } from "./actions";
 import { FilterSelect, TableToolbar } from "../_components/table-toolbar";
 import { SortHeader } from "../_components/sort-header";
@@ -177,37 +176,19 @@ export default function ServicesTable({
                     {s.prices.length === 0 ? (
                       <span className="text-xs text-gray-400">No prices set</span>
                     ) : (
-                      s.prices.map((p) => {
-                        const effective = computeEffectivePrice(
-                          p.price,
-                          s.discount_percent,
-                          s.discount_active,
-                        );
-                        return (
-                          <span
-                            key={p.id}
-                            className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700"
-                          >
-                            <span className="uppercase tracking-wide text-gray-500">
-                              {vehicleNameBySlug.get(p.vehicle_type) ?? p.vehicle_type}
-                            </span>
-                            {s.discount_active && s.discount_percent > 0 ? (
-                              <>
-                                <span className="text-gray-400 line-through">
-                                  ${p.price.toFixed(2)}
-                                </span>
-                                <span className="font-medium text-green-700">
-                                  ${effective.toFixed(2)}
-                                </span>
-                              </>
-                            ) : (
-                              <span className="font-medium text-gray-900">
-                                ${p.price.toFixed(2)}
-                              </span>
-                            )}
+                      s.prices.map((p) => (
+                        <span
+                          key={p.id}
+                          className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700"
+                        >
+                          <span className="uppercase tracking-wide text-gray-500">
+                            {vehicleNameBySlug.get(p.vehicle_type) ?? p.vehicle_type}
                           </span>
-                        );
-                      })
+                          <span className="font-medium text-gray-900">
+                            ${p.price.toFixed(2)}
+                          </span>
+                        </span>
+                      ))
                     )}
                   </div>
                 </td>

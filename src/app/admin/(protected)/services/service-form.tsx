@@ -31,15 +31,13 @@ export default function ServiceForm({
 
   const [name, setName] = useState(service?.name ?? "");
   const [durationMinutes, setDurationMinutes] = useState(service?.duration_minutes ?? 30);
-  const [discountActive, setDiscountActive] = useState(service?.discount_active ?? false);
-  const [discountPercent, setDiscountPercent] = useState(service?.discount_percent ?? 0);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Create mode: check several vehicle types, one price each — creates the
   // template plus one service_prices row per vehicle type checked, all
-  // sharing this same name/duration/discount/add-ons.
+  // sharing this same name/duration/add-ons.
   const [vehiclePrices, setVehiclePrices] = useState<Record<string, string>>({});
 
   // Edit mode: an existing template's price rows, managed live (same
@@ -75,8 +73,6 @@ export default function ServiceForm({
       if (service) {
         await updateServiceTemplate(service.id, {
           name,
-          discount_percent: discountPercent,
-          discount_active: discountActive,
           duration_minutes: durationMinutes,
         });
         router.refresh();
@@ -91,8 +87,6 @@ export default function ServiceForm({
 
         const { id } = await createServiceTemplate({
           name,
-          discount_percent: discountPercent,
-          discount_active: discountActive,
           duration_minutes: durationMinutes,
         });
         for (const [vehicleType, priceStr] of entries) {
@@ -354,7 +348,7 @@ export default function ServiceForm({
             )}
             <p className="mt-1 text-xs text-gray-500">
               One service, priced per vehicle type checked — all sharing this name, duration,
-              discount, and inclusions.
+              and inclusions.
             </p>
           </>
         )}
@@ -371,34 +365,6 @@ export default function ServiceForm({
           onChange={(e) => setDurationMinutes(parseInt(e.target.value, 10))}
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
         />
-      </div>
-
-      <div className="rounded-md border border-gray-200 p-3">
-        <label className="flex items-center gap-2 text-sm text-gray-700">
-          <input
-            type="checkbox"
-            checked={discountActive}
-            onChange={(e) => setDiscountActive(e.target.checked)}
-            className="h-4 w-4 accent-brand-600"
-          />
-          Discount active
-        </label>
-        <div className="mt-2">
-          <label className="mb-1 block text-xs font-medium text-gray-600">
-            Discount (%)
-          </label>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            step={1}
-            value={discountPercent}
-            onChange={(e) =>
-              setDiscountPercent(Math.min(100, Math.max(0, Number(e.target.value) || 0)))
-            }
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-          />
-        </div>
       </div>
 
       <div className="border-t border-gray-100 pt-4">

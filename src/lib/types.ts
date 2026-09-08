@@ -51,10 +51,6 @@ export interface Service {
   name: string;
   vehicle_type: VehicleType;
   price: number;
-  discount_percent: number;
-  discount_active: boolean;
-  /** Generated column: price net of the discount when active, otherwise equal to price. */
-  effective_price: number;
   duration_minutes: number;
   active: boolean;
   created_at: string;
@@ -78,8 +74,6 @@ export interface ServicePrice {
 export interface ServiceTemplate {
   id: string;
   name: string;
-  discount_percent: number;
-  discount_active: boolean;
   duration_minutes: number;
   active: boolean;
   created_at: string;
@@ -198,6 +192,8 @@ export interface Booking {
   receipt_url: string | null;
   gift_card_id: string | null;
   gift_card_discount: number;
+  discount_id: string | null;
+  discount_amount: number;
   google_event_id: string | null;
   created_at: string;
   services?: Service;
@@ -226,4 +222,28 @@ export interface CustomerSummary {
   /** Empty string if the customer has no bookings yet. */
   lastVisit: string;
   bookings: Booking[];
+}
+
+export type DiscountType = "percent" | "fixed";
+
+/**
+ * Either assigned to one customer (auto-applied when their email/phone
+ * matches at checkout — `customer_id` set, `code` null) or issued as a
+ * public coupon (redeemed by typing the code — `code` set, `customer_id`
+ * null), never both.
+ */
+export interface Discount {
+  id: string;
+  name: string;
+  discount_type: DiscountType;
+  value: number;
+  code: string | null;
+  customer_id: string | null;
+  max_redemptions: number | null;
+  redemption_count: number;
+  per_customer_limit: number | null;
+  expires_at: string | null;
+  active: boolean;
+  created_at: string;
+  customers?: { name: string; email: string } | null;
 }

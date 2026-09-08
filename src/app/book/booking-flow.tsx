@@ -28,8 +28,11 @@ import {
   createCheckoutSession,
   getBookedTimes,
   getDateHours,
+  previewCustomerDiscount,
+  previewDiscount,
   previewGiftCard,
   type BookedTime,
+  type CustomerDiscountPreview,
 } from "./actions";
 
 const BOOKING_LIMIT = 5;
@@ -320,6 +323,17 @@ export default function BookingFlow({
   const [giftCardError, setGiftCardError] = useState<string | null>(null);
   const [checkingGiftCard, setCheckingGiftCard] = useState(false);
 
+  const [discountInput, setDiscountInput] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    code: string;
+    discountType: "percent" | "fixed";
+    value: number;
+    name: string;
+  } | null>(null);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [checkingDiscount, setCheckingDiscount] = useState(false);
+  const [customerDiscount, setCustomerDiscount] = useState<CustomerDiscountPreview | null>(null);
+
   const today = useMemo(() => startOfToday(), []);
   const [cursor, setCursor] = useState({
     year: today.getFullYear(),
@@ -344,7 +358,16 @@ export default function BookingFlow({
 
   const selectedExtras = extras.filter((e) => selectedExtraIds.includes(e.id));
   const extrasTotal = selectedExtras.reduce((sum, e) => sum + e.price, 0);
-  const subtotal = (selectedService?.effective_price ?? 0) + extrasTotal;
+  const basePrice = selectedService?.price ?? 0;
+  // A customer-targeted discount (auto-matched by email/phone) takes
+  // priority over a typed coupon code, same precedence create_booking uses.
+  const activeDiscount = customerDiscount ?? appliedDiscount;
+  const discountAmount = activeDiscount
+    ? activeDiscount.discountType === "percent"
+      ? Math.round(basePrice * activeDiscount.value) / 100
+      : Math.min(activeDiscount.value, basePrice)
+    : 0;
+  const subtotal = basePrice - discountAmount + extrasTotal;
   const giftCardDiscount = appliedGiftCard
     ? Math.min(appliedGiftCard.value, subtotal)
     : 0;
@@ -381,6 +404,51 @@ export default function BookingFlow({
   function handleRemoveGiftCard() {
     setAppliedGiftCard(null);
     setGiftCardError(null);
+  }
+
+  async function handleApplyDiscount() {
+    const code = discountInput.trim();
+    if (!code) return;
+    setCheckingDiscount(true);
+    setDiscountError(null);
+    try {
+      const result = await previewDiscount(code);
+      if (!result.valid || !result.discountType || result.value == null) {
+        setDiscountError(
+          result.reason === "expired"
+            ? "This discount code has expired."
+            : result.reason === "limit reached"
+              ? "This discount code has reached its redemption limit."
+              : result.reason === "inactive"
+                ? "This discount code is no longer active."
+                : "We couldn't find a discount with that code.",
+        );
+        return;
+      }
+      setAppliedDiscount({
+        code,
+        discountType: result.discountType,
+        value: result.value,
+        name: result.name ?? code,
+      });
+      setDiscountInput("");
+    } catch {
+      setDiscountError("Something went wrong checking that code. Please try again.");
+    } finally {
+      setCheckingDiscount(false);
+    }
+  }
+
+  function handleRemoveDiscount() {
+    setAppliedDiscount(null);
+    setDiscountError(null);
+  }
+
+  function handleCheckCustomerDiscount() {
+    if (customerDiscount) return;
+    previewCustomerDiscount(email, phone)
+      .then(setCustomerDiscount)
+      .catch(() => {});
   }
 
   function handleSelectDate(dateKey: string) {
@@ -453,6 +521,7 @@ export default function BookingFlow({
       customer_email: email,
       extra_ids: selectedExtraIds,
       gift_card_code: appliedGiftCard?.code,
+      discount_code: appliedDiscount?.code,
     };
     try {
       if (paymentMode === "stripe") {
@@ -602,14 +671,7 @@ export default function BookingFlow({
                         )}
                       </span>
                     </div>
-                    {s.discount_active && s.discount_percent > 0 ? (
-                      <div className="mt-1.5 flex items-baseline gap-2">
-                        <span className="text-sm text-gray-400 line-through">${s.price.toFixed(2)}</span>
-                        <span className="text-2xl font-extrabold text-brand-600">${s.effective_price.toFixed(2)}</span>
-                      </div>
-                    ) : (
-                      <p className="mt-1.5 text-2xl font-extrabold text-brand-600">${s.price.toFixed(2)}</p>
-                    )}
+                    <p className="mt-1.5 text-2xl font-extrabold text-brand-600">${s.price.toFixed(2)}</p>
                     <p className="mt-1 text-xs text-gray-400">{s.duration_minutes} min</p>
                     <ul className="mt-4 space-y-2 border-t border-gray-100 pt-4">
                       {activeInclusions.length === 0 ? (
@@ -786,7 +848,7 @@ export default function BookingFlow({
                 </div>
                 {selectedService && (
                   <p className="mt-3 border-t border-gray-200 pt-3 text-base font-extrabold text-brand-600">
-                    ${selectedService.effective_price.toFixed(2)}
+                    ${selectedService.price.toFixed(2)}
                   </p>
                 )}
               </div>
@@ -944,20 +1006,7 @@ export default function BookingFlow({
                       ({vehicleTypes.find((v) => v.slug === vehicle)?.name ?? vehicle})
                     </span>
                   </p>
-                  <p className="mt-0.5">
-                    {selectedService?.discount_active && selectedService.discount_percent > 0 ? (
-                      <>
-                        <span className="text-gray-400 line-through">
-                          ${selectedService.price.toFixed(2)}
-                        </span>{" "}
-                        <span className="font-medium text-green-700">
-                          ${selectedService.effective_price.toFixed(2)}
-                        </span>
-                      </>
-                    ) : (
-                      `$${selectedService?.price.toFixed(2)}`
-                    )}
-                  </p>
+                  <p className="mt-0.5">${basePrice.toFixed(2)}</p>
                   {selectedExtras.length > 0 && (
                     <div className="mt-1.5">
                       <p className="text-xs font-semibold text-gray-500">Add-ons</p>
@@ -967,6 +1016,12 @@ export default function BookingFlow({
                           <span>${extra.price.toFixed(2)}</span>
                         </div>
                       ))}
+                    </div>
+                  )}
+                  {activeDiscount && (
+                    <div className="mt-1 flex justify-between gap-4 text-xs text-green-700">
+                      <span>Discount ({customerDiscount ? customerDiscount.name : appliedDiscount?.code})</span>
+                      <span>-${discountAmount.toFixed(2)}</span>
                     </div>
                   )}
                   {appliedGiftCard && (
@@ -1007,6 +1062,65 @@ export default function BookingFlow({
                 </div>
               </div>
             </div>
+          </div>
+
+          {customerDiscount && (
+            <div className="mb-4 flex items-center gap-2 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+              🎉 You qualify for <strong>{customerDiscount.name}</strong> — applied automatically, no code needed.
+            </div>
+          )}
+
+          <div className="mb-5">
+            {appliedDiscount ? (
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm">
+                <span className="text-green-800">
+                  Discount code <strong>{appliedDiscount.code}</strong> applied
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRemoveDiscount}
+                  className="shrink-0 font-semibold text-green-700 underline"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-sm">
+                <span className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                  <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+                    <path d="M11.5 4h6a2 2 0 0 1 2 2v6L9 22.5 1.5 15 11.5 4Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                    <circle cx="15" cy="8" r="1.4" stroke="currentColor" strokeWidth="1.4" />
+                  </svg>
+                </span>
+                <div className="min-w-0 flex-1">
+                  <label className="mb-1 block text-sm font-semibold text-gray-700">
+                    Have a discount code?
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      value={discountInput}
+                      onChange={(e) => {
+                        setDiscountInput(e.target.value.toUpperCase());
+                        setDiscountError(null);
+                      }}
+                      placeholder="e.g. SAVE20"
+                      className="w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                    />
+                    <button
+                      type="button"
+                      disabled={!discountInput.trim() || checkingDiscount}
+                      onClick={handleApplyDiscount}
+                      className="shrink-0 rounded-xl border-2 border-brand-200 bg-white px-4 py-2.5 text-sm font-semibold text-brand-600 transition hover:border-brand-300 hover:bg-brand-50 disabled:opacity-40"
+                    >
+                      {checkingDiscount ? "Checking..." : "Apply"}
+                    </button>
+                  </div>
+                  {discountError && (
+                    <p className="mt-1 text-xs text-red-600">{discountError}</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="mb-5">
@@ -1102,7 +1216,11 @@ export default function BookingFlow({
                   required
                   placeholder="0412 345 678"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    setCustomerDiscount(null);
+                  }}
+                  onBlur={handleCheckCustomerDiscount}
                   className="w-full rounded-xl border border-gray-300 py-2.5 pl-10 pr-3.5 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
                 />
               </div>
@@ -1123,7 +1241,11 @@ export default function BookingFlow({
                   type="email"
                   placeholder="john@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setCustomerDiscount(null);
+                  }}
+                  onBlur={handleCheckCustomerDiscount}
                   className="w-full rounded-xl border border-gray-300 py-2.5 pl-10 pr-3.5 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
                 />
               </div>
@@ -1132,12 +1254,10 @@ export default function BookingFlow({
 
           {totalPrice === 0 ? (
             <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-4 shadow-sm">
-              <p className="text-sm font-bold text-green-900">
-                Fully covered by your gift card
-              </p>
+              <p className="text-sm font-bold text-green-900">Fully covered</p>
               <p className="mt-1 text-sm text-green-700">
-                No payment is needed — your gift card covers the full cost of
-                this booking.
+                No payment is needed — your discount and/or gift card cover the full
+                cost of this booking.
               </p>
             </div>
           ) : paymentMode === "stripe" ? (

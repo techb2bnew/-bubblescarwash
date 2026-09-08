@@ -1,25 +1,27 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Customer, Service, VehicleTypeRow } from "@/lib/types";
+import type { Customer, Extra, Service, VehicleTypeRow } from "@/lib/types";
 import type { PaymentMode } from "@/lib/payment-mode";
 import { formatTimeLabel, unavailableDateStyle } from "@/lib/date-utils";
 import { createBookingAdminCheckout, createBookingAdminPayLater } from "./actions";
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
 const STEP_LABELS: Record<Step, string> = {
   1: "Customer",
   2: "Vehicle",
   3: "Service",
-  4: "Time",
-  5: "Payment",
+  4: "Add-Ons",
+  5: "Time",
+  6: "Payment",
 };
 
 export default function CreateBookingWizard({
   services,
   vehicleTypes,
   customers,
+  extras,
   bookingDate,
   timeSlots,
   bookedTimes,
@@ -33,6 +35,7 @@ export default function CreateBookingWizard({
   services: Service[];
   vehicleTypes: VehicleTypeRow[];
   customers: Pick<Customer, "id" | "name" | "phone" | "email">[];
+  extras: Extra[];
   bookingDate: string;
   timeSlots: string[];
   bookedTimes: string[];
@@ -54,6 +57,7 @@ export default function CreateBookingWizard({
 
   const [vehicleSlug, setVehicleSlug] = useState<string>("");
   const [serviceId, setServiceId] = useState("");
+  const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
   const [time, setTime] = useState<string | null>(null);
   const [overrideAvailability, setOverrideAvailability] = useState(false);
 
@@ -80,6 +84,16 @@ export default function CreateBookingWizard({
 
   const selectedService = services.find((s) => s.id === serviceId) ?? null;
 
+  function toggleExtra(id: string) {
+    setSelectedExtraIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  const selectedExtras = extras.filter((e) => selectedExtraIds.includes(e.id));
+  const extrasTotal = selectedExtras.reduce((sum, e) => sum + e.price, 0);
+  const totalPrice = (selectedService?.price ?? 0) + extrasTotal;
+
   function selectCustomer(c: Pick<Customer, "id" | "name" | "phone" | "email">) {
     setSelectedCustomerId(c.id);
     setName(c.name);
@@ -97,6 +111,7 @@ export default function CreateBookingWizard({
     setEmail("");
     setVehicleSlug("");
     setServiceId("");
+    setSelectedExtraIds([]);
     setTime(null);
     setOverrideAvailability(false);
     setError(null);
@@ -115,6 +130,7 @@ export default function CreateBookingWizard({
         customer_name: name,
         customer_phone: phone,
         customer_email: email,
+        extra_ids: selectedExtraIds,
         overrideAvailability,
       });
       onBooked(time);
@@ -139,6 +155,7 @@ export default function CreateBookingWizard({
         customer_name: name,
         customer_phone: phone,
         customer_email: email,
+        extra_ids: selectedExtraIds,
         overrideAvailability: false,
       });
       window.location.href = url;
@@ -152,12 +169,13 @@ export default function CreateBookingWizard({
     (step === 1 && name.trim() && phone.trim() && email.trim()) ||
     (step === 2 && vehicleSlug) ||
     (step === 3 && serviceId) ||
-    (step === 4 && time);
+    step === 4 ||
+    (step === 5 && time);
 
   return (
     <div>
       <div className="mb-4 flex items-center gap-1 text-xs font-medium text-gray-500">
-        {([1, 2, 3, 4, 5] as Step[]).map((s, i) => (
+        {([1, 2, 3, 4, 5, 6] as Step[]).map((s, i) => (
           <div key={s} className="flex items-center gap-1">
             {i > 0 && <span className="text-gray-300">›</span>}
             <span className={s === step ? "font-semibold text-brand-700" : s < step ? "text-gray-700" : ""}>
@@ -297,7 +315,7 @@ export default function CreateBookingWizard({
             >
               <span className="font-medium">{s.name}</span>
               <span className="text-xs text-gray-500">
-                ${s.effective_price.toFixed(2)} · {s.duration_minutes} min
+                ${s.price.toFixed(2)} · {s.duration_minutes} min
               </span>
             </button>
           ))}
@@ -308,6 +326,44 @@ export default function CreateBookingWizard({
       )}
 
       {step === 4 && (
+        <div className="space-y-2">
+          {extras.length === 0 ? (
+            <p className="text-xs text-gray-400">No add-ons available.</p>
+          ) : (
+            extras.map((extra) => {
+              const checked = selectedExtraIds.includes(extra.id);
+              return (
+                <label
+                  key={extra.id}
+                  className={`flex cursor-pointer items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm ${
+                    checked
+                      ? "border-brand-600 bg-brand-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <span>
+                    <span className="font-medium text-gray-900">{extra.name}</span>
+                    {extra.description && (
+                      <span className="ml-2 text-xs text-gray-500">{extra.description}</span>
+                    )}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="text-xs text-gray-500">${extra.price.toFixed(2)}</span>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleExtra(extra.id)}
+                      className="h-4 w-4 accent-brand-600"
+                    />
+                  </span>
+                </label>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {step === 5 && (
         <div className="space-y-3">
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
@@ -367,7 +423,7 @@ export default function CreateBookingWizard({
         </div>
       )}
 
-      {step === 5 && (
+      {step === 6 && (
         <div className="space-y-3">
           <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
             <div className="font-medium text-gray-900">{name}</div>
@@ -375,8 +431,23 @@ export default function CreateBookingWizard({
               {phone} · {email}
             </div>
             <div className="mt-1 text-xs text-gray-500">
-              {selectedService?.name} — {time ? formatTimeLabel(time) : ""}
+              {selectedService?.name} (${selectedService?.price.toFixed(2)}) —{" "}
+              {time ? formatTimeLabel(time) : ""}
               {overrideAvailability ? " (override)" : ""}
+            </div>
+            {selectedExtras.length > 0 && (
+              <div className="mt-1">
+                {selectedExtras.map((extra) => (
+                  <div key={extra.id} className="flex justify-between text-xs text-gray-500">
+                    <span>+ {extra.name}</span>
+                    <span>${extra.price.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-1 flex justify-between font-medium text-gray-900">
+              <span>Total</span>
+              <span>${totalPrice.toFixed(2)}</span>
             </div>
           </div>
 
@@ -414,10 +485,10 @@ export default function CreateBookingWizard({
         >
           Back
         </button>
-        {step < 5 && (
+        {step < 6 && (
           <button
             type="button"
-            onClick={() => setStep((s) => (s < 5 ? ((s + 1) as Step) : s))}
+            onClick={() => setStep((s) => (s < 6 ? ((s + 1) as Step) : s))}
             disabled={!canAdvance}
             className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
           >
