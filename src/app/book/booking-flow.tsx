@@ -763,12 +763,22 @@ export default function BookingFlow({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-gray-200 p-5 shadow-sm md:w-72 md:flex-none">
+              <div className="rounded-2xl border border-gray-200 p-5 shadow-sm md:w-80 md:flex-none">
                 {selectedDate ? (
                   <>
-                    <h3 className="mb-3 text-sm font-bold text-gray-800">
-                      Available times on {selectedDate}
-                    </h3>
+                    <div className="mb-3 flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-gray-800">
+                        {selectedDate}
+                      </h3>
+                      <div className="flex items-center gap-3 text-[11px] text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <span className="h-2 w-2 rounded-full bg-brand-500" /> Available
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="h-2 w-2 rounded-full bg-blue-400" /> Booked
+                        </span>
+                      </div>
+                    </div>
                     {loadingTimes ? (
                       <p className="text-sm text-gray-400">Loading...</p>
                     ) : timesError ? (
@@ -783,14 +793,20 @@ export default function BookingFlow({
                         </button>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 gap-2">
+                      // A Google-Calendar-style day agenda: one row per slot, in
+                      // chronological order, booked slots shown as a solid event
+                      // block instead of just being omitted — so it's visually
+                      // obvious which part of the day is already taken.
+                      <div className="max-h-80 divide-y divide-gray-100 overflow-y-auto rounded-xl border border-gray-100">
                         {timeSlots.map((t) => {
                           const bookedEntry = bookedTimes.find((bt) => bt.time === t);
                           const taken = Boolean(bookedEntry);
                           const blocked = bookedEntry?.isBlocked ?? false;
+                          const active = selectedTime === t;
                           return (
                             <button
                               key={t}
+                              type="button"
                               disabled={taken}
                               onClick={() => setSelectedTime(t)}
                               title={
@@ -799,18 +815,34 @@ export default function BookingFlow({
                                     (blocked ? "Not available" : "Already booked")
                                   : undefined
                               }
-                              style={blocked ? unavailableDateStyle : undefined}
-                              className={`rounded-lg border-2 px-2 py-2 text-xs font-semibold transition ${
-                                taken
-                                  ? blocked
-                                    ? "cursor-not-allowed border-red-200 text-red-600"
-                                    : "cursor-not-allowed border-blue-200 bg-blue-50 text-blue-600"
-                                  : selectedTime === t
-                                    ? "border-brand-600 bg-brand-50 text-brand-700 shadow-sm"
-                                    : "border-gray-200 text-gray-600 hover:border-brand-200 hover:bg-brand-50/50"
-                              }`}
+                              className={`flex w-full items-center gap-3 px-3 py-2 text-left text-xs transition ${
+                                taken ? "cursor-not-allowed" : "hover:bg-brand-50/60"
+                              } ${active ? "bg-brand-50" : ""}`}
                             >
-                              {formatTimeLabel(t)}
+                              <span className="w-14 flex-none font-semibold text-gray-500">
+                                {formatTimeLabel(t)}
+                              </span>
+                              {taken ? (
+                                <span
+                                  className={`flex-1 truncate rounded-md px-2.5 py-1.5 font-semibold ${
+                                    blocked
+                                      ? "bg-red-100 text-red-700"
+                                      : "bg-blue-100 text-blue-700"
+                                  }`}
+                                >
+                                  {bookedEntry?.reason || (blocked ? "Not available" : "Booked")}
+                                </span>
+                              ) : (
+                                <span
+                                  className={`flex-1 rounded-md border-2 px-2.5 py-1.5 font-semibold ${
+                                    active
+                                      ? "border-brand-600 bg-white text-brand-700"
+                                      : "border-dashed border-brand-200 text-brand-500"
+                                  }`}
+                                >
+                                  Available
+                                </span>
+                              )}
                             </button>
                           );
                         })}
