@@ -10,6 +10,7 @@ import type {
   Extra,
   HoursSource,
   Service,
+  ServiceCategoryRow,
   VehicleTypeRow,
 } from "@/lib/types";
 import type { PaymentMode } from "@/lib/payment-mode";
@@ -36,6 +37,7 @@ export default function CalendarView({
   vehicleTypes,
   customers,
   extras,
+  categories,
   googleCalendarEmbedUrl,
   paymentMode,
 }: {
@@ -45,6 +47,7 @@ export default function CalendarView({
   vehicleTypes: VehicleTypeRow[];
   customers: Pick<Customer, "id" | "name" | "phone" | "email">[];
   extras: Extra[];
+  categories: ServiceCategoryRow[];
   googleCalendarEmbedUrl: string | null;
   paymentMode: PaymentMode;
 }) {
@@ -324,6 +327,7 @@ export default function CalendarView({
                     vehicleTypes={vehicleTypes}
                     customers={customers}
                     extras={extras}
+                    categories={categories}
                     bookingDate={selected}
                     timeSlots={timeSlots}
                     bookedTimes={bookedTimes}

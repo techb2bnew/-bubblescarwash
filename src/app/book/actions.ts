@@ -28,6 +28,28 @@ export async function getBookedTimes(date: string): Promise<BookedTime[]> {
   );
 }
 
+export interface SlotCapacity {
+  capacity: number;
+  booked: number;
+  remaining: number;
+}
+
+/**
+ * "Only N spots left" lookup for the selected time — same capacity-window
+ * math create_booking enforces at submit time, so this is advisory (an
+ * estimate for the UI), not a reservation; the real check still happens
+ * atomically inside create_booking.
+ */
+export async function getSlotCapacity(date: string, time: string): Promise<SlotCapacity> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .rpc("get_slot_capacity", { target_date: date, target_time: time })
+    .single();
+  if (error) throw new Error(error.message);
+  const row = data as { capacity: number; booked: number; remaining: number };
+  return row;
+}
+
 export async function getDateHours(
   date: string,
 ): Promise<{ openingTime: string; closingTime: string }> {

@@ -29,11 +29,13 @@ import {
   createCheckoutSession,
   getBookedTimes,
   getDateHours,
+  getSlotCapacity,
   previewCustomerDiscount,
   previewDiscount,
   previewGiftCard,
   type BookedTime,
   type CustomerDiscountPreview,
+  type SlotCapacity,
 } from "./actions";
 
 const BOOKING_LIMIT = 5;
@@ -81,6 +83,7 @@ export default function BookingFlow({
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [slotCapacity, setSlotCapacity] = useState<SlotCapacity | null>(null);
   const [bookedTimes, setBookedTimes] = useState<BookedTime[]>([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
   const [timesError, setTimesError] = useState<string | null>(null);
@@ -243,6 +246,7 @@ export default function BookingFlow({
   function handleSelectDate(dateKey: string) {
     setSelectedDate(dateKey);
     setSelectedTime(null);
+    setSlotCapacity(null);
     setTimesError(null);
     setLoadingTimes(true);
     Promise.all([getBookedTimes(dateKey), getDateHours(dateKey)])
@@ -259,6 +263,15 @@ export default function BookingFlow({
         );
       })
       .finally(() => setLoadingTimes(false));
+  }
+
+  function handleSelectTime(time: string) {
+    setSelectedTime(time);
+    setSlotCapacity(null);
+    if (!selectedDate) return;
+    getSlotCapacity(selectedDate, time)
+      .then(setSlotCapacity)
+      .catch(() => setSlotCapacity(null));
   }
 
   const timeSlots = useMemo(
@@ -553,7 +566,7 @@ export default function BookingFlow({
                             <button
                               key={t}
                               disabled={taken}
-                              onClick={() => setSelectedTime(t)}
+                              onClick={() => handleSelectTime(t)}
                               title={
                                 taken
                                   ? bookedEntry?.reason ||
@@ -576,6 +589,17 @@ export default function BookingFlow({
                           );
                         })}
                       </div>
+                    )}
+                    {selectedTime && slotCapacity && (
+                      <p
+                        className={`mt-3 text-xs font-medium ${
+                          slotCapacity.remaining <= 2 ? "text-amber-700" : "text-gray-500"
+                        }`}
+                      >
+                        {slotCapacity.remaining <= 0
+                          ? "This time is now full — pick another."
+                          : `Only ${slotCapacity.remaining} spot${slotCapacity.remaining === 1 ? "" : "s"} left for ${formatTimeLabel(selectedTime)}.`}
+                      </p>
                     )}
                   </>
                 ) : (
