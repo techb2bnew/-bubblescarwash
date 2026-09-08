@@ -53,7 +53,7 @@ export default function AddOnsBadge({ names }: { names: string[] }) {
         onClick={() => setOpen((o) => !o)}
         className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-200 hover:bg-brand-100"
       >
-        {names.length} add-on{names.length === 1 ? "" : "s"}
+        {names.length} inclusion{names.length === 1 ? "" : "s"}
       </button>
 
       {open &&
@@ -64,7 +64,7 @@ export default function AddOnsBadge({ names }: { names: string[] }) {
             className="fixed z-50 w-56 overflow-hidden rounded-md border border-gray-200 bg-white py-2 shadow-lg"
           >
             <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-              Included Add-Ons
+              Inclusions
             </div>
             <ul className="max-h-48 overflow-y-auto">
               {names.map((name) => (

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -40,11 +41,9 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: "/admin/categories",
-    label: "Categories",
-    icon: (
-      <path d="M4 6h16M4 12h16M4 18h7" />
-    ),
+    href: "/admin/add-ons",
+    label: "Inclusions",
+    icon: <path d="m5 13 4 4L19 7" />,
   },
   {
     href: "/admin/vehicle-types",
@@ -54,13 +53,8 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: "/admin/add-ons",
-    label: "Add-Ons",
-    icon: <path d="m5 13 4 4L19 7" />,
-  },
-  {
     href: "/admin/extras",
-    label: "Extras",
+    label: "Add-Ons",
     icon: (
       <path d="M20.6 12.9 12.9 20.6a2 2 0 0 1-2.8 0l-6.7-6.7a2 2 0 0 1 0-2.8L11.1 3.4A2 2 0 0 1 12.5 3H19a2 2 0 0 1 2 2v6.5a2 2 0 0 1-.6 1.4ZM8.5 8.5h.01" />
     ),
@@ -71,6 +65,7 @@ const NAV_ITEMS = [
     icon: (
       <path d="M7 3v3M17 3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" />
     ),
+    children: [{ label: "Set Operations", href: "/admin/calendar/set-operations" }],
   },
   {
     href: "/admin/gift-cards",
@@ -79,7 +74,32 @@ const NAV_ITEMS = [
       <path d="M20 7H4a1 1 0 0 0-1 1v3h18V8a1 1 0 0 0-1-1ZM3 13v5a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-5M12 7v13M7.5 7C6 7 5 5.9 5 4.5S6 2 7.5 2 10 4 12 7c2-3 3.5-5 4.5-5S19 3.1 19 4.5 18 7 16.5 7" />
     ),
   },
+  {
+    href: "/admin/payments",
+    label: "Payments",
+    icon: (
+      <path d="M2 10h20M6 15h4M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" />
+    ),
+  },
 ];
+
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
 
 export default function Sidebar({
   open,
@@ -89,6 +109,9 @@ export default function Sidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => ({
+    "/admin/calendar": pathname.startsWith("/admin/calendar"),
+  }));
 
   return (
     <>
@@ -140,33 +163,73 @@ export default function Sidebar({
             const active =
               item.href === "/admin"
                 ? pathname === "/admin"
-                : pathname.startsWith(item.href);
+                : pathname === item.href;
+            const isExpanded = expanded[item.href] ?? false;
+
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
-                className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
-                  active
-                    ? "bg-brand-600 text-white"
-                    : "text-white/60 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5 shrink-0"
+              <div key={item.href}>
+                <div
+                  className={`flex items-center rounded-md text-sm font-medium transition-colors ${
+                    active
+                      ? "bg-brand-600 text-white"
+                      : "text-white/60 hover:bg-white/10 hover:text-white"
+                  }`}
                 >
-                  {item.icon}
-                </svg>
-                {item.label}
-              </Link>
+                  <Link
+                    href={item.href}
+                    onClick={onClose}
+                    className="flex flex-1 items-center gap-3 px-3 py-2.5"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-5 w-5 shrink-0"
+                    >
+                      {item.icon}
+                    </svg>
+                    {item.label}
+                  </Link>
+                  {item.children && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpanded((prev) => ({ ...prev, [item.href]: !prev[item.href] }))
+                      }
+                      aria-label={`Toggle ${item.label} submenu`}
+                      className="px-3 py-2.5"
+                    >
+                      <ChevronIcon open={isExpanded} />
+                    </button>
+                  )}
+                </div>
+                {item.children && isExpanded && (
+                  <div className="ml-8 mt-1 space-y-1 border-l border-white/10 pl-3">
+                    {item.children.map((child) => {
+                      const childActive = pathname === child.href;
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          onClick={onClose}
+                          className={`block rounded-md px-2.5 py-2 text-sm transition-colors ${
+                            childActive
+                              ? "bg-brand-600 text-white"
+                              : "text-white/50 hover:bg-white/10 hover:text-white"
+                          }`}
+                        >
+                          {child.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>

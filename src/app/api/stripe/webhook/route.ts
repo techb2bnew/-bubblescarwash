@@ -37,11 +37,49 @@ function getPaymentIntentId(session: Stripe.Checkout.Session): string | null {
     : (session.payment_intent?.id ?? null);
 }
 
-async function handleBookingPaid(session: Stripe.Checkout.Session) {
+interface PaymentDetails {
+  cardBrand: string | null;
+  cardLast4: string | null;
+  receiptUrl: string | null;
+}
+
+/** Best-effort — a failure here shouldn't block marking the booking/gift card paid. */
+async function getPaymentDetails(
+  stripe: Stripe,
+  paymentIntentId: string | null,
+): Promise<PaymentDetails> {
+  const empty: PaymentDetails = { cardBrand: null, cardLast4: null, receiptUrl: null };
+  if (!paymentIntentId) return empty;
+
+  try {
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ["latest_charge"],
+    });
+    const charge =
+      typeof paymentIntent.latest_charge === "string" ? null : paymentIntent.latest_charge;
+    if (!charge) return empty;
+
+    return {
+      cardBrand: charge.payment_method_details?.card?.brand ?? null,
+      cardLast4: charge.payment_method_details?.card?.last4 ?? null,
+      receiptUrl: charge.receipt_url ?? null,
+    };
+  } catch (err) {
+    console.error("[stripe-webhook] getPaymentDetails failed:", err);
+    return empty;
+  }
+}
+
+async function handleBookingPaid(session: Stripe.Checkout.Session, stripe: Stripe) {
   const supabase = await createClient();
+  const paymentIntentId = getPaymentIntentId(session);
+  const { cardBrand, cardLast4, receiptUrl } = await getPaymentDetails(stripe, paymentIntentId);
   const { data, error } = await supabase.rpc("mark_booking_paid", {
     p_stripe_checkout_session_id: session.id,
-    p_stripe_payment_intent_id: getPaymentIntentId(session),
+    p_stripe_payment_intent_id: paymentIntentId,
+    p_card_brand: cardBrand,
+    p_card_last4: cardLast4,
+    p_receipt_url: receiptUrl,
   });
   if (error) {
     console.error("[stripe-webhook] mark_booking_paid failed:", error);
@@ -63,11 +101,16 @@ async function handleBookingPaid(session: Stripe.Checkout.Session) {
   });
 }
 
-async function handleGiftCardPaid(session: Stripe.Checkout.Session) {
+async function handleGiftCardPaid(session: Stripe.Checkout.Session, stripe: Stripe) {
   const supabase = await createClient();
+  const paymentIntentId = getPaymentIntentId(session);
+  const { cardBrand, cardLast4, receiptUrl } = await getPaymentDetails(stripe, paymentIntentId);
   const { data, error } = await supabase.rpc("mark_gift_card_paid", {
     p_stripe_checkout_session_id: session.id,
-    p_stripe_payment_intent_id: getPaymentIntentId(session),
+    p_stripe_payment_intent_id: paymentIntentId,
+    p_card_brand: cardBrand,
+    p_card_last4: cardLast4,
+    p_receipt_url: receiptUrl,
   });
   if (error) {
     console.error("[stripe-webhook] mark_gift_card_paid failed:", error);
@@ -91,11 +134,11 @@ async function handleGiftCardPaid(session: Stripe.Checkout.Session) {
   });
 }
 
-async function handlePaid(session: Stripe.Checkout.Session) {
+async function handlePaid(session: Stripe.Checkout.Session, stripe: Stripe) {
   if (session.metadata?.type === "gift_card") {
-    return handleGiftCardPaid(session);
+    return handleGiftCardPaid(session, stripe);
   }
-  return handleBookingPaid(session);
+  return handleBookingPaid(session, stripe);
 }
 
 async function handleFailed(session: Stripe.Checkout.Session) {
@@ -138,7 +181,7 @@ export async function POST(request: Request) {
     switch (event.type) {
       case "checkout.session.completed":
       case "checkout.session.async_payment_succeeded":
-        await handlePaid(event.data.object);
+        await handlePaid(event.data.object, stripe);
         break;
       case "checkout.session.expired":
       case "checkout.session.async_payment_failed":

@@ -3,13 +3,10 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type {
-  AddOn,
   BlockedDate,
   BusinessSettings,
-  CategoryRow,
   Extra,
   Service,
-  ServiceCategory,
   VehicleType,
   VehicleTypeRow,
 } from "@/lib/types";
@@ -274,19 +271,15 @@ function formatExpiry(value: string): string {
 
 export default function BookingFlow({
   services,
-  inclusions,
   extras,
   vehicleTypes,
-  categories,
   settings,
   blockedDates,
   paymentMode,
 }: {
   services: Service[];
-  inclusions: AddOn[];
   extras: Extra[];
   vehicleTypes: VehicleTypeRow[];
-  categories: CategoryRow[];
   settings: BusinessSettings;
   blockedDates: BlockedDate[];
   paymentMode: PaymentMode;
@@ -294,7 +287,6 @@ export default function BookingFlow({
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [vehicle, setVehicle] = useState<VehicleType>(vehicleTypes[0]?.slug ?? "");
-  const [category, setCategory] = useState<ServiceCategory>(categories[0]?.slug ?? "");
   const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -342,19 +334,7 @@ export default function BookingFlow({
 
   const weeks = useMemo(() => getMonthGrid(cursor.year, cursor.month), [cursor]);
 
-  const tierServices = services.filter(
-    (s) => s.vehicle_type === vehicle && s.category === category,
-  );
-  const categoryInclusions = inclusions
-    .filter((i) => i.category === category && i.active)
-    .sort((a, b) => a.sort_order - b.sort_order);
-
-  function hasInclusion(service: Service, inclusionId: string) {
-    return (
-      service.service_inclusions?.some((si) => si.inclusion_id === inclusionId) ??
-      false
-    );
-  }
+  const vehicleServices = services.filter((s) => s.vehicle_type === vehicle);
 
   function toggleExtra(id: string) {
     setSelectedExtraIds((prev) =>
@@ -465,6 +445,7 @@ export default function BookingFlow({
     setError(null);
     const bookingInput = {
       service_id: selectedService.id,
+      vehicle_type: vehicle,
       booking_date: selectedDate,
       booking_time: `${selectedTime}:00`,
       customer_name: name,
@@ -575,39 +556,22 @@ export default function BookingFlow({
           )}
 
           <p className="mb-2.5 text-sm font-semibold text-gray-700">Select Service</p>
-          <div className="mb-7 grid grid-cols-2 gap-3">
-            {categories.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => {
-                  setCategory(c.slug);
-                  setSelectedService(null);
-                }}
-                className={`rounded-xl border-2 py-3.5 text-sm font-semibold shadow-sm transition ${
-                  category === c.slug
-                    ? "border-brand-600 bg-brand-50 text-brand-700"
-                    : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
-                }`}
-              >
-                {c.name} Service
-              </button>
-            ))}
-          </div>
-
-          {tierServices.length === 0 ? (
+          {vehicleServices.length === 0 ? (
             <p className="text-sm text-gray-400">
-              No services configured for this combination yet.
+              No services configured for this vehicle type yet.
             </p>
           ) : (
             <div
               className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${
-                tierServices.length >= 4 ? "lg:grid-cols-4" : tierServices.length >= 3 ? "lg:grid-cols-3" : ""
+                vehicleServices.length >= 4 ? "lg:grid-cols-4" : vehicleServices.length >= 3 ? "lg:grid-cols-3" : ""
               }`}
             >
-              {tierServices.map((s, si) => {
+              {vehicleServices.map((s, si) => {
                 const active = selectedService?.id === s.id;
-                const popular = tierServices.length > 1 && si === Math.floor((tierServices.length - 1) / 2);
-                const includedInclusions = categoryInclusions.filter((inc) => hasInclusion(s, inc.id));
+                const popular = vehicleServices.length > 1 && si === Math.floor((vehicleServices.length - 1) / 2);
+                const activeInclusions = (s.inclusions ?? [])
+                  .filter((i) => i.active)
+                  .sort((a, b) => a.sort_order - b.sort_order);
                 return (
                   <button
                     key={s.id}
@@ -646,11 +610,12 @@ export default function BookingFlow({
                     ) : (
                       <p className="mt-1.5 text-2xl font-extrabold text-brand-600">${s.price.toFixed(2)}</p>
                     )}
+                    <p className="mt-1 text-xs text-gray-400">{s.duration_minutes} min</p>
                     <ul className="mt-4 space-y-2 border-t border-gray-100 pt-4">
-                      {includedInclusions.length === 0 ? (
+                      {activeInclusions.length === 0 ? (
                         <li className="text-xs text-gray-400">No inclusions listed</li>
                       ) : (
-                        includedInclusions.map((inc) => (
+                        activeInclusions.map((inc) => (
                           <li key={inc.id} className="flex items-center gap-2 text-sm text-gray-700">
                             <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-brand-500/15 text-brand-600">
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">

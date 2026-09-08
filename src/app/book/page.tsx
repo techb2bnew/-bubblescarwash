@@ -1,14 +1,7 @@
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
-import type {
-  AddOn,
-  BlockedDate,
-  BusinessSettings,
-  CategoryRow,
-  Extra,
-  Service,
-  VehicleTypeRow,
-} from "@/lib/types";
+import type { BlockedDate, BusinessSettings, Extra, VehicleTypeRow } from "@/lib/types";
+import { flattenServiceTemplates, type ServiceTemplateRow } from "@/lib/pricing";
 import SiteHeader from "../_components/site-header";
 import SiteFooter from "../_components/site-footer";
 import TypewriterWord from "../_components/typewriter-word";
@@ -22,31 +15,27 @@ export default async function BookPage() {
 
   const [
     { data: services },
-    { data: inclusions },
     { data: extras },
     { data: settings },
     { data: blockedDates },
     { data: vehicleTypes },
-    { data: categories },
     paymentMode,
   ] = await Promise.all([
     supabase
       .from("services")
-      .select("*, service_inclusions(inclusion_id)")
+      .select("*, prices:service_prices(*), inclusions(*)")
       .eq("active", true)
-      .order("price"),
-    supabase.from("inclusions").select("*").order("category").order("sort_order"),
+      .order("name"),
     supabase.from("extras").select("*").eq("active", true).order("sort_order"),
     supabase.from("business_settings").select("*").eq("id", 1).single(),
     supabase.from("blocked_dates").select("*"),
     supabase.from("vehicle_types").select("*").eq("active", true).order("sort_order"),
-    supabase
-      .from("service_categories")
-      .select("*")
-      .eq("active", true)
-      .order("sort_order"),
     getBookingPaymentMode(),
   ]);
+
+  const flatServices = flattenServiceTemplates(
+    (services as ServiceTemplateRow[]) ?? [],
+  ).sort((a, b) => a.price - b.price);
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-gray-900">
@@ -82,11 +71,9 @@ export default async function BookPage() {
         <div className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-brand-200/40 blur-3xl" />
         <div className="relative mx-auto max-w-5xl rounded-3xl bg-white p-5 shadow-2xl shadow-gray-900/10 ring-1 ring-gray-100 sm:p-8">
           <BookingFlow
-            services={(services as Service[]) ?? []}
-            inclusions={(inclusions as AddOn[]) ?? []}
+            services={flatServices}
             extras={(extras as Extra[]) ?? []}
             vehicleTypes={(vehicleTypes as VehicleTypeRow[]) ?? []}
-            categories={(categories as CategoryRow[]) ?? []}
             paymentMode={paymentMode}
             settings={(settings as BusinessSettings) ?? {
               id: 1,

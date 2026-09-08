@@ -8,6 +8,7 @@ import { FilterSelect, TableToolbar } from "../_components/table-toolbar";
 import { SortHeader } from "../_components/sort-header";
 import { Pagination } from "../_components/pagination";
 import { useConfirmDialog } from "../_components/confirm-dialog";
+import { EditButton, DeleteButton } from "../_components/action-icons";
 
 const PAGE_SIZE = 10;
 const VISIBILITY_OPTIONS = [
@@ -32,7 +33,7 @@ export default function ExtrasTable({
   const [page, setPage] = useState(1);
 
   async function handleDelete(id: string) {
-    if (!(await confirm("Delete this extra? This cannot be undone."))) return;
+    if (!(await confirm("Delete this add-on? This cannot be undone."))) return;
     await deleteExtra(id);
     router.refresh();
   }
@@ -98,7 +99,7 @@ export default function ExtrasTable({
           setSearch(v);
           setPage(1);
         }}
-        searchPlaceholder="Search extras..."
+        searchPlaceholder="Search add-ons..."
         hasActiveFilters={hasActiveFilters}
         onClear={() => {
           setSearch("");
@@ -122,7 +123,7 @@ export default function ExtrasTable({
           <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
             <tr>
               <SortHeader
-                label="Extra"
+                label="Add-On"
                 sortKey="name"
                 currentSort={sortKey}
                 currentDir={sortDir}
@@ -176,19 +177,11 @@ export default function ExtrasTable({
                     {e.active ? "Visible" : "Hidden"}
                   </button>
                 </td>
-                <td className="space-x-3 px-4 py-3 text-right">
-                  <button
-                    onClick={() => onEdit(e)}
-                    className="text-sm font-medium text-blue-600 hover:underline"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(e.id)}
-                    className="text-sm font-medium text-red-600 hover:underline"
-                  >
-                    Delete
-                  </button>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <EditButton onClick={() => onEdit(e)} />
+                    <DeleteButton onClick={() => handleDelete(e.id)} />
+                  </div>
                 </td>
               </tr>
             ))}
@@ -196,8 +189,8 @@ export default function ExtrasTable({
               <tr>
                 <td colSpan={5} className="px-4 py-10 text-center text-gray-400">
                   {extras.length === 0
-                    ? 'No extras yet — click "Add Extra" to create one.'
-                    : "No extras match your search/filters."}
+                    ? 'No add-ons yet — click "Add Add-On" to create one.'
+                    : "No add-ons match your search/filters."}
                 </td>
               </tr>
             )}

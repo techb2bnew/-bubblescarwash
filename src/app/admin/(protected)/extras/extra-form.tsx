@@ -50,7 +50,7 @@ export default function ExtraForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label className="mb-1 block text-xs font-medium text-gray-600">
-          Extra name
+          Add-on name
         </label>
         <input
           required
@@ -123,7 +123,7 @@ export default function ExtraForm({
         disabled={saving}
         className="w-full rounded-md bg-brand-600 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
       >
-        {saving ? "Saving..." : extra ? "Update Extra" : "Add Extra"}
+        {saving ? "Saving..." : extra ? "Update Add-On" : "Add Add-On"}
       </button>
     </form>
   );

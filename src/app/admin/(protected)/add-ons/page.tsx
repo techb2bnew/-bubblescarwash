@@ -1,18 +1,20 @@
 import { createClient } from "@/lib/supabase/server";
-import type { AddOn, CategoryRow } from "@/lib/types";
-import AddOnsPageClient from "./addons-page-client";
+import AddOnsPageClient, { type AddOnWithService, type ServiceOption } from "./addons-page-client";
 
 export default async function AdminAddOnsPage() {
   const supabase = await createClient();
-  const [{ data: addOns }, { data: categories }] = await Promise.all([
-    supabase.from("inclusions").select("*").order("category").order("sort_order"),
-    supabase.from("service_categories").select("*").eq("active", true).order("sort_order"),
+  const [{ data: addOns }, { data: services }] = await Promise.all([
+    supabase
+      .from("inclusions")
+      .select("*, services(id, name)")
+      .order("sort_order"),
+    supabase.from("services").select("id, name").order("name"),
   ]);
 
   return (
     <AddOnsPageClient
-      addOns={(addOns as AddOn[]) ?? []}
-      categories={(categories as CategoryRow[]) ?? []}
+      addOns={(addOns as AddOnWithService[]) ?? []}
+      services={(services as ServiceOption[]) ?? []}
     />
   );
 }

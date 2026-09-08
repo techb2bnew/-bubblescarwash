@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { createPublicClient } from "@/lib/supabase/public";
-import type { CategoryRow, Service, VehicleTypeRow } from "@/lib/types";
+import type { VehicleTypeRow } from "@/lib/types";
+import { flattenServiceTemplates, type ServiceTemplateRow } from "@/lib/pricing";
 import SiteHeader from "../_components/site-header";
 import SiteFooter from "../_components/site-footer";
 import StatsBand from "../_components/stats-band";
@@ -15,7 +16,6 @@ export const revalidate = 60;
 
 type Tier = {
   name: string;
-  category: string;
   duration_minutes: number;
   prices: { vehicleTypeSlug: string; price: number }[];
   features: string[];
@@ -24,37 +24,33 @@ type Tier = {
 async function getWashPackages() {
   const supabase = createPublicClient();
 
-  const [
-    { data: categories },
-    { data: vehicleTypes },
-    { data: services },
-    { data: inclusions },
-  ] = await Promise.all([
-    supabase.from("service_categories").select("*").eq("active", true).order("sort_order"),
+  const [{ data: vehicleTypes }, { data: services }] = await Promise.all([
     supabase.from("vehicle_types").select("*").eq("active", true).order("sort_order"),
-    supabase.from("services").select("*, service_inclusions(inclusion_id)").eq("active", true),
-    supabase.from("inclusions").select("*").order("sort_order"),
+    supabase
+      .from("services")
+      .select("*, prices:service_prices(*), inclusions(*)")
+      .eq("active", true)
+      .order("name"),
   ]);
 
-  const inclusionNameById = new Map(
-    ((inclusions as { id: string; name: string }[]) ?? []).map((i) => [i.id, i.name]),
+  const flatServices = flattenServiceTemplates(
+    (services as ServiceTemplateRow[]) ?? [],
   );
 
   const tiersByName = new Map<string, Tier>();
-  for (const s of (services as Service[]) ?? []) {
-    const key = `${s.category}:${s.name}`;
-    const existing = tiersByName.get(key);
-    const features = (s.service_inclusions ?? [])
-      .map((si) => inclusionNameById.get(si.inclusion_id))
-      .filter((n): n is string => Boolean(n));
+  for (const s of flatServices) {
+    const existing = tiersByName.get(s.name);
+    const features = (s.inclusions ?? [])
+      .filter((i) => i.active)
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((i) => i.name);
 
     if (existing) {
       existing.prices.push({ vehicleTypeSlug: s.vehicle_type, price: s.price });
       if (features.length > existing.features.length) existing.features = features;
     } else {
-      tiersByName.set(key, {
+      tiersByName.set(s.name, {
         name: s.name,
-        category: s.category,
         duration_minutes: s.duration_minutes,
         prices: [{ vehicleTypeSlug: s.vehicle_type, price: s.price }],
         features,
@@ -63,15 +59,16 @@ async function getWashPackages() {
   }
 
   const vehicleOrder = new Map(((vehicleTypes as VehicleTypeRow[]) ?? []).map((v, i) => [v.slug, i]));
-  const tiers = [...tiersByName.values()].map((t) => ({
-    ...t,
-    prices: t.prices.sort(
-      (a, b) => (vehicleOrder.get(a.vehicleTypeSlug) ?? 0) - (vehicleOrder.get(b.vehicleTypeSlug) ?? 0),
-    ),
-  }));
+  const tiers = [...tiersByName.values()]
+    .map((t) => ({
+      ...t,
+      prices: t.prices.sort(
+        (a, b) => (vehicleOrder.get(a.vehicleTypeSlug) ?? 0) - (vehicleOrder.get(b.vehicleTypeSlug) ?? 0),
+      ),
+    }))
+    .sort((a, b) => (a.prices[0]?.price ?? 0) - (b.prices[0]?.price ?? 0));
 
   return {
-    categories: (categories as CategoryRow[]) ?? [],
     vehicleTypes: (vehicleTypes as VehicleTypeRow[]) ?? [],
     tiers,
   };
@@ -97,7 +94,7 @@ const PROCESS_STEPS = [
 ];
 
 export default async function ServicesPage() {
-  const { categories, vehicleTypes, tiers } = await getWashPackages();
+  const { vehicleTypes, tiers } = await getWashPackages();
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-gray-900">
@@ -145,70 +142,63 @@ export default async function ServicesPage() {
               Packages are being updated — please check back shortly.
             </p>
           ) : (
-            categories.map((cat) => {
-              const catTiers = tiers.filter((t) => t.category === cat.slug);
-              if (catTiers.length === 0) return null;
-              return (
-                <div key={cat.slug} className="mb-14">
-                  <h2 className="text-lg font-bold text-gray-900">{cat.name}</h2>
-                  <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {catTiers.map((tier, idx) => (
-                      <div
-                        key={tier.name}
-                        className={`relative flex flex-col overflow-hidden rounded-2xl border bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
-                          idx === 1 ? "border-brand-300 ring-1 ring-brand-200" : "border-gray-100"
-                        }`}
-                      >
-                        <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-brand-50" />
-                        <div className="relative">
-                          <h3 className="text-base font-bold text-gray-900">{tier.name}</h3>
-                          <p className="mt-1 text-xs text-gray-400">~{tier.duration_minutes} min</p>
-                        </div>
-
-                        {tier.features.length > 0 && (
-                          <ul className="relative mt-4 space-y-1.5 text-sm text-gray-600">
-                            {tier.features.slice(0, 6).map((f) => (
-                              <li key={f} className="flex gap-2">
-                                <span className="mt-0.5 text-brand-500">✓</span>
-                                <span>{f}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-
-                        <div className="relative mt-5 flex-1 space-y-1 border-t border-gray-100 pt-4">
-                          {tier.prices.map((p, i) => {
-                            const vt = vehicleTypes.find((v) => v.slug === p.vehicleTypeSlug);
-                            return (
-                              <p
-                                key={p.vehicleTypeSlug}
-                                className={
-                                  i === 0
-                                    ? "text-2xl font-extrabold text-brand-600"
-                                    : "text-xs text-gray-500"
-                                }
-                              >
-                                {vt?.name ?? p.vehicleTypeSlug}{" "}
-                                <span className={i === 0 ? "" : "font-medium text-gray-700"}>
-                                  ${p.price.toFixed(0)}
-                                </span>
-                              </p>
-                            );
-                          })}
-                        </div>
-
-                        <Link
-                          href="/book"
-                          className="relative mt-5 rounded-full bg-gray-900 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-brand-600"
-                        >
-                          Book This
-                        </Link>
-                      </div>
-                    ))}
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {tiers.map((tier, idx) => (
+                <div
+                  key={tier.name}
+                  className={`relative flex flex-col overflow-hidden rounded-2xl border bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
+                    tiers.length > 1 && idx === Math.floor((tiers.length - 1) / 2)
+                      ? "border-brand-300 ring-1 ring-brand-200"
+                      : "border-gray-100"
+                  }`}
+                >
+                  <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-brand-50" />
+                  <div className="relative">
+                    <h3 className="text-base font-bold text-gray-900">{tier.name}</h3>
+                    <p className="mt-1 text-xs text-gray-400">~{tier.duration_minutes} min</p>
                   </div>
+
+                  {tier.features.length > 0 && (
+                    <ul className="relative mt-4 space-y-1.5 text-sm text-gray-600">
+                      {tier.features.slice(0, 6).map((f) => (
+                        <li key={f} className="flex gap-2">
+                          <span className="mt-0.5 text-brand-500">✓</span>
+                          <span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <div className="relative mt-5 flex-1 space-y-1 border-t border-gray-100 pt-4">
+                    {tier.prices.map((p, i) => {
+                      const vt = vehicleTypes.find((v) => v.slug === p.vehicleTypeSlug);
+                      return (
+                        <p
+                          key={p.vehicleTypeSlug}
+                          className={
+                            i === 0
+                              ? "text-2xl font-extrabold text-brand-600"
+                              : "text-xs text-gray-500"
+                          }
+                        >
+                          {vt?.name ?? p.vehicleTypeSlug}{" "}
+                          <span className={i === 0 ? "" : "font-medium text-gray-700"}>
+                            ${p.price.toFixed(0)}
+                          </span>
+                        </p>
+                      );
+                    })}
+                  </div>
+
+                  <Link
+                    href="/book"
+                    className="relative mt-5 rounded-full bg-gray-900 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-brand-600"
+                  >
+                    Book This
+                  </Link>
                 </div>
-              );
-            })
+              ))}
+            </div>
           )}
         </div>
       </section>

@@ -31,12 +31,10 @@ const TYPE_OPTIONS = [
 
 export default function BookingsTable({
   bookings,
-  inclusionNames,
   blockedDates,
   settings,
 }: {
   bookings: Booking[];
-  inclusionNames: Record<string, string>;
   blockedDates: BlockedDate[];
   settings: BusinessSettings;
 }) {
@@ -239,8 +237,8 @@ export default function BookingsTable({
               />
               <th className="px-4 py-3">Contact</th>
               <th className="px-4 py-3">Service</th>
+              <th className="px-4 py-3">Inclusions</th>
               <th className="px-4 py-3">Add-Ons</th>
-              <th className="px-4 py-3">Extras</th>
               <SortHeader
                 label="Amount"
                 sortKey="price"
@@ -271,7 +269,7 @@ export default function BookingsTable({
                     <>
                       {b.services.name}
                       <div className="text-xs uppercase tracking-wide text-gray-400">
-                        {b.services.vehicle_type}
+                        {b.vehicle_type}
                       </div>
                     </>
                   ) : (
@@ -280,9 +278,9 @@ export default function BookingsTable({
                 </td>
                 <td className="px-4 py-3">
                   <AddOnsBadge
-                    names={(b.services?.service_inclusions ?? [])
-                      .map((si) => inclusionNames[si.inclusion_id])
-                      .filter((name): name is string => Boolean(name))}
+                    names={(b.services?.inclusions ?? [])
+                      .filter((i) => i.active)
+                      .map((i) => i.name)}
                   />
                 </td>
                 <td className="px-4 py-3">
@@ -296,6 +294,24 @@ export default function BookingsTable({
                     paymentStatus={b.payment_status}
                     bookingType={b.booking_type}
                   />
+                  {b.card_brand && b.card_last4 && (
+                    <div className="mt-1 text-xs text-gray-400">
+                      <span className="capitalize">{b.card_brand}</span> •••• {b.card_last4}
+                      {b.receipt_url && (
+                        <>
+                          {" · "}
+                          <a
+                            href={b.receipt_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            Receipt
+                          </a>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <StatusDropdown

@@ -28,7 +28,7 @@ export default async function AdminAnalyticsPage() {
 
       <RevenueChart bookings={revenueBookings ?? []} />
 
-      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm ring-1 ring-black/[0.03]">
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
           <div className="flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-50 text-brand-600">

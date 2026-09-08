@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import {
-  Bar,
-  BarChart,
+  Area,
+  AreaChart,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { aggregateRevenue, type RevenueGranularity } from "@/lib/revenue-utils";
+import { CHART_CHROME } from "@/lib/chart-colors";
 
 const TABS: { key: RevenueGranularity; label: string }[] = [
   { key: "day", label: "Daily" },
@@ -68,7 +69,7 @@ export default function RevenueChart({
   );
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+    <div className="rounded-xl border border-gray-100 bg-white shadow-sm ring-1 ring-black/[0.03]">
       <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600">
@@ -116,36 +117,42 @@ export default function RevenueChart({
 
       <div className="h-64 w-full p-5">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
+          <AreaChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 4 }}>
             <defs>
-              <linearGradient id="revenueBarFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#ff8a24" />
-                <stop offset="100%" stopColor="#d9480a" />
+              <linearGradient id="revenueAreaFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--color-brand-500)" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="var(--color-brand-500)" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+            <CartesianGrid vertical={false} stroke={CHART_CHROME.grid} />
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 11, fill: "#6b7280" }}
-              axisLine={{ stroke: "#e5e7eb" }}
+              tick={{ fontSize: 11, fill: CHART_CHROME.axisText }}
+              axisLine={{ stroke: CHART_CHROME.axis }}
               tickLine={false}
               interval="preserveStartEnd"
             />
             <YAxis
-              tick={{ fontSize: 11, fill: "#6b7280" }}
+              tick={{ fontSize: 11, fill: CHART_CHROME.axisText }}
               axisLine={false}
               tickLine={false}
               width={48}
               tickFormatter={(v) => formatCurrency(v)}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: "#fff3e6" }} />
-            <Bar
-              dataKey="total"
-              fill="url(#revenueBarFill)"
-              radius={[4, 4, 0, 0]}
-              maxBarSize={40}
+            <Tooltip
+              content={<CustomTooltip />}
+              cursor={{ stroke: CHART_CHROME.axis, strokeWidth: 1 }}
             />
-          </BarChart>
+            <Area
+              type="monotone"
+              dataKey="total"
+              stroke="var(--color-brand-600)"
+              strokeWidth={2.5}
+              fill="url(#revenueAreaFill)"
+              dot={false}
+              activeDot={{ r: 5, fill: "var(--color-brand-600)", stroke: "#fff", strokeWidth: 2 }}
+            />
+          </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>

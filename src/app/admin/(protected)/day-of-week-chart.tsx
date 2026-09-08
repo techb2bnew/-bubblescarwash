@@ -1,7 +1,7 @@
 "use client";
 
-import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { CATEGORICAL_COLORS } from "@/lib/chart-colors";
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CHART_CHROME } from "@/lib/chart-colors";
 
 export interface DayCount {
   day: string;
@@ -30,7 +30,7 @@ export default function DayOfWeekChart({ data }: { data: DayCount[] }) {
   const total = data.reduce((sum, d) => sum + d.count, 0);
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+    <div className="rounded-xl border border-gray-100 bg-white shadow-sm ring-1 ring-black/[0.03]">
       <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-4">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-50 text-brand-600">
           <svg
@@ -62,26 +62,24 @@ export default function DayOfWeekChart({ data }: { data: DayCount[] }) {
               <BarChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
                 <XAxis
                   dataKey="day"
-                  tick={{ fontSize: 12, fill: "#6b7280" }}
-                  axisLine={{ stroke: "#e5e7eb" }}
+                  tick={{ fontSize: 12, fill: CHART_CHROME.axisText }}
+                  axisLine={{ stroke: CHART_CHROME.axis }}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: "#6b7280" }}
+                  tick={{ fontSize: 11, fill: CHART_CHROME.axisText }}
                   axisLine={false}
                   tickLine={false}
                   width={32}
                   allowDecimals={false}
                 />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f9fafb" }} />
-                <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={48}>
-                  {data.map((_, i) => (
-                    <Cell
-                      key={i}
-                      fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]}
-                    />
-                  ))}
-                </Bar>
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: "#faf5f0" }} />
+                <Bar
+                  dataKey="count"
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={48}
+                  fill="var(--color-brand-500)"
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>

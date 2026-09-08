@@ -8,6 +8,7 @@ import { FilterSelect, TableToolbar } from "../../_components/table-toolbar";
 import { SortHeader } from "../../_components/sort-header";
 import { Pagination } from "../../_components/pagination";
 import { useConfirmDialog } from "../../_components/confirm-dialog";
+import { EditButton, DeleteButton } from "../../_components/action-icons";
 
 const PAGE_SIZE = 10;
 const VISIBILITY_OPTIONS = [
@@ -178,19 +179,11 @@ export default function GiftCardProductsTable({
                     {p.active ? "Visible" : "Hidden"}
                   </button>
                 </td>
-                <td className="space-x-3 px-4 py-3 text-right">
-                  <button
-                    onClick={() => onEdit(p)}
-                    className="text-sm font-medium text-blue-600 hover:underline"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(p.id)}
-                    className="text-sm font-medium text-red-600 hover:underline"
-                  >
-                    Delete
-                  </button>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <EditButton onClick={() => onEdit(p)} />
+                    <DeleteButton onClick={() => handleDelete(p.id)} />
+                  </div>
                 </td>
               </tr>
             ))}

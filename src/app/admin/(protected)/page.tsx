@@ -6,6 +6,7 @@ import DayOfWeekChart from "./day-of-week-chart";
 
 const WEEKDAY_FULL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+/** Just the most-used shortcuts — everything else is one click away in the sidebar. */
 const NAV_CARDS = [
   {
     href: "/admin/bookings",
@@ -24,47 +25,19 @@ const NAV_CARDS = [
     ),
   },
   {
-    href: "/admin/analytics",
-    title: "Analytics",
-    desc: "Revenue trends and recent transaction history",
-    icon: (
-      <path d="M3 12h4l3 8 4-16 3 8h4" />
-    ),
-  },
-  {
-    href: "/admin/services",
-    title: "Services",
-    desc: "Manage wash & detailing prices per vehicle type",
-    icon: (
-      <path d="M9 4h6l5 5.5a2 2 0 0 1 0 2.8L14.3 18a2 2 0 0 1-2.8 0L5 11.5V6a2 2 0 0 1 2-2Zm.5 5.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
-    ),
-  },
-  {
-    href: "/admin/add-ons",
-    title: "Add-Ons",
-    desc: "Manage the feature checklist shown per service",
-    icon: <path d="m5 13 4 4L19 7" />,
-  },
-  {
-    href: "/admin/categories",
-    title: "Categories",
-    desc: "Manage wash & detailing service categories",
-    icon: <path d="M4 6h16M4 12h16M4 18h7" />,
-  },
-  {
-    href: "/admin/vehicle-types",
-    title: "Vehicle Types",
-    desc: "Manage the vehicle options customers choose from",
-    icon: (
-      <path d="M3 13.5 5 8a2 2 0 0 1 2-1.5h10A2 2 0 0 1 19 8l2 5.5M3 13.5V18a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-4.5M3 13.5h18M7 16.5h.01M17 16.5h.01" />
-    ),
-  },
-  {
     href: "/admin/calendar",
     title: "Calendar",
     desc: "Block off days the car wash is closed",
     icon: (
       <path d="M7 3v3M17 3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" />
+    ),
+  },
+  {
+    href: "/admin/gift-cards",
+    title: "Gift Cards",
+    desc: "Manage gift card products and issued codes",
+    icon: (
+      <path d="M20 7H4a1 1 0 0 0-1 1v3h18V8a1 1 0 0 0-1-1ZM3 13v5a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-5M12 7v13M7.5 7C6 7 5 5.9 5 4.5S6 2 7.5 2 10 4 12 7c2-3 3.5-5 4.5-5S19 3.1 19 4.5 18 7 16.5 7" />
     ),
   },
 ];
@@ -81,11 +54,8 @@ export default async function AdminDashboardPage() {
     { data: breakdownBookings },
     { count: totalBookingsCount },
     { data: customerEmails },
-    { count: totalServicesCount },
-    { count: totalAddOnsCount },
-    { count: totalCategoriesCount },
-    { count: totalVehicleTypesCount },
     { count: totalBlockedDatesCount },
+    { count: totalGiftCardsCount },
   ] = await Promise.all([
     supabase
       .from("services")
@@ -110,11 +80,8 @@ export default async function AdminDashboardPage() {
       .neq("status", "cancelled"),
     supabase.from("bookings").select("*", { count: "exact", head: true }),
     supabase.from("bookings").select("customer_email"),
-    supabase.from("services").select("*", { count: "exact", head: true }),
-    supabase.from("inclusions").select("*", { count: "exact", head: true }),
-    supabase.from("service_categories").select("*", { count: "exact", head: true }),
-    supabase.from("vehicle_types").select("*", { count: "exact", head: true }),
     supabase.from("blocked_dates").select("*", { count: "exact", head: true }),
+    supabase.from("gift_cards").select("*", { count: "exact", head: true }),
   ]);
 
   const totalRevenue = (revenueBookings ?? []).reduce(
@@ -129,11 +96,8 @@ export default async function AdminDashboardPage() {
   const navCounts: Record<string, number> = {
     "/admin/bookings": totalBookingsCount ?? 0,
     "/admin/customers": totalCustomersCount,
-    "/admin/services": totalServicesCount ?? 0,
-    "/admin/add-ons": totalAddOnsCount ?? 0,
-    "/admin/categories": totalCategoriesCount ?? 0,
-    "/admin/vehicle-types": totalVehicleTypesCount ?? 0,
     "/admin/calendar": totalBlockedDatesCount ?? 0,
+    "/admin/gift-cards": totalGiftCardsCount ?? 0,
   };
 
   const breakdownCounts = new Map<string, number>();
@@ -199,27 +163,30 @@ export default async function AdminDashboardPage() {
         {stats.map((s) => (
           <div
             key={s.label}
-            className="flex items-center gap-4 rounded-lg border border-gray-200 bg-white p-5 shadow-sm"
+            className="relative overflow-hidden rounded-xl border border-gray-100 bg-white p-5 shadow-sm ring-1 ring-black/[0.03] transition-shadow hover:shadow-md"
           >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                {s.icon}
-              </svg>
-            </span>
-            <div>
-              <div className="text-2xl font-semibold text-gray-900">
-                {s.value}
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-400 to-brand-600" />
+            <div className="flex items-center gap-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  {s.icon}
+                </svg>
+              </span>
+              <div className="min-w-0">
+                <div className="text-3xl font-semibold tracking-tight text-gray-900">
+                  {s.value}
+                </div>
+                <div className="text-xs font-medium text-gray-500">{s.label}</div>
               </div>
-              <div className="text-xs text-gray-500">{s.label}</div>
             </div>
           </div>
         ))}
@@ -234,9 +201,9 @@ export default async function AdminDashboardPage() {
             <Link
               key={c.href}
               href={c.href}
-              className="group flex items-center gap-4 rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-colors hover:border-brand-300 hover:shadow-md"
+              className="group flex items-center gap-4 rounded-xl border border-gray-100 bg-white p-5 shadow-sm ring-1 ring-black/[0.03] transition-all hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md"
             >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 group-hover:bg-brand-50 group-hover:text-brand-600">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-gray-500 group-hover:bg-brand-50 group-hover:text-brand-600">
                 <svg
                   width="18"
                   height="18"

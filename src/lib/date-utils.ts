@@ -21,6 +21,16 @@ export const MONTH_NAMES = [
 
 export const WEEKDAY_NAMES = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
+export const WEEKDAY_FULL_NAMES = [
+  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+];
+
+/** Day of week for a "YYYY-MM-DD" key. 0 = Sunday … 6 = Saturday, matching Postgres `dow`. */
+export function weekdayOfDateKey(dateKey: string): number {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return new Date(y, m - 1, d).getDay();
+}
+
 /** Returns a 6x7 grid of Date objects for the given month, padded with adjacent-month days. */
 export function getMonthGrid(year: number, month: number): Date[][] {
   const firstOfMonth = new Date(year, month, 1);
@@ -69,10 +79,42 @@ export function generateTimeSlots(
   return slots;
 }
 
+/** "HH:MM" (or "HH:MM:SS") to minutes since midnight. */
+export function toMinutes(time: string): number {
+  const [h, m] = time.slice(0, 5).split(":").map(Number);
+  return h * 60 + m;
+}
+
 /** Clock-hour bucket for capacity ("09:00" and "09:30" both map to "09:00"). */
 export function hourBucketKey(time: string): string {
   const [h] = time.split(":").map(Number);
   return `${String(h).padStart(2, "0")}:00`;
+}
+
+/**
+ * Every clock-hour bucket a booking occupies. A 10:30 booking lasting 60
+ * minutes draws from both the 10:00 and 11:00 pools, so it counts once in
+ * each — the same rule capacity is enforced by.
+ */
+export function bookingHourBuckets(
+  startTime: string,
+  durationMinutes: number,
+): string[] {
+  const [h, m] = startTime.slice(0, 5).split(":").map(Number);
+  const startMinutes = h * 60 + m;
+  const endMinutes = startMinutes + durationMinutes;
+  const buckets: string[] = [];
+  let hourStart = Math.floor(startMinutes / 60) * 60;
+  while (hourStart < endMinutes) {
+    buckets.push(`${String(Math.floor(hourStart / 60)).padStart(2, "0")}:00`);
+    hourStart += 60;
+  }
+  return buckets;
+}
+
+export function formatDateLong(dateKey: string): string {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return `${MONTH_NAMES[m - 1]} ${d}, ${y}`;
 }
 
 export function formatTimeLabel(time: string): string {

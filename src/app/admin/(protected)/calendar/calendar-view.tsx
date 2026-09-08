@@ -1,20 +1,22 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import type {
   BlockedDate,
-  BookingType,
-  BoothCapacityDuration,
   BusinessSettings,
+  Customer,
+  HoursSource,
   Service,
+  VehicleTypeRow,
 } from "@/lib/types";
+import type { PaymentMode } from "@/lib/payment-mode";
 import {
-  boothPeriodEndDate,
+  formatDateLong,
   formatTimeLabel,
   generateTimeSlots,
   getMonthGrid,
-  isOngoingBoothPeriod,
   isSameMonth,
   MONTH_NAMES,
   startOfToday,
@@ -22,56 +24,29 @@ import {
   unavailableDateStyle,
   WEEKDAY_NAMES,
 } from "@/lib/date-utils";
-import {
-  blockDate,
-  blockSlot,
-  blockSlots,
-  clearDateHours,
-  createBookingAdmin,
-  getDateAvailability,
-  setBoothCapacity,
-  setDateHours,
-  unblockDate,
-  unblockSlot,
-} from "./actions";
-
-type ActiveAction = "close" | "slots" | "booking" | "booths" | "hours" | null;
-
-function formatDateLong(dateKey: string): string {
-  const [y, m, d] = dateKey.split("-").map(Number);
-  return `${MONTH_NAMES[m - 1]} ${d}, ${y}`;
-}
-
-function ChevronIcon({ open }: { open: boolean }) {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
+import { getDateAvailability } from "./actions";
+import CreateBookingWizard from "./create-booking-wizard";
+import { getBookingPaymentStatus, cancelUnpaidBooking } from "@/app/book/actions";
 
 export default function CalendarView({
   blockedDates,
   settings,
   services,
+  vehicleTypes,
+  customers,
   googleCalendarEmbedUrl,
+  paymentMode,
 }: {
   blockedDates: BlockedDate[];
   settings: BusinessSettings;
   services: Service[];
+  vehicleTypes: VehicleTypeRow[];
+  customers: Pick<Customer, "id" | "name" | "phone" | "email">[];
   googleCalendarEmbedUrl: string | null;
+  paymentMode: PaymentMode;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const today = useMemo(() => startOfToday(), []);
   const useGoogleCalendar = Boolean(googleCalendarEmbedUrl);
   const [calendarKey, setCalendarKey] = useState(0);
@@ -80,47 +55,24 @@ export default function CalendarView({
     month: today.getMonth(),
   });
   const [selected, setSelected] = useState<string | null>(() => toDateKey(today));
-  const [activeAction, setActiveAction] = useState<ActiveAction>(null);
-  const [reason, setReason] = useState("");
-  const [saving, setSaving] = useState(false);
 
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
   const [blockedTimes, setBlockedTimes] = useState<string[]>([]);
   const [boothCount, setBoothCount] = useState(1);
   const [slotUsage, setSlotUsage] = useState<Map<string, number>>(new Map());
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [savingSlot, setSavingSlot] = useState<string | null>(null);
 
   const [dateHours, setDateHoursState] = useState<{
     openingTime: string;
     closingTime: string;
-    hasCustomHours: boolean;
+    hoursSource: HoursSource;
   }>({
     openingTime: settings.opening_time.slice(0, 5),
     closingTime: settings.closing_time.slice(0, 5),
-    hasCustomHours: false,
+    hoursSource: "default",
   });
-  const [hoursStart, setHoursStart] = useState("");
-  const [hoursEnd, setHoursEnd] = useState("");
-  const [savingHours, setSavingHours] = useState(false);
 
-  const [boothInputCount, setBoothInputCount] = useState(2);
-  const [boothDuration, setBoothDuration] = useState<BoothCapacityDuration>("week");
-  const [boothStartDate, setBoothStartDate] = useState(() => toDateKey(today));
-  const [savingBooths, setSavingBooths] = useState(false);
-
-  const [rangeFrom, setRangeFrom] = useState("");
-  const [rangeTo, setRangeTo] = useState("");
-  const [savingRange, setSavingRange] = useState(false);
-
-  const [bookingServiceId, setBookingServiceId] = useState("");
-  const [bookingTime, setBookingTime] = useState<string | null>(null);
-  const [bookingName, setBookingName] = useState("");
-  const [bookingPhone, setBookingPhone] = useState("");
-  const [bookingEmail, setBookingEmail] = useState("");
-  const [bookingType, setBookingType] = useState<BookingType>("offline");
-  const [bookingSubmitting, setBookingSubmitting] = useState(false);
-  const [bookingError, setBookingError] = useState<string | null>(null);
+  const [stripeBanner, setStripeBanner] = useState<{ ok: boolean; text: string } | null>(null);
 
   const blockedByDate = useMemo(() => {
     const map = new Map<string, BlockedDate>();
@@ -128,41 +80,38 @@ export default function CalendarView({
     return map;
   }, [blockedDates]);
 
-  const weeks = useMemo(
-    () => getMonthGrid(cursor.year, cursor.month),
-    [cursor],
-  );
+  const weeks = useMemo(() => getMonthGrid(cursor.year, cursor.month), [cursor]);
 
   const timeSlots = useMemo(
-    () =>
-      generateTimeSlots(
-        dateHours.openingTime,
-        dateHours.closingTime,
-        settings.slot_interval_minutes,
-      ),
+    () => generateTimeSlots(dateHours.openingTime, dateHours.closingTime, settings.slot_interval_minutes),
     [dateHours, settings.slot_interval_minutes],
   );
 
   const dayIsClosed = selected ? blockedByDate.has(selected) : false;
 
+  /** Handles the return trip from an admin-initiated Stripe checkout redirect. */
   useEffect(() => {
-    function resetForNewDate() {
-      setActiveAction(null);
-      setReason("");
-      setRangeFrom(timeSlots[0] ?? "");
-      setRangeTo(timeSlots[timeSlots.length - 1] ?? "");
-      setBookingServiceId("");
-      setBookingTime(null);
-      setBookingName("");
-      setBookingPhone("");
-      setBookingEmail("");
-      setBookingType("offline");
-      setBookingError(null);
-      if (selected) setBoothStartDate(selected);
+    const bookingId = searchParams.get("booking_id");
+    if (!bookingId) return;
+
+    if (searchParams.get("stripe_cancelled")) {
+      cancelUnpaidBooking(bookingId);
+      queueMicrotask(() => {
+        setStripeBanner({ ok: false, text: "Payment was cancelled — the slot has been released." });
+      });
+      router.replace("/admin/calendar");
+    } else if (searchParams.get("stripe_success")) {
+      getBookingPaymentStatus(bookingId).then((status) => {
+        setStripeBanner(
+          status?.paymentStatus === "paid"
+            ? { ok: true, text: `Payment confirmed for ${status.customerName}.` }
+            : { ok: true, text: "Payment received — waiting for confirmation." },
+        );
+      });
+      router.replace("/admin/calendar");
     }
-    resetForNewDate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected]);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!selected || dayIsClosed) return;
@@ -180,7 +129,7 @@ export default function CalendarView({
         setDateHoursState({
           openingTime: result.openingTime,
           closingTime: result.closingTime,
-          hasCustomHours: result.hasCustomHours,
+          hoursSource: result.hoursSource,
         });
       } finally {
         if (!cancelled) setLoadingSlots(false);
@@ -220,791 +169,178 @@ export default function CalendarView({
     return `${label} (${count}/${boothCount} hr)`;
   }
 
-  async function handleSetBoothCapacity() {
-    if (!boothStartDate) return;
-    setSavingBooths(true);
-    try {
-      await setBoothCapacity(boothStartDate, boothInputCount, boothDuration);
-      if (selected) {
-        const result = await getDateAvailability(selected);
-        setBookedTimes(result.bookedTimes);
-        setBoothCount(result.boothCount);
-        setSlotUsage(new Map(result.slotUsage.map((s) => [s.time, s.count])));
-      }
-      setActiveAction(null);
-      refreshAfterAction();
-    } finally {
-      setSavingBooths(false);
-    }
-  }
-
-  async function handleSetHours() {
-    if (!selected || !hoursStart || !hoursEnd) return;
-    setSavingHours(true);
-    try {
-      await setDateHours(selected, hoursStart, hoursEnd);
-      setDateHoursState({
-        openingTime: hoursStart,
-        closingTime: hoursEnd,
-        hasCustomHours: true,
-      });
-      setActiveAction(null);
-      refreshAfterAction();
-    } finally {
-      setSavingHours(false);
-    }
-  }
-
-  async function handleClearHours() {
-    if (!selected) return;
-    setSavingHours(true);
-    try {
-      await clearDateHours(selected);
-      const result = await getDateAvailability(selected);
-      setDateHoursState({
-        openingTime: result.openingTime,
-        closingTime: result.closingTime,
-        hasCustomHours: result.hasCustomHours,
-      });
-      setActiveAction(null);
-      refreshAfterAction();
-    } finally {
-      setSavingHours(false);
-    }
-  }
-
-  async function handleToggle(dateKey: string) {
-    setSaving(true);
-    try {
-      if (blockedByDate.has(dateKey)) {
-        await unblockDate(dateKey);
-      } else {
-        await blockDate(dateKey, reason);
-      }
-      setReason("");
-      setActiveAction(null);
-      refreshAfterAction();
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleToggleSlot(time: string) {
-    if (!selected) return;
-    setSavingSlot(time);
-    try {
-      if (blockedTimes.includes(time)) {
-        await unblockSlot(selected, `${time}:00`);
-        setBlockedTimes((prev) => prev.filter((t) => t !== time));
-      } else {
-        await blockSlot(selected, `${time}:00`, "");
-        setBlockedTimes((prev) => [...prev, time]);
-      }
-      refreshAfterAction();
-    } finally {
-      setSavingSlot(null);
-    }
-  }
-
-  async function handleBlockRange() {
-    if (!selected) return;
-    const [lo, hi] = rangeFrom <= rangeTo ? [rangeFrom, rangeTo] : [rangeTo, rangeFrom];
-    const timesToBlock = timeSlots.filter(
-      (t) => t >= lo && t <= hi && !bookedTimes.includes(t) && !blockedTimes.includes(t),
-    );
-    if (timesToBlock.length === 0) return;
-    setSavingRange(true);
-    try {
-      await blockSlots(
-        selected,
-        timesToBlock.map((t) => `${t}:00`),
-        "",
-      );
-      setBlockedTimes((prev) => [...prev, ...timesToBlock]);
-      refreshAfterAction();
-    } finally {
-      setSavingRange(false);
-    }
-  }
-
-  async function handleCreateBooking() {
-    if (!selected || !bookingServiceId || !bookingTime) return;
-    setBookingSubmitting(true);
-    setBookingError(null);
-    try {
-      await createBookingAdmin({
-        service_id: bookingServiceId,
-        booking_date: selected,
-        booking_time: `${bookingTime}:00`,
-        customer_name: bookingName,
-        customer_phone: bookingPhone,
-        customer_email: bookingEmail,
-        booking_type: bookingType,
-      });
-      setBookedTimes((prev) => [...prev, bookingTime]);
-      setBookingServiceId("");
-      setBookingTime(null);
-      setBookingName("");
-      setBookingPhone("");
-      setBookingEmail("");
-      setBookingType("offline");
-      setActiveAction(null);
-      refreshAfterAction();
-    } catch (err) {
-      setBookingError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setBookingSubmitting(false);
-    }
-  }
-
   return (
-    <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-      {useGoogleCalendar ? (
-        <div className="w-full min-w-0 flex-1 rounded-lg border border-gray-200 bg-white p-4">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-sm font-medium text-gray-700">Google Calendar</p>
-            <button
-              type="button"
-              onClick={refreshGoogleCalendar}
-              className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50"
-            >
-              Refresh
-            </button>
-          </div>
-          <iframe
-            key={calendarKey}
-            title="Google Calendar"
-            src={googleCalendarEmbedUrl!}
-            className="w-full rounded-md border-0"
-            style={{ height: "min(70vh, 720px)", minHeight: 480 }}
-          />
-        </div>
-      ) : (
-      <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-4 lg:flex-none">
-        <div className="mb-3 flex items-center justify-between">
-          <button
-            onClick={() => changeMonth(-1)}
-            className="rounded px-2 py-1 text-sm text-gray-500 hover:bg-gray-100"
-          >
-            «
-          </button>
-          <span className="font-medium text-gray-900">
-            {MONTH_NAMES[cursor.month]} {cursor.year}
-          </span>
-          <button
-            onClick={() => changeMonth(1)}
-            className="rounded px-2 py-1 text-sm text-gray-500 hover:bg-gray-100"
-          >
-            »
+    <>
+      {stripeBanner && (
+        <div
+          className={`mb-4 flex items-center justify-between rounded-md border px-4 py-2.5 text-sm ${
+            stripeBanner.ok
+              ? "border-green-200 bg-green-50 text-green-700"
+              : "border-amber-200 bg-amber-50 text-amber-700"
+          }`}
+        >
+          <span>{stripeBanner.text}</span>
+          <button onClick={() => setStripeBanner(null)} className="text-xs font-medium underline">
+            Dismiss
           </button>
         </div>
-
-        <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-gray-500">
-          {WEEKDAY_NAMES.map((w) => (
-            <div key={w} className="py-1">
-              {w}
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-7 gap-1">
-          {weeks.flat().map((date) => {
-            const key = toDateKey(date);
-            const inMonth = isSameMonth(date, cursor.year, cursor.month);
-            const isBlocked = blockedByDate.has(key);
-            const isPast = date < today;
-            const isSelected = selected === key;
-
-            const isUnavailable = isPast || isBlocked;
-
-            return (
-              <button
-                key={key}
-                disabled={isPast}
-                onClick={() => setSelected(isSelected ? null : key)}
-                title={isBlocked ? blockedByDate.get(key)?.reason || "Closed" : undefined}
-                style={isUnavailable ? unavailableDateStyle : undefined}
-                className={`aspect-square rounded text-sm ${
-                  !inMonth ? "text-gray-300" : ""
-                } ${isPast ? "cursor-not-allowed text-gray-400" : "hover:bg-gray-100"} ${
-                  isBlocked && inMonth ? "text-gray-500" : ""
-                } ${isSelected ? "ring-2 ring-brand-500" : ""}`}
-              >
-                {date.getDate()}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
-          <span className="flex items-center gap-1">
-            <span
-              className="h-3 w-3 rounded border border-gray-300"
-              style={unavailableDateStyle}
-            />{" "}
-            Closed
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="h-3 w-3 rounded border border-gray-300" /> Available
-          </span>
-        </div>
-      </div>
       )}
-
-      <div className="w-full shrink-0 rounded-lg border border-gray-200 bg-white p-4 lg:w-96">
-        {useGoogleCalendar && (
-          <div className="mb-4">
-            <label className="mb-1 block text-xs font-medium text-gray-600">
-              Manage date
-            </label>
-            <input
-              type="date"
-              value={selected ?? ""}
-              min={toDateKey(today)}
-              onChange={(e) => {
-                const value = e.target.value || null;
-                setSelected(value);
-                if (value) {
-                  const [y, m] = value.split("-").map(Number);
-                  setCursor({ year: y, month: m - 1 });
-                }
-              }}
-              className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        {useGoogleCalendar ? (
+          <div className="w-full min-w-0 flex-1 rounded-lg border border-gray-200 bg-white p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-sm font-medium text-gray-700">Google Calendar</p>
+              <button
+                type="button"
+                onClick={refreshGoogleCalendar}
+                className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50"
+              >
+                Refresh
+              </button>
+            </div>
+            <iframe
+              key={calendarKey}
+              title="Google Calendar"
+              src={googleCalendarEmbedUrl!}
+              className="w-full rounded-md border-0"
+              style={{ height: "min(70vh, 720px)", minHeight: 480 }}
             />
-            <p className="mt-1 text-xs text-gray-500">
-              Pick a date to block slots, close the day, or create a booking.
-            </p>
+          </div>
+        ) : (
+          <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-4 lg:flex-none">
+            <div className="mb-3 flex items-center justify-between">
+              <button
+                onClick={() => changeMonth(-1)}
+                className="rounded px-2 py-1 text-sm text-gray-500 hover:bg-gray-100"
+              >
+                «
+              </button>
+              <span className="font-medium text-gray-900">
+                {MONTH_NAMES[cursor.month]} {cursor.year}
+              </span>
+              <button
+                onClick={() => changeMonth(1)}
+                className="rounded px-2 py-1 text-sm text-gray-500 hover:bg-gray-100"
+              >
+                »
+              </button>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-gray-500">
+              {WEEKDAY_NAMES.map((w) => (
+                <div key={w} className="py-1">
+                  {w}
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1">
+              {weeks.flat().map((date) => {
+                const key = toDateKey(date);
+                const inMonth = isSameMonth(date, cursor.year, cursor.month);
+                const isBlocked = blockedByDate.has(key);
+                const isPast = date < today;
+                const isSelected = selected === key;
+
+                const isUnavailable = isPast || isBlocked;
+
+                return (
+                  <button
+                    key={key}
+                    disabled={isPast}
+                    onClick={() => setSelected(isSelected ? null : key)}
+                    title={isBlocked ? blockedByDate.get(key)?.reason || "Closed" : undefined}
+                    style={isUnavailable ? unavailableDateStyle : undefined}
+                    className={`aspect-square rounded text-sm ${
+                      !inMonth ? "text-gray-300" : ""
+                    } ${isPast ? "cursor-not-allowed text-gray-400" : "hover:bg-gray-100"} ${
+                      isBlocked && inMonth ? "text-gray-500" : ""
+                    } ${isSelected ? "ring-2 ring-brand-500" : ""}`}
+                  >
+                    {date.getDate()}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
+              <span className="flex items-center gap-1">
+                <span className="h-3 w-3 rounded border border-gray-300" style={unavailableDateStyle} /> Closed
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-3 w-3 rounded border border-gray-300" /> Available
+              </span>
+            </div>
           </div>
         )}
 
-      {selected ? (
-        <>
-          <p className="text-base font-semibold text-gray-900">
-            {formatDateLong(selected)} — Availability
-          </p>
-          <p className="mt-0.5 text-sm text-gray-500">
-            {dayIsClosed
-              ? `Closed${blockedByDate.get(selected)?.reason ? ` — ${blockedByDate.get(selected)?.reason}` : ""}`
-              : `Open ${formatTimeLabel(dateHours.openingTime)}–${formatTimeLabel(dateHours.closingTime)}${dateHours.hasCustomHours ? " (custom)" : ""} · ${boothCount} booking${boothCount === 1 ? "" : "s"} allowed per hour`}
-          </p>
-
-          {dayIsClosed ? (
-            <button
-              onClick={() => handleToggle(selected)}
-              disabled={saving}
-              className="mt-4 rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-            >
-              {saving ? "Updating..." : "Mark Day as Available"}
-            </button>
-          ) : (
-            <div className="mt-4 divide-y divide-gray-100 border-t border-gray-100">
-              <div className="py-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (activeAction !== "booths" && selected) {
-                      setBoothStartDate(selected);
-                    }
-                    setActiveAction(activeAction === "booths" ? null : "booths");
-                  }}
-                  className="flex w-full items-center justify-between text-left text-sm font-medium text-gray-800 hover:text-brand-700"
-                >
-                  <span>↳ Set Capacity</span>
-                  <ChevronIcon open={activeAction === "booths"} />
-                </button>
-                {activeAction === "booths" && (
-                  <div className="mt-3 space-y-3">
-                    <p className="text-xs text-gray-500">
-                      Set how many bookings can run in the same clock hour (e.g. 9:00 and
-                      9:30 share one pool). Currently <strong>{boothCount}</strong> per hour
-                      on this date.
-                    </p>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-600">
-                        Max Number of Bookings in 1 Hour
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={20}
-                        value={boothInputCount}
-                        onChange={(e) =>
-                          setBoothInputCount(Math.max(1, Number(e.target.value) || 1))
-                        }
-                        className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-600">
-                        Apply for
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {(
-                          [
-                            ["day", "1 Day"],
-                            ["week", "1 Week"],
-                            ["month", "1 Month"],
-                            ["ongoing", "Ongoing"],
-                          ] as const
-                        ).map(([value, label]) => (
-                          <button
-                            key={value}
-                            type="button"
-                            onClick={() => setBoothDuration(value)}
-                            className={`flex-1 rounded-md border px-2 py-1.5 text-xs font-medium ${
-                              boothDuration === value
-                                ? "border-brand-600 bg-brand-50 text-brand-700"
-                                : "border-gray-300 text-gray-600 hover:border-gray-400"
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-600">
-                        {boothDuration === "day" ? "Select day" : "Start date"}
-                      </label>
-                      <input
-                        type="date"
-                        value={boothStartDate}
-                        min={toDateKey(today)}
-                        onChange={(e) => setBoothStartDate(e.target.value)}
-                        className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                      />
-                      <p className="mt-1 text-xs text-gray-500">
-                        {boothDuration === "day" ? (
-                          <>
-                            Applies on <strong>{formatDateLong(boothStartDate)}</strong> only
-                          </>
-                        ) : isOngoingBoothPeriod(boothDuration) ? (
-                          <>
-                            From <strong>{formatDateLong(boothStartDate)}</strong> onward — no end
-                            date
-                          </>
-                        ) : (
-                          <>
-                            From <strong>{formatDateLong(boothStartDate)}</strong> until{" "}
-                            <strong>
-                              {formatDateLong(boothPeriodEndDate(boothStartDate, boothDuration))}
-                            </strong>
-                          </>
-                        )}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleSetBoothCapacity}
-                      disabled={savingBooths || !boothStartDate}
-                      className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-                    >
-                      {savingBooths ? "Saving..." : "Apply Capacity"}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="py-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (activeAction !== "hours") {
-                      setHoursStart(dateHours.openingTime);
-                      setHoursEnd(dateHours.closingTime);
-                    }
-                    setActiveAction(activeAction === "hours" ? null : "hours");
-                  }}
-                  className="flex w-full items-center justify-between text-left text-sm font-medium text-gray-800 hover:text-brand-700"
-                >
-                  <span>↳ Set Hours</span>
-                  <ChevronIcon open={activeAction === "hours"} />
-                </button>
-                {activeAction === "hours" && (
-                  <div className="mt-3 space-y-3">
-                    <p className="text-xs text-gray-500">
-                      Time slots on this date will start at the opening time and
-                      end at the closing time you set below. Currently{" "}
-                      <strong>{formatTimeLabel(dateHours.openingTime)}</strong> –{" "}
-                      <strong>{formatTimeLabel(dateHours.closingTime)}</strong>
-                      {dateHours.hasCustomHours ? " (custom)" : " (default)"}.
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-gray-600">
-                          Start time
-                        </label>
-                        <input
-                          type="time"
-                          value={hoursStart}
-                          onChange={(e) => setHoursStart(e.target.value)}
-                          className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-gray-600">
-                          End time
-                        </label>
-                        <input
-                          type="time"
-                          value={hoursEnd}
-                          onChange={(e) => setHoursEnd(e.target.value)}
-                          className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={handleSetHours}
-                        disabled={savingHours || !hoursStart || !hoursEnd || hoursStart >= hoursEnd}
-                        className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-                      >
-                        {savingHours ? "Saving..." : "Save Hours for This Day"}
-                      </button>
-                      {dateHours.hasCustomHours && (
-                        <button
-                          type="button"
-                          onClick={handleClearHours}
-                          disabled={savingHours}
-                          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 disabled:opacity-50"
-                        >
-                          Reset to Default
-                        </button>
-                      )}
-                    </div>
-                    {hoursStart >= hoursEnd && hoursStart && hoursEnd && (
-                      <p className="text-xs text-red-600">
-                        Start time must be before end time.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="py-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setActiveAction(activeAction === "close" ? null : "close")
+        <div className="w-full shrink-0 rounded-lg border border-gray-200 bg-white p-4 lg:w-96">
+          {useGoogleCalendar && (
+            <div className="mb-4">
+              <label className="mb-1 block text-xs font-medium text-gray-600">Manage date</label>
+              <input
+                type="date"
+                value={selected ?? ""}
+                min={toDateKey(today)}
+                onChange={(e) => {
+                  const value = e.target.value || null;
+                  setSelected(value);
+                  if (value) {
+                    const [y, m] = value.split("-").map(Number);
+                    setCursor({ year: y, month: m - 1 });
                   }
-                  className="flex w-full items-center justify-between text-left text-sm font-medium text-gray-800 hover:text-brand-700"
-                >
-                  <span>↳ Mark Day as Closed</span>
-                  <ChevronIcon open={activeAction === "close"} />
-                </button>
-                {activeAction === "close" && (
-                  <div className="mt-3">
-                    <input
-                      value={reason}
-                      onChange={(e) => setReason(e.target.value)}
-                      placeholder="Reason (optional)"
-                      className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                    />
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        onClick={() => handleToggle(selected)}
-                        disabled={saving}
-                        className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-                      >
-                        {saving ? "Closing..." : "Confirm: Mark as Closed"}
-                      </button>
-                      <button
-                        onClick={() => setActiveAction(null)}
-                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="py-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setActiveAction(activeAction === "slots" ? null : "slots")
-                  }
-                  className="flex w-full items-center justify-between text-left text-sm font-medium text-gray-800 hover:text-brand-700"
-                >
-                  <span>↳ Block Time Slots</span>
-                  <ChevronIcon open={activeAction === "slots"} />
-                </button>
-                {activeAction === "slots" && (
-                  <div className="mt-3">
-                    <p className="mb-2 text-xs font-medium text-gray-700">
-                      Block a range of hours:
-                    </p>
-                    <div className="mb-4 flex flex-wrap items-end gap-2">
-                      <div>
-                        <label className="mb-1 block text-xs text-gray-500">
-                          From
-                        </label>
-                        <select
-                          value={rangeFrom}
-                          onChange={(e) => setRangeFrom(e.target.value)}
-                          className="rounded-md border border-gray-300 px-2 py-1.5 text-xs text-gray-700"
-                        >
-                          {timeSlots.map((t) => (
-                            <option key={t} value={t}>
-                              {formatTimeLabel(t)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs text-gray-500">
-                          To
-                        </label>
-                        <select
-                          value={rangeTo}
-                          onChange={(e) => setRangeTo(e.target.value)}
-                          className="rounded-md border border-gray-300 px-2 py-1.5 text-xs text-gray-700"
-                        >
-                          {timeSlots.map((t) => (
-                            <option key={t} value={t}>
-                              {formatTimeLabel(t)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleBlockRange}
-                        disabled={savingRange || loadingSlots}
-                        className="rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-                      >
-                        {savingRange ? "Blocking..." : "Block this range"}
-                      </button>
-                    </div>
-
-                    <p className="mb-2 text-xs font-medium text-gray-700">
-                      Or block individual time slots on this day:
-                    </p>
-                    {loadingSlots ? (
-                      <p className="text-sm text-gray-400">Loading...</p>
-                    ) : (
-                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                        {timeSlots.map((t) => {
-                          const count = getSlotBookingCount(t);
-                          const full = bookedTimes.includes(t);
-                          const blocked = blockedTimes.includes(t);
-                          return (
-                            <button
-                              key={t}
-                              type="button"
-                              disabled={full || savingSlot === t}
-                              onClick={() => handleToggleSlot(t)}
-                              style={blocked ? unavailableDateStyle : undefined}
-                              className={`rounded-md border px-2 py-1.5 text-xs ${
-                                full
-                                  ? "cursor-not-allowed border-blue-200 bg-blue-50 text-blue-600"
-                                  : blocked
-                                    ? "border-red-200 text-red-600 hover:border-red-300"
-                                    : count > 0
-                                      ? "border-blue-200 bg-blue-50/50 text-blue-700 hover:border-blue-300"
-                                      : "border-gray-300 text-gray-600 hover:border-brand-300 hover:text-brand-700"
-                              }`}
-                            >
-                              {slotUsageLabel(t)}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <span className="h-3 w-3 rounded border border-blue-200 bg-blue-50" />{" "}
-                        Booked
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span
-                          className="h-3 w-3 rounded border border-red-200"
-                          style={unavailableDateStyle}
-                        />{" "}
-                        Blocked
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="h-3 w-3 rounded border border-gray-300" />{" "}
-                        Available
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="py-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setActiveAction(activeAction === "booking" ? null : "booking")
-                  }
-                  className="flex w-full items-center justify-between text-left text-sm font-medium text-gray-800 hover:text-brand-700"
-                >
-                  <span>↳ Create New Booking</span>
-                  <ChevronIcon open={activeAction === "booking"} />
-                </button>
-                {activeAction === "booking" && (
-                  <div className="mt-3 space-y-3">
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-600">
-                        Booking Type
-                      </label>
-                      <div className="flex gap-2">
-                        {(["offline", "online"] as const).map((type) => (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() => setBookingType(type)}
-                            className={`flex-1 rounded-md border px-3 py-1.5 text-sm font-medium capitalize ${
-                              bookingType === type
-                                ? "border-brand-600 bg-brand-50 text-brand-700"
-                                : "border-gray-300 text-gray-600 hover:border-gray-400"
-                            }`}
-                          >
-                            {type}
-                          </button>
-                        ))}
-                      </div>
-                      {bookingType === "offline" && (
-                        <p className="mt-1 text-xs text-gray-500">
-                          Offline bookings (phone/walk-in) can use any time slot,
-                          even ones marked booked or blocked.
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-600">
-                        Service
-                      </label>
-                      <select
-                        value={bookingServiceId}
-                        onChange={(e) => setBookingServiceId(e.target.value)}
-                        className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                      >
-                        <option value="">Select a service</option>
-                        {services.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name} — ${s.price.toFixed(2)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-gray-600">
-                          Customer name
-                        </label>
-                        <input
-                          value={bookingName}
-                          onChange={(e) => setBookingName(e.target.value)}
-                          className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-gray-600">
-                          Phone
-                        </label>
-                        <input
-                          value={bookingPhone}
-                          onChange={(e) => setBookingPhone(e.target.value)}
-                          className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-600">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        value={bookingEmail}
-                        onChange={(e) => setBookingEmail(e.target.value)}
-                        className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-600">
-                        Time
-                      </label>
-                      {loadingSlots ? (
-                        <p className="text-sm text-gray-400">Loading...</p>
-                      ) : (
-                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                          {timeSlots.map((t) => {
-                            const count = getSlotBookingCount(t);
-                            const full = bookedTimes.includes(t);
-                            const blocked = blockedTimes.includes(t);
-                            const isOffline = bookingType === "offline";
-                            const disabled = !isOffline && (full || blocked);
-                            return (
-                              <button
-                                key={t}
-                                type="button"
-                                disabled={disabled}
-                                onClick={() => setBookingTime(t)}
-                                style={disabled && blocked ? unavailableDateStyle : undefined}
-                                className={`rounded-md border px-2 py-1.5 text-xs ${
-                                  disabled
-                                    ? full
-                                      ? "cursor-not-allowed border-blue-200 bg-blue-50 text-blue-600"
-                                      : "cursor-not-allowed border-red-200 text-red-600"
-                                    : bookingTime === t
-                                      ? "border-brand-600 bg-brand-50 text-brand-700"
-                                      : count > 0 && !full
-                                        ? "border-blue-200 bg-blue-50/50 text-blue-700 hover:border-blue-300"
-                                        : (full || blocked) && isOffline
-                                          ? "border-amber-300 text-amber-700 hover:border-amber-400"
-                                          : "border-gray-300 text-gray-600 hover:border-gray-400"
-                                }`}
-                              >
-                                {count > 0 ? slotUsageLabel(t) : formatTimeLabel(t)}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    {bookingError && (
-                      <p className="text-sm text-red-600">{bookingError}</p>
-                    )}
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleCreateBooking}
-                        disabled={
-                          !bookingServiceId ||
-                          !bookingTime ||
-                          !bookingName ||
-                          !bookingPhone ||
-                          !bookingEmail ||
-                          bookingSubmitting
-                        }
-                        className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
-                      >
-                        {bookingSubmitting ? "Creating..." : "Create Booking"}
-                      </button>
-                      <button
-                        onClick={() => setActiveAction(null)}
-                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+                }}
+                className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+              />
+              <p className="mt-1 text-xs text-gray-500">Pick a date to create a booking.</p>
             </div>
           )}
-        </>
-      ) : (
-        <p className="text-sm text-gray-500">
-          Select a date to manage availability and bookings.
-        </p>
-      )}
+
+          {selected ? (
+            <>
+              <p className="text-base font-semibold text-gray-900">
+                {formatDateLong(selected)} — Availability
+              </p>
+              <p className="mt-0.5 text-sm text-gray-500">
+                {dayIsClosed
+                  ? `Closed${blockedByDate.get(selected)?.reason ? ` — ${blockedByDate.get(selected)?.reason}` : ""}`
+                  : `Open ${formatTimeLabel(dateHours.openingTime)}–${formatTimeLabel(dateHours.closingTime)} · ${boothCount} booking${boothCount === 1 ? "" : "s"} allowed per hour`}
+              </p>
+
+              {dayIsClosed ? (
+                <p className="mt-4 text-sm text-gray-500">
+                  This day is closed.{" "}
+                  <Link href="/admin/calendar/set-operations" className="font-medium text-brand-600 hover:underline">
+                    Manage this in Set Operations →
+                  </Link>
+                </p>
+              ) : (
+                <div className="mt-4 border-t border-gray-100 pt-3">
+                  <CreateBookingWizard
+                    services={services}
+                    vehicleTypes={vehicleTypes}
+                    customers={customers}
+                    bookingDate={selected}
+                    timeSlots={timeSlots}
+                    bookedTimes={bookedTimes}
+                    blockedTimes={blockedTimes}
+                    getSlotBookingCount={getSlotBookingCount}
+                    slotUsageLabel={slotUsageLabel}
+                    loadingSlots={loadingSlots}
+                    paymentMode={paymentMode}
+                    onBooked={(time) => {
+                      setBookedTimes((prev) => [...prev, time]);
+                      refreshAfterAction();
+                    }}
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-gray-500">Select a date to create a booking.</p>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
