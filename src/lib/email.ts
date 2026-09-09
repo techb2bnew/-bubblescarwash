@@ -348,3 +348,32 @@ export async function sendGiftCardEmail(details: GiftCardEmailDetails): Promise<
 export function isEmailConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
 }
+
+export interface ContactEnquiryDetails {
+  name: string;
+  phone: string;
+  email: string;
+  service: string | null;
+  message: string;
+}
+
+export async function sendContactEnquiryEmail(
+  details: ContactEnquiryDetails,
+  toEmail: string,
+): Promise<boolean> {
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;">
+      <h2 style="color:#111;">New Website Enquiry</h2>
+      <table style="border-collapse:collapse;width:100%;max-width:500px;">
+        <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;width:120px;">Name</td><td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:500;">${details.name}</td></tr>
+        <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Phone</td><td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:500;">${details.phone}</td></tr>
+        <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Email</td><td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:500;">${details.email}</td></tr>
+        ${details.service ? `<tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Regarding</td><td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:500;">${details.service}</td></tr>` : ""}
+      </table>
+      <p style="margin-top:20px;color:#666;font-size:13px;">Message</p>
+      <p style="white-space:pre-wrap;">${details.message}</p>
+    </div>
+  `;
+
+  return sendEmail(toEmail, `Website Enquiry from ${details.name}`, html);
+}

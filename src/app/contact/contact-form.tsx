@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { submitContactEnquiry } from "./actions";
 
 const SERVICE_OPTIONS = [
   "General Enquiry",
@@ -16,23 +17,25 @@ export default function ContactForm() {
   const [email, setEmail] = useState("");
   const [service, setService] = useState("");
   const [message, setMessage] = useState("");
-  const [sent, setSent] = useState(false);
+  const [status, setStatus] = useState<"idle" | "submitting" | "sent" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const body = [
-      `Phone: ${phone}`,
-      service && `Regarding: ${service}`,
-      "",
-      message,
-    ]
-      .filter(Boolean)
-      .join("\n");
-    const mailto = `mailto:info@bubblescarwashcafe.com.au?subject=${encodeURIComponent(
-      `Website enquiry from ${name || "a customer"}`,
-    )}&body=${encodeURIComponent(body)}&cc=${encodeURIComponent(email)}`;
-    window.location.href = mailto;
-    setSent(true);
+    setStatus("submitting");
+    setError(null);
+    const result = await submitContactEnquiry({ name, phone, email, service, message });
+    if (result.ok) {
+      setStatus("sent");
+      setName("");
+      setPhone("");
+      setEmail("");
+      setService("");
+      setMessage("");
+    } else {
+      setStatus("error");
+      setError(result.error ?? "Something went wrong. Please try again.");
+    }
   }
 
   return (
@@ -130,21 +133,23 @@ export default function ContactForm() {
 
       <button
         type="submit"
-        className="flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-7 py-3.5 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:-translate-y-0.5 hover:bg-brand-700 hover:shadow-md"
+        disabled={status === "submitting"}
+        className="flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-7 py-3.5 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:-translate-y-0.5 hover:bg-brand-700 hover:shadow-md disabled:pointer-events-none disabled:opacity-60"
       >
-        Send Message
+        {status === "submitting" ? "Sending..." : "Send Message"}
         <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
           <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
 
-      {sent && (
-        <p className="text-center text-xs text-gray-500">
-          Opening your email app to send this — if nothing happens, email us directly at{" "}
-          <a href="mailto:info@bubblescarwashcafe.com.au" className="font-semibold text-brand-600">
-            info@bubblescarwashcafe.com.au
-          </a>
-          .
+      {status === "sent" && (
+        <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-center text-sm font-semibold text-green-700">
+          Thanks — your message has been sent. We&apos;ll get back to you soon.
+        </p>
+      )}
+      {status === "error" && (
+        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-semibold text-red-700">
+          {error}
         </p>
       )}
     </form>
