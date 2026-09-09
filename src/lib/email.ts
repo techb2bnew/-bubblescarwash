@@ -357,23 +357,69 @@ export interface ContactEnquiryDetails {
   message: string;
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 export async function sendContactEnquiryEmail(
   details: ContactEnquiryDetails,
   toEmail: string,
 ): Promise<boolean> {
+  const name = escapeHtml(details.name);
+  const phone = escapeHtml(details.phone);
+  const email = escapeHtml(details.email);
+  const service = details.service ? escapeHtml(details.service) : null;
+  const message = escapeHtml(details.message);
+
   const html = `
-    <div style="font-family:sans-serif;max-width:600px;">
-      <h2 style="color:#111;">New Website Enquiry</h2>
-      <table style="border-collapse:collapse;width:100%;max-width:500px;">
-        <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;width:120px;">Name</td><td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:500;">${details.name}</td></tr>
-        <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Phone</td><td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:500;">${details.phone}</td></tr>
-        <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Email</td><td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:500;">${details.email}</td></tr>
-        ${details.service ? `<tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Regarding</td><td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:500;">${details.service}</td></tr>` : ""}
-      </table>
-      <p style="margin-top:20px;color:#666;font-size:13px;">Message</p>
-      <p style="white-space:pre-wrap;">${details.message}</p>
+    <div style="margin:0;padding:32px 16px;background:#f4f5f7;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+      <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,0.08);">
+        <div style="background:#0b1220;padding:28px 32px;">
+          <p style="margin:0;color:#f9760f;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Bubbles Car Wash &amp; Cafe</p>
+          <h1 style="margin:8px 0 0;color:#ffffff;font-size:20px;font-weight:800;">New Website Enquiry</h1>
+        </div>
+        <div style="padding:28px 32px;">
+          <p style="margin:0 0 20px;color:#4b5563;font-size:14px;line-height:1.6;">
+            Someone just submitted the contact form on the website. Their details are below.
+          </p>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr>
+              <td style="padding:10px 0;border-bottom:1px solid #eef0f2;color:#9ca3af;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;width:110px;vertical-align:top;">Name</td>
+              <td style="padding:10px 0;border-bottom:1px solid #eef0f2;color:#111827;font-size:14px;font-weight:600;">${name}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 0;border-bottom:1px solid #eef0f2;color:#9ca3af;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;vertical-align:top;">Phone</td>
+              <td style="padding:10px 0;border-bottom:1px solid #eef0f2;font-size:14px;"><a href="tel:${phone}" style="color:#f9760f;text-decoration:none;font-weight:600;">${phone}</a></td>
+            </tr>
+            <tr>
+              <td style="padding:10px 0;border-bottom:1px solid #eef0f2;color:#9ca3af;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;vertical-align:top;">Email</td>
+              <td style="padding:10px 0;border-bottom:1px solid #eef0f2;font-size:14px;"><a href="mailto:${email}" style="color:#f9760f;text-decoration:none;font-weight:600;">${email}</a></td>
+            </tr>
+            ${
+              service
+                ? `<tr>
+              <td style="padding:10px 0;border-bottom:1px solid #eef0f2;color:#9ca3af;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;vertical-align:top;">Regarding</td>
+              <td style="padding:10px 0;border-bottom:1px solid #eef0f2;color:#111827;font-size:14px;font-weight:600;">${service}</td>
+            </tr>`
+                : ""
+            }
+          </table>
+          <p style="margin:24px 0 8px;color:#9ca3af;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Message</p>
+          <div style="background:#f9fafb;border:1px solid #eef0f2;border-radius:10px;padding:16px 18px;color:#374151;font-size:14px;line-height:1.6;white-space:pre-wrap;">${message}</div>
+          <a href="mailto:${email}" style="display:inline-block;margin-top:24px;padding:12px 24px;background:#f9760f;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;border-radius:999px;">
+            Reply to ${name.split(" ")[0]}
+          </a>
+        </div>
+        <div style="padding:16px 32px;background:#f9fafb;border-top:1px solid #eef0f2;">
+          <p style="margin:0;color:#9ca3af;font-size:12px;">Sent automatically from the contact form at bubblescarwashcafe.com.au</p>
+        </div>
+      </div>
     </div>
   `;
 
-  return sendEmail(toEmail, `Website Enquiry from ${details.name}`, html);
+  return sendEmail(toEmail, `New Website Enquiry from ${details.name}`, html);
 }
