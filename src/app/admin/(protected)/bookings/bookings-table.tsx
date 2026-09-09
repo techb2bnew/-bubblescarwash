@@ -44,7 +44,7 @@ export default function BookingsTable({
   const [type, setType] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [sortKey, setSortKey] = useState<string | null>("booking_date");
+  const [sortKey, setSortKey] = useState<string | null>("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [rescheduling, setRescheduling] = useState<Booking | null>(null);
@@ -116,6 +116,9 @@ export default function BookingsTable({
         } else if (sortKey === "price") {
           av = a.price ?? 0;
           bv = b.price ?? 0;
+        } else if (sortKey === "created_at") {
+          av = a.created_at;
+          bv = b.created_at;
         } else {
           av = `${a.booking_date} ${a.booking_time}`;
           bv = `${b.booking_date} ${b.booking_time}`;
