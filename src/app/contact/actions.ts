@@ -1,6 +1,7 @@
 "use server";
 
 import { sendContactEnquiryEmail } from "@/lib/email";
+import { getSiteOrigin } from "@/lib/site-origin";
 
 const RECIPIENT_EMAIL = "rishavbase2brand@gmail.com";
 
@@ -20,9 +21,11 @@ export async function submitContactEnquiry(formData: {
     return { ok: false, error: "Please fill out all required fields." };
   }
 
+  const siteUrl = await getSiteOrigin();
   const sent = await sendContactEnquiryEmail(
     { name, phone, email, service: formData.service.trim() || null, message },
     RECIPIENT_EMAIL,
+    siteUrl,
   );
 
   if (!sent) {

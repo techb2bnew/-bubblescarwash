@@ -365,20 +365,17 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function getSiteUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? "https://bubblescarwashcafe.com.au").replace(/\/$/, "");
-}
-
 export async function sendContactEnquiryEmail(
   details: ContactEnquiryDetails,
   toEmail: string,
+  siteUrl: string,
 ): Promise<boolean> {
   const name = escapeHtml(details.name);
   const phone = escapeHtml(details.phone);
   const email = escapeHtml(details.email);
   const service = details.service ? escapeHtml(details.service) : null;
   const message = escapeHtml(details.message);
-  const siteUrl = getSiteUrl();
+  siteUrl = siteUrl.replace(/\/$/, "");
   const logoUrl = `${siteUrl}/Bubbles-Logo.png`;
   const bookUrl = `${siteUrl}/book`;
 
