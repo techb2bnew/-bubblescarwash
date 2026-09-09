@@ -365,6 +365,10 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function getSiteUrl(): string {
+  return (process.env.NEXT_PUBLIC_SITE_URL ?? "https://bubblescarwashcafe.com.au").replace(/\/$/, "");
+}
+
 export async function sendContactEnquiryEmail(
   details: ContactEnquiryDetails,
   toEmail: string,
@@ -374,13 +378,25 @@ export async function sendContactEnquiryEmail(
   const email = escapeHtml(details.email);
   const service = details.service ? escapeHtml(details.service) : null;
   const message = escapeHtml(details.message);
+  const siteUrl = getSiteUrl();
+  const logoUrl = `${siteUrl}/Bubbles-Logo.png`;
+  const bookUrl = `${siteUrl}/book`;
+
+  const socialIcon = (href: string, label: string, path: string) => `
+    <a href="${href}" style="display:inline-block;width:32px;height:32px;margin:0 4px;border-radius:999px;background:#1a2436;text-align:center;line-height:32px;" aria-label="${label}">
+      <img src="${path}" width="14" height="14" alt="${label}" style="vertical-align:middle;" />
+    </a>
+  `;
 
   const html = `
     <div style="margin:0;padding:32px 16px;background:#f4f5f7;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
       <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,0.08);">
-        <div style="background:#0b1220;padding:28px 32px;">
-          <p style="margin:0;color:#f9760f;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Bubbles Car Wash &amp; Cafe</p>
-          <h1 style="margin:8px 0 0;color:#ffffff;font-size:20px;font-weight:800;">New Website Enquiry</h1>
+        <div style="background:#0b1220;padding:24px 32px;text-align:center;">
+          <img src="${logoUrl}" alt="Bubbles Car Wash & Cafe" height="44" style="height:44px;width:auto;" />
+        </div>
+        <div style="background:#0b1220;padding:0 32px 24px;">
+          <p style="margin:0;color:#f9760f;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;text-align:center;">New Enquiry</p>
+          <h1 style="margin:8px 0 0;color:#ffffff;font-size:20px;font-weight:800;text-align:center;">Someone Reached Out On The Website</h1>
         </div>
         <div style="padding:28px 32px;">
           <p style="margin:0 0 20px;color:#4b5563;font-size:14px;line-height:1.6;">
@@ -414,8 +430,20 @@ export async function sendContactEnquiryEmail(
             Reply to ${name.split(" ")[0]}
           </a>
         </div>
-        <div style="padding:16px 32px;background:#f9fafb;border-top:1px solid #eef0f2;">
-          <p style="margin:0;color:#9ca3af;font-size:12px;">Sent automatically from the contact form at bubblescarwashcafe.com.au</p>
+        <div style="padding:24px 32px;background:#0b1220;text-align:center;">
+          <p style="margin:0 0 4px;color:#ffffff;font-size:14px;font-weight:700;">Got a customer waiting on a wash?</p>
+          <p style="margin:0 0 16px;color:#9ca3af;font-size:13px;">Book their slot for them straight from the admin, or send them this link.</p>
+          <a href="${bookUrl}" style="display:inline-block;padding:12px 28px;background:#f9760f;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;border-radius:999px;">
+            Book On Bubbles Car Wash
+          </a>
+        </div>
+        <div style="padding:20px 32px;background:#f9fafb;border-top:1px solid #eef0f2;text-align:center;">
+          <div style="margin-bottom:12px;">
+            ${socialIcon("https://facebook.com", "Facebook", "https://cdn-icons-png.flaticon.com/32/733/733547.png")}
+            ${socialIcon("https://instagram.com", "Instagram", "https://cdn-icons-png.flaticon.com/32/2111/2111463.png")}
+          </div>
+          <p style="margin:0 0 4px;color:#6b7280;font-size:12px;">Bubbles Car Wash &amp; Cafe · 273 North East Rd, Hampstead Gardens SA 5086</p>
+          <p style="margin:0;color:#9ca3af;font-size:11px;">Sent automatically from the contact form at bubblescarwashcafe.com.au</p>
         </div>
       </div>
     </div>
