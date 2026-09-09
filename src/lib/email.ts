@@ -376,7 +376,7 @@ export async function sendContactEnquiryEmail(
   const service = details.service ? escapeHtml(details.service) : null;
   const message = escapeHtml(details.message);
   siteUrl = siteUrl.replace(/\/$/, "");
-  const logoUrl = `${siteUrl}/Bubbles-Logo.png`;
+  const logoUrl = "https://bubblescarwashcafe.com.au/wp-content/uploads/2019/09/Bubbles-Logo.png";
   const bookUrl = `${siteUrl}/book`;
 
   const socialIcon = (href: string, label: string, path: string) => `
