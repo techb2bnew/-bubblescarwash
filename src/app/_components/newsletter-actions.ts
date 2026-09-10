@@ -2,7 +2,7 @@
 
 import { sendNewsletterSignupEmail } from "@/lib/email";
 
-const RECIPIENT_EMAIL = "rishavbase2brand@gmail.com";
+const RECIPIENT_EMAIL = "info@bubblescarwashcafe.com.au";
 
 export async function subscribeToNewsletter(
   email: string,
