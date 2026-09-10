@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { createPublicClient } from "@/lib/supabase/public";
-import type { VehicleTypeRow } from "@/lib/types";
+import type { ServiceCategoryRow, VehicleTypeRow } from "@/lib/types";
 import { flattenServiceTemplates, type ServiceTemplateRow } from "@/lib/pricing";
 import { blogPosts } from "@/lib/blog-posts";
 import SiteHeader from "./_components/site-header";
@@ -16,6 +16,7 @@ import { normalizeTitleCase } from "@/lib/format";
 
 type Tier = {
   name: string;
+  category_id: string;
   duration_minutes: number;
   prices: { vehicleTypeSlug: string; price: number }[];
   features: string[];
@@ -26,7 +27,7 @@ export const revalidate = 60;
 async function getWashPackages() {
   const supabase = createPublicClient();
 
-  const [{ data: vehicleTypes }, { data: services }] = await Promise.all([
+  const [{ data: vehicleTypes }, { data: services }, { data: categories }] = await Promise.all([
     supabase
       .from("vehicle_types")
       .select("*")
@@ -37,6 +38,11 @@ async function getWashPackages() {
       .select("*, prices:service_prices(*), inclusions(*)")
       .eq("active", true)
       .order("name"),
+    supabase
+      .from("service_categories")
+      .select("*")
+      .eq("active", true)
+      .order("sort_order"),
   ]);
 
   const flatServices = flattenServiceTemplates(
@@ -58,6 +64,7 @@ async function getWashPackages() {
     } else {
       tiersByName.set(s.name, {
         name: s.name,
+        category_id: s.category_id,
         duration_minutes: s.duration_minutes,
         prices: [{ vehicleTypeSlug: s.vehicle_type, price: s.price }],
         features,
@@ -79,6 +86,7 @@ async function getWashPackages() {
 
   return {
     vehicleTypes: (vehicleTypes as VehicleTypeRow[]) ?? [],
+    categories: (categories as ServiceCategoryRow[]) ?? [],
     tiers,
   };
 }
@@ -508,7 +516,7 @@ const careItems = [
 ];
 
 export default async function Home() {
-  const { vehicleTypes, tiers } = await getWashPackages();
+  const { vehicleTypes, categories, tiers } = await getWashPackages();
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-gray-900">
@@ -800,72 +808,83 @@ export default async function Home() {
               Packages are being updated — please check back shortly.
             </p>
           ) : (
-            <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {tiers.map((tier, idx) => {
-                const featured = tiers.length > 1 && idx === Math.floor((tiers.length - 1) / 2);
-                return (
-                  <div
-                    key={tier.name}
-                    className={`relative flex flex-col overflow-hidden rounded-2xl border bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
-                      featured
-                        ? "border-brand-300 shadow-lg shadow-brand-600/10 ring-2 ring-brand-500 sm:-translate-y-2"
-                        : "border-gray-100"
-                    }`}
-                  >
-                    <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-brand-50" />
-                    {featured && (
-                      <span className="absolute right-4 top-4 rounded-full bg-brand-600 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
-                        Most Popular
-                      </span>
-                    )}
-                    <div className="relative">
-                      <h4 className="text-base font-bold text-gray-900">{normalizeTitleCase(tier.name)}</h4>
-                    </div>
-
-                    {tier.features.length > 0 && (
-                      <ul className="relative mt-4 space-y-1.5 text-sm text-gray-600">
-                        {tier.features.slice(0, 5).map((f) => (
-                          <li key={f} className="flex gap-2">
-                            <span className="mt-0.5 text-brand-500">✓</span>
-                            <span>{f}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-
-                    <div className="relative mt-5 flex-1 space-y-1 border-t border-gray-100 pt-4">
-                      {tier.prices.map((p, i) => {
-                        const vt = vehicleTypes.find((v) => v.slug === p.vehicleTypeSlug);
-                        return (
-                          <p
-                            key={p.vehicleTypeSlug}
-                            className={
-                              i === 0
-                                ? "text-2xl font-extrabold text-brand-600"
-                                : "text-xs text-gray-500"
-                            }
-                          >
-                            {vt?.name ?? p.vehicleTypeSlug}{" "}
-                            <span className={i === 0 ? "" : "font-medium text-gray-700"}>
-                              ${p.price.toFixed(0)}
+            categories.map((cat) => {
+              const catTiers = tiers.filter((t) => t.category_id === cat.id);
+              if (catTiers.length === 0) return null;
+              return (
+                <div key={cat.id} className="mt-12 first:mt-10">
+                  <h3 className="text-lg font-bold text-gray-900">
+                    <span className="text-brand-600">Category:</span> {cat.name}
+                  </h3>
+                  <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {catTiers.map((tier, idx) => {
+                      const featured = catTiers.length > 1 && idx === Math.floor((catTiers.length - 1) / 2);
+                      return (
+                        <div
+                          key={tier.name}
+                          className={`relative flex flex-col overflow-hidden rounded-2xl border bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
+                            featured
+                              ? "border-brand-300 shadow-lg shadow-brand-600/10 ring-2 ring-brand-500 sm:-translate-y-2"
+                              : "border-gray-100"
+                          }`}
+                        >
+                          <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-brand-50" />
+                          {featured && (
+                            <span className="absolute right-4 top-4 rounded-full bg-brand-600 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+                              Most Popular
                             </span>
-                          </p>
-                        );
-                      })}
-                    </div>
+                          )}
+                          <div className="relative">
+                            <h4 className="text-base font-bold text-gray-900">{normalizeTitleCase(tier.name)}</h4>
+                          </div>
 
-                    <Link
-                      href="/book"
-                      className={`relative mt-5 rounded-full px-4 py-2.5 text-center text-sm font-semibold text-white transition ${
-                        featured ? "bg-brand-600 hover:bg-brand-700" : "bg-gray-900 hover:bg-brand-600"
-                      }`}
-                    >
-                      Book This
-                    </Link>
+                          {tier.features.length > 0 && (
+                            <ul className="relative mt-4 space-y-1.5 text-sm text-gray-600">
+                              {tier.features.slice(0, 5).map((f) => (
+                                <li key={f} className="flex gap-2">
+                                  <span className="mt-0.5 text-brand-500">✓</span>
+                                  <span>{f}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+
+                          <div className="relative mt-5 flex-1 space-y-1 border-t border-gray-100 pt-4">
+                            {tier.prices.map((p, i) => {
+                              const vt = vehicleTypes.find((v) => v.slug === p.vehicleTypeSlug);
+                              return (
+                                <p
+                                  key={p.vehicleTypeSlug}
+                                  className={
+                                    i === 0
+                                      ? "text-2xl font-extrabold text-brand-600"
+                                      : "text-xs text-gray-500"
+                                  }
+                                >
+                                  {vt?.name ?? p.vehicleTypeSlug}{" "}
+                                  <span className={i === 0 ? "" : "font-medium text-gray-700"}>
+                                    ${p.price.toFixed(0)}
+                                  </span>
+                                </p>
+                              );
+                            })}
+                          </div>
+
+                          <Link
+                            href="/book"
+                            className={`relative mt-5 rounded-full px-4 py-2.5 text-center text-sm font-semibold text-white transition ${
+                              featured ? "bg-brand-600 hover:bg-brand-700" : "bg-gray-900 hover:bg-brand-600"
+                            }`}
+                          >
+                            Book This
+                          </Link>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })
           )}
         </div>
       </section>
