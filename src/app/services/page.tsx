@@ -6,7 +6,7 @@ import { flattenServiceTemplates, type ServiceTemplateRow } from "@/lib/pricing"
 import SiteHeader from "../_components/site-header";
 import SiteFooter from "../_components/site-footer";
 import StatsBand from "../_components/stats-band";
-import { normalizeTitleCase } from "@/lib/format";
+import PackagesTabs from "../_components/packages-tabs";
 
 export const metadata = {
   title: "Services & Pricing — Bubbles Car Wash & Cafe",
@@ -147,73 +147,7 @@ export default async function ServicesPage() {
               Packages are being updated — please check back shortly.
             </p>
           ) : (
-            categories.map((cat) => {
-              const catTiers = tiers.filter((t) => t.category_id === cat.id);
-              if (catTiers.length === 0) return null;
-              return (
-                <div key={cat.id} className="mb-14 last:mb-0">
-                  <h2 className="text-lg font-bold text-gray-900">
-                    <span className="text-brand-600">Category:</span> {cat.name}
-                  </h2>
-                  <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {catTiers.map((tier, idx) => (
-                      <div
-                        key={tier.name}
-                        className={`relative flex flex-col overflow-hidden rounded-2xl border bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
-                          catTiers.length > 1 && idx === Math.floor((catTiers.length - 1) / 2)
-                            ? "border-brand-300 ring-1 ring-brand-200"
-                            : "border-gray-100"
-                        }`}
-                      >
-                        <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-brand-50" />
-                        <div className="relative">
-                          <h3 className="text-base font-bold text-gray-900">{normalizeTitleCase(tier.name)}</h3>
-                        </div>
-
-                        {tier.features.length > 0 && (
-                          <ul className="relative mt-4 space-y-1.5 text-sm text-gray-600">
-                            {tier.features.slice(0, 6).map((f) => (
-                              <li key={f} className="flex gap-2">
-                                <span className="mt-0.5 text-brand-500">✓</span>
-                                <span>{f}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-
-                        <div className="relative mt-5 flex-1 space-y-1 border-t border-gray-100 pt-4">
-                          {tier.prices.map((p, i) => {
-                            const vt = vehicleTypes.find((v) => v.slug === p.vehicleTypeSlug);
-                            return (
-                              <p
-                                key={p.vehicleTypeSlug}
-                                className={
-                                  i === 0
-                                    ? "text-2xl font-extrabold text-brand-600"
-                                    : "text-xs text-gray-500"
-                                }
-                              >
-                                {vt?.name ?? p.vehicleTypeSlug}{" "}
-                                <span className={i === 0 ? "" : "font-medium text-gray-700"}>
-                                  ${p.price.toFixed(0)}
-                                </span>
-                              </p>
-                            );
-                          })}
-                        </div>
-
-                        <Link
-                          href="/book"
-                          className="relative mt-5 rounded-full bg-gray-900 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-brand-600"
-                        >
-                          Book This
-                        </Link>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })
+            <PackagesTabs categories={categories} tiers={tiers} vehicleTypes={vehicleTypes} />
           )}
         </div>
       </section>
