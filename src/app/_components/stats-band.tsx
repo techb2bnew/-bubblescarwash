@@ -1,7 +1,7 @@
 const STATS = [
   { value: "15+", label: "Years in Adelaide" },
   { value: "7", label: "Days open a week" },
-  { value: "3", label: "Wash tiers to choose from" },
+  { value: "100%", label: "Satisfaction guaranteed" },
   { value: "5★", label: "Rated by real customers" },
 ];
 

@@ -756,12 +756,6 @@ export default async function Home() {
                 type="video/mp4"
               />
             </video>
-            <span className="absolute bottom-4 right-4 flex items-center gap-1.5 rounded-full bg-gray-950/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white">
-              <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
-                <path d="M8 5v14l11-7Z" />
-              </svg>
-              Live at the wash bay
-            </span>
           </div>
           <div>
             <SectionLabel align="left" tone="dark">Our Mission</SectionLabel>
