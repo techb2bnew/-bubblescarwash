@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { Resend } from "resend";
 import { formatTimeLabel } from "@/lib/date-utils";
 import {
@@ -5,6 +7,40 @@ import {
   buildGoogleCalendarAddLink,
   formatTimezoneLabel,
 } from "@/lib/ics";
+
+const LOGO_CONTENT_ID = "bubbles-logo";
+
+interface LogoAttachment {
+  filename: string;
+  content: string;
+  contentId: string;
+  contentType: string;
+}
+
+// Embedded as a CID attachment rather than linked by URL — inline images
+// referenced by src="cid:..." render immediately in every mail client
+// without needing "show images" permission (unlike a remote <img src>,
+// which most clients block by default), and don't depend on whichever
+// domain happens to be serving the app when the email is sent. Read once
+// and cached — the file never changes at runtime.
+let cachedLogo: LogoAttachment | null | undefined;
+function getLogoAttachment(): LogoAttachment | null {
+  if (cachedLogo === undefined) {
+    try {
+      const filePath = path.join(process.cwd(), "public", "Bubbles-Logo.png");
+      cachedLogo = {
+        filename: "Bubbles-Logo.png",
+        content: fs.readFileSync(filePath).toString("base64"),
+        contentId: LOGO_CONTENT_ID,
+        contentType: "image/png",
+      };
+    } catch (err) {
+      console.error("[email] failed to read logo file:", err);
+      cachedLogo = null;
+    }
+  }
+  return cachedLogo;
+}
 
 function getResendClient(): Resend | null {
   const apiKey = process.env.RESEND_API_KEY;
@@ -52,8 +88,6 @@ interface EmailLayoutOptions {
 
 /** Wraps a fragment of body HTML in the branded header/card/footer shell. */
 function renderEmailLayout(opts: EmailLayoutOptions): string {
-  const logoUrl = `${getPublicSiteUrl()}/Bubbles-Logo.png`;
-
   const ctaSection = opts.cta
     ? `
     <div style="padding:24px 32px;background:${BRAND_DARK};text-align:center;">
@@ -76,7 +110,7 @@ function renderEmailLayout(opts: EmailLayoutOptions): string {
         <div style="margin:0;padding:32px 16px;background:#f4f5f7;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
           <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,0.08);">
             <div style="background:${BRAND_DARK};padding:24px 32px;text-align:center;">
-              <img src="${logoUrl}" alt="${opts.businessName}" height="44" style="height:44px;width:auto;" />
+              <img src="cid:${LOGO_CONTENT_ID}" alt="${opts.businessName}" height="44" style="height:44px;width:auto;" />
             </div>
             <div style="background:${BRAND_DARK};padding:0 32px 24px;">
               <p style="margin:0;color:${BRAND_ACCENT};font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;text-align:center;">${opts.eyebrow}</p>
@@ -220,15 +254,17 @@ async function sendEmail(
   if (!resend || !from) return false;
 
   try {
+    const attachments = [];
+    const logo = getLogoAttachment();
+    if (logo) attachments.push(logo);
+    if (attachCalendar && details) attachments.push(buildIcsAttachment(details));
+
     const { error } = await resend.emails.send({
       from,
       to,
       subject,
       html,
-      attachments:
-        attachCalendar && details
-          ? [buildIcsAttachment(details)]
-          : undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
     });
     if (error) {
       console.error("[email] send failed:", error);
