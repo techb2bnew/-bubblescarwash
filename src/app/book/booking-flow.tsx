@@ -23,6 +23,7 @@ import {
   WEEKDAY_NAMES,
 } from "@/lib/date-utils";
 import type { PaymentMode } from "@/lib/payment-mode";
+import { normalizeTitleCase } from "@/lib/format";
 import {
   countBookingsByEmail,
   createBookingSimple,
@@ -699,7 +700,7 @@ export default function BookingFlow({
                       </span>
                     )}
                     <div className="flex items-start justify-between gap-2">
-                      <span className="text-base font-extrabold text-gray-900">{s.name}</span>
+                      <span className="text-base font-extrabold text-gray-900">{normalizeTitleCase(s.name)}</span>
                       <span
                         className={`flex h-5 w-5 flex-none items-center justify-center rounded-full border-2 transition ${
                           active ? "border-brand-600 bg-brand-600" : "border-gray-300"
@@ -920,7 +921,7 @@ export default function BookingFlow({
                   </p>
                   <p>
                     <span className="text-gray-400">Service: </span>
-                    {selectedService?.name ?? "—"}
+                    {selectedService ? normalizeTitleCase(selectedService.name) : "—"}
                   </p>
                   <p>
                     <span className="text-gray-400">Date: </span>
@@ -963,7 +964,7 @@ export default function BookingFlow({
             Optional <span className="wave-word">Add-ons</span>
           </h2>
           <p className="mb-6 text-sm text-gray-500">
-            Add any extra services to {selectedService?.name ?? "your booking"}.
+            Add any extra services to {selectedService ? normalizeTitleCase(selectedService.name) : "your booking"}.
           </p>
 
           {extras.length === 0 ? (
@@ -1086,7 +1087,7 @@ export default function BookingFlow({
                 </span>
                 <div className="min-w-0 text-sm text-gray-700">
                   <p className="font-bold text-gray-900">
-                    {selectedService?.name}{" "}
+                    {selectedService ? normalizeTitleCase(selectedService.name) : ""}{" "}
                     <span className="font-normal text-gray-500">
                       ({vehicleTypes.find((v) => v.slug === vehicle)?.name ?? vehicle})
                     </span>

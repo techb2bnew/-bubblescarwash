@@ -6,6 +6,7 @@ import { flattenServiceTemplates, type ServiceTemplateRow } from "@/lib/pricing"
 import SiteHeader from "../_components/site-header";
 import SiteFooter from "../_components/site-footer";
 import StatsBand from "../_components/stats-band";
+import { normalizeTitleCase } from "@/lib/format";
 
 export const metadata = {
   title: "Services & Pricing — Bubbles Car Wash & Cafe",
@@ -154,7 +155,7 @@ export default async function ServicesPage() {
                 >
                   <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-brand-50" />
                   <div className="relative">
-                    <h3 className="text-base font-bold text-gray-900">{tier.name}</h3>
+                    <h3 className="text-base font-bold text-gray-900">{normalizeTitleCase(tier.name)}</h3>
                   </div>
 
                   {tier.features.length > 0 && (

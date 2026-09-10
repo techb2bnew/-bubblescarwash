@@ -12,6 +12,7 @@ import ReviewsSlider from "./_components/reviews-slider";
 import SiteFooter from "./_components/site-footer";
 import SectionLabel from "./_components/section-label";
 import WorkshopGallerySlider from "./_components/workshop-gallery-slider";
+import { normalizeTitleCase } from "@/lib/format";
 
 type Tier = {
   name: string;
@@ -818,7 +819,7 @@ export default async function Home() {
                       </span>
                     )}
                     <div className="relative">
-                      <h4 className="text-base font-bold text-gray-900">{tier.name}</h4>
+                      <h4 className="text-base font-bold text-gray-900">{normalizeTitleCase(tier.name)}</h4>
                     </div>
 
                     {tier.features.length > 0 && (
