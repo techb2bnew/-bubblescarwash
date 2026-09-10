@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.pexels.com",
+      },
+    ],
+  },
   // googleapis is large; keep it external so Vercel serverless bundles stay within limits.
   serverExternalPackages: ["googleapis"],
   // Produces .next/standalone/server.js — a single entry file that cPanel's

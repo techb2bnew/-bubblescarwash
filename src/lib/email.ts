@@ -510,3 +510,120 @@ export async function sendGiftCardEmail(details: GiftCardEmailDetails): Promise<
 export function isEmailConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
 }
+
+export interface ContactEnquiryDetails {
+  name: string;
+  phone: string;
+  email: string;
+  service: string | null;
+  message: string;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export async function sendContactEnquiryEmail(
+  details: ContactEnquiryDetails,
+  toEmail: string,
+  siteUrl: string,
+): Promise<boolean> {
+  const name = escapeHtml(details.name);
+  const phone = escapeHtml(details.phone);
+  const email = escapeHtml(details.email);
+  const service = details.service ? escapeHtml(details.service) : null;
+  const message = escapeHtml(details.message);
+  siteUrl = siteUrl.replace(/\/$/, "");
+  const logoUrl = "https://bubblescarwashcafe.com.au/wp-content/uploads/2019/09/Bubbles-Logo.png";
+  const bookUrl = `${siteUrl}/book`;
+
+  const socialIcon = (href: string, label: string, path: string) => `
+    <a href="${href}" style="display:inline-block;width:32px;height:32px;margin:0 4px;border-radius:999px;background:#1a2436;text-align:center;line-height:32px;" aria-label="${label}">
+      <img src="${path}" width="14" height="14" alt="${label}" style="vertical-align:middle;" />
+    </a>
+  `;
+
+  const html = `
+    <div style="margin:0;padding:32px 16px;background:#f4f5f7;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+      <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,0.08);">
+        <div style="background:#0b1220;padding:24px 32px;text-align:center;">
+          <img src="${logoUrl}" alt="Bubbles Car Wash & Cafe" height="44" style="height:44px;width:auto;" />
+        </div>
+        <div style="background:#0b1220;padding:0 32px 24px;">
+          <p style="margin:0;color:#f9760f;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;text-align:center;">New Enquiry</p>
+          <h1 style="margin:8px 0 0;color:#ffffff;font-size:20px;font-weight:800;text-align:center;">Someone Reached Out On The Website</h1>
+        </div>
+        <div style="padding:28px 32px;">
+          <p style="margin:0 0 20px;color:#4b5563;font-size:14px;line-height:1.6;">
+            Someone just submitted the contact form on the website. Their details are below.
+          </p>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr>
+              <td style="padding:10px 0;border-bottom:1px solid #eef0f2;color:#9ca3af;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;width:110px;vertical-align:top;">Name</td>
+              <td style="padding:10px 0;border-bottom:1px solid #eef0f2;color:#111827;font-size:14px;font-weight:600;">${name}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 0;border-bottom:1px solid #eef0f2;color:#9ca3af;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;vertical-align:top;">Phone</td>
+              <td style="padding:10px 0;border-bottom:1px solid #eef0f2;font-size:14px;"><a href="tel:${phone}" style="color:#f9760f;text-decoration:none;font-weight:600;">${phone}</a></td>
+            </tr>
+            <tr>
+              <td style="padding:10px 0;border-bottom:1px solid #eef0f2;color:#9ca3af;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;vertical-align:top;">Email</td>
+              <td style="padding:10px 0;border-bottom:1px solid #eef0f2;font-size:14px;"><a href="mailto:${email}" style="color:#f9760f;text-decoration:none;font-weight:600;">${email}</a></td>
+            </tr>
+            ${
+              service
+                ? `<tr>
+              <td style="padding:10px 0;border-bottom:1px solid #eef0f2;color:#9ca3af;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;vertical-align:top;">Regarding</td>
+              <td style="padding:10px 0;border-bottom:1px solid #eef0f2;color:#111827;font-size:14px;font-weight:600;">${service}</td>
+            </tr>`
+                : ""
+            }
+          </table>
+          <p style="margin:24px 0 8px;color:#9ca3af;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Message</p>
+          <div style="background:#f9fafb;border:1px solid #eef0f2;border-radius:10px;padding:16px 18px;color:#374151;font-size:14px;line-height:1.6;white-space:pre-wrap;">${message}</div>
+          <a href="mailto:${email}" style="display:inline-block;margin-top:24px;padding:12px 24px;background:#f9760f;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;border-radius:999px;">
+            Reply to ${name.split(" ")[0]}
+          </a>
+        </div>
+        <div style="padding:24px 32px;background:#0b1220;text-align:center;">
+          <p style="margin:0 0 4px;color:#ffffff;font-size:14px;font-weight:700;">Got a customer waiting on a wash?</p>
+          <p style="margin:0 0 16px;color:#9ca3af;font-size:13px;">Book their slot for them straight from the admin, or send them this link.</p>
+          <a href="${bookUrl}" style="display:inline-block;padding:12px 28px;background:#f9760f;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;border-radius:999px;">
+            Book On Bubbles Car Wash
+          </a>
+        </div>
+        <div style="padding:20px 32px;background:#f9fafb;border-top:1px solid #eef0f2;text-align:center;">
+          <div style="margin-bottom:12px;">
+            ${socialIcon("https://facebook.com", "Facebook", "https://cdn-icons-png.flaticon.com/32/733/733547.png")}
+            ${socialIcon("https://instagram.com", "Instagram", "https://cdn-icons-png.flaticon.com/32/2111/2111463.png")}
+          </div>
+          <p style="margin:0 0 4px;color:#6b7280;font-size:12px;">Bubbles Car Wash &amp; Cafe · 273 North East Rd, Hampstead Gardens SA 5086</p>
+          <p style="margin:0;color:#9ca3af;font-size:11px;">Sent automatically from the contact form at bubblescarwashcafe.com.au</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return sendEmail(toEmail, `New Website Enquiry from ${details.name}`, html);
+}
+
+export async function sendNewsletterSignupEmail(
+  subscriberEmail: string,
+  toEmail: string,
+): Promise<boolean> {
+  const email = escapeHtml(subscriberEmail);
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;">
+      <h2 style="color:#111;">New Newsletter Signup</h2>
+      <p>Someone just subscribed to wash-day tips &amp; loyalty offers from the website footer.</p>
+      <p style="margin-top:16px;padding:12px 16px;background:#f9fafb;border-radius:8px;border:1px solid #eee;">
+        <a href="mailto:${email}" style="color:#f9760f;font-weight:600;text-decoration:none;">${email}</a>
+      </p>
+    </div>
+  `;
+  return sendEmail(toEmail, `New Newsletter Signup: ${subscriberEmail}`, html);
+}
