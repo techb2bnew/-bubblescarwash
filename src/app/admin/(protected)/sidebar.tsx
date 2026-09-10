@@ -41,6 +41,13 @@ const NAV_ITEMS = [
     ),
   },
   {
+    href: "/admin/categories",
+    label: "Categories",
+    icon: (
+      <path d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z" />
+    ),
+  },
+  {
     href: "/admin/add-ons",
     label: "Inclusions",
     icon: <path d="m5 13 4 4L19 7" />,

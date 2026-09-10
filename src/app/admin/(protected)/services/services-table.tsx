@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { ServiceTemplate, VehicleTypeRow } from "@/lib/types";
+import type { ServiceCategoryRow, ServiceTemplate, VehicleTypeRow } from "@/lib/types";
 import { deleteServiceTemplate, toggleServiceActive } from "./actions";
 import { FilterSelect, TableToolbar } from "../_components/table-toolbar";
 import { SortHeader } from "../_components/sort-header";
@@ -22,10 +22,12 @@ const ACTIVE_OPTIONS = [
 export default function ServicesTable({
   services,
   vehicleTypes,
+  categories,
   onEdit,
 }: {
   services: ServiceTemplate[];
   vehicleTypes: VehicleTypeRow[];
+  categories: ServiceCategoryRow[];
   onEdit: (service: ServiceTemplate) => void;
 }) {
   const router = useRouter();
@@ -36,9 +38,15 @@ export default function ServicesTable({
     { value: "all", label: "All Vehicles" },
     ...vehicleTypes.map((v) => ({ value: v.slug, label: v.name })),
   ];
+  const categoryOptions = [
+    { value: "all", label: "All Categories" },
+    ...categories.map((c) => ({ value: c.id, label: c.name })),
+  ];
   const vehicleNameBySlug = new Map(vehicleTypes.map((v) => [v.slug, v.name]));
+  const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
   const [search, setSearch] = useState("");
   const [vehicle, setVehicle] = useState("all");
+  const [category, setCategory] = useState("all");
   const [active, setActive] = useState("all");
   const [sortKey, setSortKey] = useState<string | null>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -81,6 +89,9 @@ export default function ServicesTable({
     if (vehicle !== "all") {
       result = result.filter((s) => s.prices.some((p) => p.vehicle_type === vehicle));
     }
+    if (category !== "all") {
+      result = result.filter((s) => s.category_id === category);
+    }
     if (active === "active") result = result.filter((s) => s.active);
     if (active === "inactive") result = result.filter((s) => !s.active);
 
@@ -94,7 +105,7 @@ export default function ServicesTable({
       });
     }
     return result;
-  }, [services, search, vehicle, active, sortKey, sortDir]);
+  }, [services, search, vehicle, category, active, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const clampedPage = Math.min(page, totalPages);
@@ -103,11 +114,13 @@ export default function ServicesTable({
     clampedPage * PAGE_SIZE,
   );
 
-  const hasActiveFilters = search.trim() !== "" || vehicle !== "all" || active !== "all";
+  const hasActiveFilters =
+    search.trim() !== "" || vehicle !== "all" || category !== "all" || active !== "all";
 
   function clearFilters() {
     setSearch("");
     setVehicle("all");
+    setCategory("all");
     setActive("all");
     setPage(1);
   }
@@ -124,6 +137,15 @@ export default function ServicesTable({
         hasActiveFilters={hasActiveFilters}
         onClear={clearFilters}
       >
+        <FilterSelect
+          label="Category"
+          value={category}
+          onChange={(v) => {
+            setCategory(v);
+            setPage(1);
+          }}
+          options={categoryOptions}
+        />
         <FilterSelect
           label="Vehicle"
           value={vehicle}
@@ -155,6 +177,7 @@ export default function ServicesTable({
                 currentDir={sortDir}
                 onSort={handleSort}
               />
+              <th className="px-4 py-3">Category</th>
               <th className="px-4 py-3">Vehicle Prices</th>
               <SortHeader
                 label="Duration"
@@ -171,6 +194,9 @@ export default function ServicesTable({
             {paged.map((s) => (
               <tr key={s.id} className="hover:bg-gray-50/60">
                 <td className="px-4 py-3 font-medium text-gray-900">{s.name}</td>
+                <td className="px-4 py-3 text-gray-600">
+                  {categoryNameById.get(s.category_id) ?? "—"}
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-1.5">
                     {s.prices.length === 0 ? (
@@ -215,7 +241,7 @@ export default function ServicesTable({
             ))}
             {paged.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-10 text-center text-gray-400">
                   {services.length === 0
                     ? 'No services yet — click "Add Service" to create one.'
                     : "No services match your search/filters."}

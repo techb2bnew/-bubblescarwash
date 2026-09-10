@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
-import type { BlockedDate, BusinessSettings, Extra, VehicleTypeRow } from "@/lib/types";
+import type { BlockedDate, BusinessSettings, Extra, ServiceCategoryRow, VehicleTypeRow } from "@/lib/types";
 import { flattenServiceTemplates, type ServiceTemplateRow } from "@/lib/pricing";
 import SiteHeader from "../_components/site-header";
 import SiteFooter from "../_components/site-footer";
@@ -19,6 +19,7 @@ export default async function BookPage() {
     { data: settings },
     { data: blockedDates },
     { data: vehicleTypes },
+    { data: categories },
     paymentMode,
   ] = await Promise.all([
     supabase
@@ -30,6 +31,7 @@ export default async function BookPage() {
     supabase.from("business_settings").select("*").eq("id", 1).single(),
     supabase.from("blocked_dates").select("*"),
     supabase.from("vehicle_types").select("*").eq("active", true).order("sort_order"),
+    supabase.from("service_categories").select("*").eq("active", true).order("sort_order"),
     getBookingPaymentMode(),
   ]);
 
@@ -74,6 +76,7 @@ export default async function BookPage() {
             services={flatServices}
             extras={(extras as Extra[]) ?? []}
             vehicleTypes={(vehicleTypes as VehicleTypeRow[]) ?? []}
+            categories={(categories as ServiceCategoryRow[]) ?? []}
             paymentMode={paymentMode}
             settings={(settings as BusinessSettings) ?? {
               id: 1,

@@ -7,6 +7,7 @@ import type {
   BusinessSettings,
   Extra,
   Service,
+  ServiceCategoryRow,
   VehicleType,
   VehicleTypeRow,
 } from "@/lib/types";
@@ -28,11 +29,13 @@ import {
   createCheckoutSession,
   getBookedTimes,
   getDateHours,
+  getSlotCapacity,
   previewCustomerDiscount,
   previewDiscount,
   previewGiftCard,
   type BookedTime,
   type CustomerDiscountPreview,
+  type SlotCapacity,
 } from "./actions";
 
 const BOOKING_LIMIT = 5;
@@ -276,6 +279,7 @@ export default function BookingFlow({
   services,
   extras,
   vehicleTypes,
+  categories,
   settings,
   blockedDates,
   paymentMode,
@@ -283,6 +287,7 @@ export default function BookingFlow({
   services: Service[];
   extras: Extra[];
   vehicleTypes: VehicleTypeRow[];
+  categories: ServiceCategoryRow[];
   settings: BusinessSettings;
   blockedDates: BlockedDate[];
   paymentMode: PaymentMode;
@@ -290,10 +295,12 @@ export default function BookingFlow({
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [vehicle, setVehicle] = useState<VehicleType>(vehicleTypes[0]?.slug ?? "");
+  const [category, setCategory] = useState<string>(categories[0]?.id ?? "");
   const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [slotCapacity, setSlotCapacity] = useState<SlotCapacity | null>(null);
   const [bookedTimes, setBookedTimes] = useState<BookedTime[]>([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
   const [timesError, setTimesError] = useState<string | null>(null);
@@ -348,7 +355,9 @@ export default function BookingFlow({
 
   const weeks = useMemo(() => getMonthGrid(cursor.year, cursor.month), [cursor]);
 
-  const vehicleServices = services.filter((s) => s.vehicle_type === vehicle);
+  const vehicleServices = services.filter(
+    (s) => s.vehicle_type === vehicle && (!category || s.category_id === category),
+  );
 
   function toggleExtra(id: string) {
     setSelectedExtraIds((prev) =>
@@ -454,6 +463,7 @@ export default function BookingFlow({
   function handleSelectDate(dateKey: string) {
     setSelectedDate(dateKey);
     setSelectedTime(null);
+    setSlotCapacity(null);
     setTimesError(null);
     setLoadingTimes(true);
     Promise.all([getBookedTimes(dateKey), getDateHours(dateKey)])
@@ -470,6 +480,15 @@ export default function BookingFlow({
         );
       })
       .finally(() => setLoadingTimes(false));
+  }
+
+  function handleSelectTime(time: string) {
+    setSelectedTime(time);
+    setSlotCapacity(null);
+    if (!selectedDate) return;
+    getSlotCapacity(selectedDate, time)
+      .then(setSlotCapacity)
+      .catch(() => setSlotCapacity(null));
   }
 
   const timeSlots = useMemo(
@@ -621,6 +640,28 @@ export default function BookingFlow({
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {categories.length > 1 && (
+            <div className="mb-5 flex flex-wrap gap-2">
+              {categories.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setCategory(c.id);
+                    setSelectedService(null);
+                  }}
+                  className={`rounded-full border-2 px-4 py-2 text-sm font-semibold transition ${
+                    category === c.id
+                      ? "border-brand-600 bg-brand-50 text-brand-700"
+                      : "border-gray-200 text-gray-600 hover:border-brand-200"
+                  }`}
+                >
+                  {c.name}
+                </button>
+              ))}
             </div>
           )}
 
@@ -807,7 +848,7 @@ export default function BookingFlow({
                               key={t}
                               type="button"
                               disabled={taken}
-                              onClick={() => setSelectedTime(t)}
+                              onClick={() => handleSelectTime(t)}
                               title={
                                 taken
                                   ? bookedEntry?.reason ||
@@ -846,6 +887,19 @@ export default function BookingFlow({
                           );
                         })}
                       </div>
+                    )}
+                    {selectedTime && slotCapacity && (
+                      <p
+                        className={`mt-3 rounded-lg px-3 py-2 text-xs font-semibold ${
+                          slotCapacity.remaining <= 2
+                            ? "bg-amber-50 text-amber-700"
+                            : "bg-gray-50 text-gray-500"
+                        }`}
+                      >
+                        {slotCapacity.remaining <= 0
+                          ? "This time is now full — pick another."
+                          : `Only ${slotCapacity.remaining} spot${slotCapacity.remaining === 1 ? "" : "s"} left for ${formatTimeLabel(selectedTime)}.`}
+                      </p>
                     )}
                   </>
                 ) : (

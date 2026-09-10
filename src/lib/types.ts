@@ -14,6 +14,15 @@ export interface VehicleTypeRow {
   active: boolean;
 }
 
+/** An admin-managed grouping for services (e.g. "Wash", "Detailing"). */
+export interface ServiceCategoryRow {
+  id: string;
+  name: string;
+  slug: string;
+  sort_order: number;
+  active: boolean;
+}
+
 export interface BusinessSettings {
   id: number;
   name: string;
@@ -50,6 +59,7 @@ export interface Service {
   id: string;
   name: string;
   vehicle_type: VehicleType;
+  category_id: string;
   price: number;
   duration_minutes: number;
   active: boolean;
@@ -74,6 +84,7 @@ export interface ServicePrice {
 export interface ServiceTemplate {
   id: string;
   name: string;
+  category_id: string;
   duration_minutes: number;
   active: boolean;
   created_at: string;

@@ -1,20 +1,22 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Customer, Extra, Service, VehicleTypeRow } from "@/lib/types";
+import type { Customer, Extra, Service, ServiceCategoryRow, VehicleTypeRow } from "@/lib/types";
 import type { PaymentMode } from "@/lib/payment-mode";
 import { formatTimeLabel, unavailableDateStyle } from "@/lib/date-utils";
+import { previewCustomerDiscount, type CustomerDiscountPreview } from "@/app/book/actions";
 import { createBookingAdminCheckout, createBookingAdminPayLater } from "./actions";
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6;
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 const STEP_LABELS: Record<Step, string> = {
   1: "Customer",
   2: "Vehicle",
-  3: "Service",
-  4: "Add-Ons",
-  5: "Time",
-  6: "Payment",
+  3: "Category",
+  4: "Service",
+  5: "Add-Ons",
+  6: "Time",
+  7: "Payment",
 };
 
 export default function CreateBookingWizard({
@@ -22,6 +24,7 @@ export default function CreateBookingWizard({
   vehicleTypes,
   customers,
   extras,
+  categories,
   bookingDate,
   timeSlots,
   bookedTimes,
@@ -36,6 +39,7 @@ export default function CreateBookingWizard({
   vehicleTypes: VehicleTypeRow[];
   customers: Pick<Customer, "id" | "name" | "phone" | "email">[];
   extras: Extra[];
+  categories: ServiceCategoryRow[];
   bookingDate: string;
   timeSlots: string[];
   bookedTimes: string[];
@@ -56,6 +60,7 @@ export default function CreateBookingWizard({
   const [email, setEmail] = useState("");
 
   const [vehicleSlug, setVehicleSlug] = useState<string>("");
+  const [categoryId, setCategoryId] = useState<string>(categories[0]?.id ?? "");
   const [serviceId, setServiceId] = useState("");
   const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
   const [time, setTime] = useState<string | null>(null);
@@ -63,6 +68,18 @@ export default function CreateBookingWizard({
 
   const [submitting, setSubmitting] = useState<"payLater" | "stripe" | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [customerDiscount, setCustomerDiscount] = useState<CustomerDiscountPreview | null>(null);
+
+  // Purely a preview so the admin can see the price Stripe will actually
+  // charge before charging it — the real, authoritative match happens
+  // automatically inside create_booking regardless of this preview.
+  function checkCustomerDiscount(nextEmail: string, nextPhone: string) {
+    if (!nextEmail.trim() && !nextPhone.trim()) return;
+    previewCustomerDiscount(nextEmail, nextPhone)
+      .then(setCustomerDiscount)
+      .catch(() => {});
+  }
 
   const filteredCustomers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -78,8 +95,11 @@ export default function CreateBookingWizard({
   }, [customers, search]);
 
   const servicesForVehicle = useMemo(
-    () => services.filter((s) => s.vehicle_type === vehicleSlug),
-    [services, vehicleSlug],
+    () =>
+      services.filter(
+        (s) => s.vehicle_type === vehicleSlug && (!categoryId || s.category_id === categoryId),
+      ),
+    [services, vehicleSlug, categoryId],
   );
 
   const selectedService = services.find((s) => s.id === serviceId) ?? null;
@@ -92,13 +112,25 @@ export default function CreateBookingWizard({
 
   const selectedExtras = extras.filter((e) => selectedExtraIds.includes(e.id));
   const extrasTotal = selectedExtras.reduce((sum, e) => sum + e.price, 0);
-  const totalPrice = (selectedService?.price ?? 0) + extrasTotal;
+  const basePrice = selectedService?.price ?? 0;
+  // The override (walk-in) path is a raw insert that skips create_booking
+  // entirely, so no discount ever applies there — only preview one when a
+  // real create_booking call is actually going to happen.
+  const discountAmount =
+    customerDiscount && !overrideAvailability
+      ? customerDiscount.discountType === "percent"
+        ? Math.round(basePrice * customerDiscount.value) / 100
+        : Math.min(customerDiscount.value, basePrice)
+      : 0;
+  const totalPrice = basePrice - discountAmount + extrasTotal;
 
   function selectCustomer(c: Pick<Customer, "id" | "name" | "phone" | "email">) {
     setSelectedCustomerId(c.id);
     setName(c.name);
     setPhone(c.phone);
     setEmail(c.email);
+    setCustomerDiscount(null);
+    checkCustomerDiscount(c.email, c.phone);
   }
 
   function resetWizard() {
@@ -110,11 +142,13 @@ export default function CreateBookingWizard({
     setPhone("");
     setEmail("");
     setVehicleSlug("");
+    setCategoryId(categories[0]?.id ?? "");
     setServiceId("");
     setSelectedExtraIds([]);
     setTime(null);
     setOverrideAvailability(false);
     setError(null);
+    setCustomerDiscount(null);
   }
 
   async function handlePayLater() {
@@ -168,14 +202,15 @@ export default function CreateBookingWizard({
   const canAdvance =
     (step === 1 && name.trim() && phone.trim() && email.trim()) ||
     (step === 2 && vehicleSlug) ||
-    (step === 3 && serviceId) ||
-    step === 4 ||
-    (step === 5 && time);
+    (step === 3 && categoryId) ||
+    (step === 4 && serviceId) ||
+    step === 5 ||
+    (step === 6 && time);
 
   return (
     <div>
       <div className="mb-4 flex items-center gap-1 text-xs font-medium text-gray-500">
-        {([1, 2, 3, 4, 5, 6] as Step[]).map((s, i) => (
+        {([1, 2, 3, 4, 5, 6, 7] as Step[]).map((s, i) => (
           <div key={s} className="flex items-center gap-1">
             {i > 0 && <span className="text-gray-300">›</span>}
             <span className={s === step ? "font-semibold text-brand-700" : s < step ? "text-gray-700" : ""}>
@@ -262,14 +297,22 @@ export default function CreateBookingWizard({
               />
               <input
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  setCustomerDiscount(null);
+                }}
+                onBlur={() => checkCustomerDiscount(email, phone)}
                 placeholder="Phone"
                 className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
               />
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setCustomerDiscount(null);
+                }}
+                onBlur={() => checkCustomerDiscount(email, phone)}
                 placeholder="Email"
                 className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
               />
@@ -302,6 +345,32 @@ export default function CreateBookingWizard({
 
       {step === 3 && (
         <div className="space-y-2">
+          {categories.length === 0 ? (
+            <p className="text-xs text-gray-400">No categories yet.</p>
+          ) : (
+            categories.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => {
+                  setCategoryId(c.id);
+                  setServiceId("");
+                }}
+                className={`block w-full rounded-md border px-3 py-2 text-left text-sm font-medium ${
+                  categoryId === c.id
+                    ? "border-brand-600 bg-brand-50 text-brand-700"
+                    : "border-gray-300 text-gray-600 hover:border-gray-400"
+                }`}
+              >
+                {c.name}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+
+      {step === 4 && (
+        <div className="space-y-2">
           {servicesForVehicle.map((s) => (
             <button
               key={s.id}
@@ -325,7 +394,7 @@ export default function CreateBookingWizard({
         </div>
       )}
 
-      {step === 4 && (
+      {step === 5 && (
         <div className="space-y-2">
           {extras.length === 0 ? (
             <p className="text-xs text-gray-400">No add-ons available.</p>
@@ -363,7 +432,7 @@ export default function CreateBookingWizard({
         </div>
       )}
 
-      {step === 5 && (
+      {step === 6 && (
         <div className="space-y-3">
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
@@ -423,7 +492,7 @@ export default function CreateBookingWizard({
         </div>
       )}
 
-      {step === 6 && (
+      {step === 7 && (
         <div className="space-y-3">
           <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
             <div className="font-medium text-gray-900">{name}</div>
@@ -431,7 +500,7 @@ export default function CreateBookingWizard({
               {phone} · {email}
             </div>
             <div className="mt-1 text-xs text-gray-500">
-              {selectedService?.name} (${selectedService?.price.toFixed(2)}) —{" "}
+              {selectedService?.name} (${basePrice.toFixed(2)}) —{" "}
               {time ? formatTimeLabel(time) : ""}
               {overrideAvailability ? " (override)" : ""}
             </div>
@@ -445,11 +514,30 @@ export default function CreateBookingWizard({
                 ))}
               </div>
             )}
+            {discountAmount > 0 && (
+              <div className="mt-1 flex justify-between text-xs text-green-700">
+                <span>Discount ({customerDiscount?.name})</span>
+                <span>-${discountAmount.toFixed(2)}</span>
+              </div>
+            )}
             <div className="mt-1 flex justify-between font-medium text-gray-900">
               <span>Total</span>
               <span>${totalPrice.toFixed(2)}</span>
             </div>
           </div>
+
+          {customerDiscount && !overrideAvailability && (
+            <p className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800">
+              This customer qualifies for <strong>{customerDiscount.name}</strong> — it&apos;s
+              applied automatically above.
+            </p>
+          )}
+          {customerDiscount && overrideAvailability && (
+            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              This customer has a discount ({customerDiscount.name}), but override bookings don&apos;t
+              apply discounts — full price will be charged.
+            </p>
+          )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -485,10 +573,10 @@ export default function CreateBookingWizard({
         >
           Back
         </button>
-        {step < 6 && (
+        {step < 7 && (
           <button
             type="button"
-            onClick={() => setStep((s) => (s < 6 ? ((s + 1) as Step) : s))}
+            onClick={() => setStep((s) => (s < 7 ? ((s + 1) as Step) : s))}
             disabled={!canAdvance}
             className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
           >

@@ -4,6 +4,7 @@ import type { AddOn, Service } from "@/lib/types";
 export interface ServiceTemplateRow {
   id: string;
   name: string;
+  category_id: string;
   duration_minutes: number;
   active: boolean;
   created_at: string;
@@ -24,6 +25,7 @@ export function flattenServiceTemplates(templates: ServiceTemplateRow[]): Servic
         id: t.id,
         name: t.name,
         vehicle_type: sp.vehicle_type,
+        category_id: t.category_id,
         price: sp.price,
         duration_minutes: t.duration_minutes,
         active: t.active,
