@@ -155,7 +155,6 @@ export default async function ServicesPage() {
                   <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-brand-50" />
                   <div className="relative">
                     <h3 className="text-base font-bold text-gray-900">{tier.name}</h3>
-                    <p className="mt-1 text-xs text-gray-400">~{tier.duration_minutes} min</p>
                   </div>
 
                   {tier.features.length > 0 && (

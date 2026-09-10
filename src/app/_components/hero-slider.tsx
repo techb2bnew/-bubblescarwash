@@ -144,10 +144,17 @@ export default function HeroSlider() {
             See Packages
           </Link>
         </div>
-        <div className="mt-11 flex items-center justify-center gap-3 text-white/80">
+        <a
+          href="https://www.google.com/search?q=Bubbles+Car+Wash+%26+Cafe+Hampstead+Gardens+reviews"
+          target="_blank"
+          rel="noreferrer"
+          className="mt-11 flex items-center justify-center gap-3 text-white/80 transition hover:text-white"
+        >
           <StarRow />
-          <span className="text-base text-gray-300">Rated by real customers on Google</span>
-        </div>
+          <span className="text-base text-gray-300 underline-offset-4 hover:underline">
+            Rated by real customers on Google
+          </span>
+        </a>
 
         {/* Slide dots */}
         <div className="mb-2 mt-10 flex items-center justify-center gap-2">

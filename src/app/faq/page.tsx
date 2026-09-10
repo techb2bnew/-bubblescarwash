@@ -27,7 +27,7 @@ const faqs = [
   },
   {
     q: "Can I reschedule or cancel a booking?",
-    a: "Yes — call us on (08) 8369 0633 or (08) 7080 5959 and we'll move your booking to another available slot. Please give us as much notice as you can so we can offer the slot to someone else.",
+    a: "Yes — call us on (08) 7080 5959 and we'll move your booking to another available slot. Please give us as much notice as you can so we can offer the slot to someone else.",
   },
   {
     q: "How long does a wash or detail take?",

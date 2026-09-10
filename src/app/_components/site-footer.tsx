@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { siteNavLinks } from "./site-nav-links";
+import NewsletterForm from "./newsletter-form";
 
 const socials = [
   {
@@ -41,8 +42,8 @@ const contactRows = [
     ),
   },
   {
-    label: "(08) 8369 0633",
-    href: "tel:0883690633",
+    label: "(08) 7080 5959",
+    href: "tel:0870805959",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
         <path
@@ -86,19 +87,7 @@ export default function SiteFooter() {
               Subscribe for wash-day tips &amp; loyalty offers
             </p>
           </div>
-          <form className="flex w-full max-w-sm gap-2 sm:w-auto">
-            <input
-              type="email"
-              placeholder="Your email"
-              className="w-full rounded-full border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-            <button
-              type="submit"
-              className="flex-none rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
-            >
-              Join
-            </button>
-          </form>
+          <NewsletterForm />
         </div>
       </div>
 

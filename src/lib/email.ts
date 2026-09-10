@@ -448,3 +448,20 @@ export async function sendContactEnquiryEmail(
 
   return sendEmail(toEmail, `New Website Enquiry from ${details.name}`, html);
 }
+
+export async function sendNewsletterSignupEmail(
+  subscriberEmail: string,
+  toEmail: string,
+): Promise<boolean> {
+  const email = escapeHtml(subscriberEmail);
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;">
+      <h2 style="color:#111;">New Newsletter Signup</h2>
+      <p>Someone just subscribed to wash-day tips &amp; loyalty offers from the website footer.</p>
+      <p style="margin-top:16px;padding:12px 16px;background:#f9fafb;border-radius:8px;border:1px solid #eee;">
+        <a href="mailto:${email}" style="color:#f9760f;font-weight:600;text-decoration:none;">${email}</a>
+      </p>
+    </div>
+  `;
+  return sendEmail(toEmail, `New Newsletter Signup: ${subscriberEmail}`, html);
+}

@@ -324,7 +324,7 @@ const statBand = [
     ),
   },
   {
-    value: "4.9",
+    value: "3.8",
     label: "Google Rating",
     icon: (
       <svg viewBox="0 0 20 20" fill="currentColor" className="h-6 w-6">
@@ -426,7 +426,7 @@ const guarantees = [
   },
   {
     title: "No Hidden Fees",
-    body: "The price you see when you book is the price you pay at the till.",
+    body: "The price you see when you book is the price you pay at the bill.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
         <path d="M6 3h12v18l-2-1.2L14 21l-2-1.2L10 21l-2-1.2L6 21V3Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
@@ -819,7 +819,6 @@ export default async function Home() {
                     )}
                     <div className="relative">
                       <h4 className="text-base font-bold text-gray-900">{tier.name}</h4>
-                      <p className="mt-1 text-xs text-gray-400">~{tier.duration_minutes} min</p>
                     </div>
 
                     {tier.features.length > 0 && (
@@ -1000,7 +999,7 @@ export default async function Home() {
                 <path fill="#EA4335" d="M24 10.7c3.3 0 6.2 1.1 8.5 3.3l6.3-6.3C35 4.1 30 2 24 2 15.4 2 7.9 7 4.3 14.1l7.3 5.7c1.8-5.2 6.6-9.1 12.4-9.1z" />
               </svg>
               <div>
-                <p className="text-2xl font-extrabold text-gray-900">4.9</p>
+                <p className="text-2xl font-extrabold text-gray-900">3.8</p>
                 <div className="flex gap-0.5">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <svg key={i} viewBox="0 0 20 20" fill="#fbbc05" className="h-3.5 w-3.5">

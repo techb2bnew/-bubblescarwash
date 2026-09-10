@@ -672,7 +672,6 @@ export default function BookingFlow({
                       </span>
                     </div>
                     <p className="mt-1.5 text-2xl font-extrabold text-brand-600">${s.price.toFixed(2)}</p>
-                    <p className="mt-1 text-xs text-gray-400">{s.duration_minutes} min</p>
                     <ul className="mt-4 space-y-2 border-t border-gray-100 pt-4">
                       {activeInclusions.length === 0 ? (
                         <li className="text-xs text-gray-400">No inclusions listed</li>
