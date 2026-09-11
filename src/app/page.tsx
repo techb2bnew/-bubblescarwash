@@ -550,8 +550,10 @@ export default async function Home() {
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-12 px-4 pb-14 pt-14 sm:px-8 lg:grid-cols-2 lg:items-stretch lg:gap-8">
           <div className="relative flex w-full flex-col pb-8 sm:pb-0">
             <BeforeAfterSlider
-              src="/real-photos/hand-wax.jpg"
-              alt="Car before and after a hand wash — drag to compare"
+              beforeSrc="/real-photos/before-dirty-car.png"
+              afterSrc="/real-photos/after-clean-car.png"
+              beforeAlt="Dirty car before a wash"
+              afterAlt="Same car freshly washed and clean"
             />
             <p className="mt-2 text-center text-xs text-gray-400">
               Drag the slider to see the difference

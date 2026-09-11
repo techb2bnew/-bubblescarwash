@@ -3,16 +3,19 @@
 import Image from "next/image";
 import { useCallback, useRef, useState } from "react";
 
-// A draggable before/after comparison — same photo rendered twice, with the
-// "before" copy desaturated/darkened via CSS filter and clipped to a % width
-// that follows the pointer. Avoids depending on two different stock photos
-// (which are easy to mismatch) while still reading as a wash transformation.
+// A draggable before/after comparison between two real photos of the same
+// car — a dirty "before" shot and a freshly washed "after" shot — clipped to
+// a % width that follows the pointer.
 export default function BeforeAfterSlider({
-  src,
-  alt,
+  beforeSrc,
+  afterSrc,
+  beforeAlt,
+  afterAlt,
 }: {
-  src: string;
-  alt: string;
+  beforeSrc: string;
+  afterSrc: string;
+  beforeAlt: string;
+  afterAlt: string;
 }) {
   const [pos, setPos] = useState(50);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,20 +46,19 @@ export default function BeforeAfterSlider({
       }}
     >
       {/* After (clean) — full image underneath */}
-      <Image src={src} alt={alt} fill sizes="(max-width: 1024px) 100vw, 512px" className="object-cover" />
+      <Image src={afterSrc} alt={afterAlt} fill sizes="(max-width: 1024px) 100vw, 512px" className="object-cover" />
       <span className="absolute bottom-4 right-4 rounded-full bg-brand-600 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow">
         After
       </span>
 
-      {/* Before (dirty look) — same image, desaturated + darkened, clipped to pos% */}
+      {/* Before (dirty) — clipped to pos% so dragging reveals the after shot */}
       <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
         <Image
-          src={src}
-          alt=""
+          src={beforeSrc}
+          alt={beforeAlt}
           fill
           sizes="(max-width: 1024px) 100vw, 512px"
           className="object-cover"
-          style={{ filter: "grayscale(0.85) brightness(0.6) sepia(0.25)" }}
         />
         <span className="absolute bottom-4 left-4 rounded-full bg-gray-950/80 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow">
           Before
