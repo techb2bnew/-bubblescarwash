@@ -27,7 +27,7 @@ type Slide = {
 
 const slides: Slide[] = [
   {
-    src: "/real-photos/hero-carwash.jpg",
+    src: "/real-photos/foam-red-car.png",
     alt: "High-pressure rinse spraying down a car windscreen",
     eyebrow: "Adelaide's North East · Since 2011",
     headingLine1: "Giving your car",
@@ -35,7 +35,7 @@ const slides: Slide[] = [
     body: "Book online in under a minute, then relax while our team takes care of the rest.",
   },
   {
-    src: "/real-photos/cafe-coffee.jpg",
+    src: "/real-photos/foam-red-car.png",
     alt: "Barista pouring latte art into a coffee cup",
     eyebrow: "Grab a Seat While You Wait",
     headingLine1: "A place for coffee and",
@@ -43,7 +43,7 @@ const slides: Slide[] = [
     body: "Order a fresh brew from our cafe counter while our team gets to work on your car.",
   },
   {
-    src: "/real-photos/gift-voucher.jpg",
+    src: "/real-photos/foam-red-car.png",
     alt: "Wrapped gift box tied with a ribbon",
     eyebrow: "Something For Someone Special",
     headingLine1: "A great gift for",
@@ -83,7 +83,7 @@ export default function HeroSlider() {
       <div className="absolute inset-0 -z-10">
         {slides.map((slide, i) => (
           <div
-            key={slide.src}
+            key={i}
             className={`absolute inset-0 transition-opacity duration-1000 ${
               i === active ? "opacity-100" : "opacity-0"
             }`}
@@ -106,7 +106,7 @@ export default function HeroSlider() {
         <div className="relative min-h-[230px] w-full max-w-4xl sm:min-h-[280px] lg:min-h-[300px]">
           {slides.map((slide, i) => (
             <div
-              key={slide.src}
+              key={i}
               aria-hidden={i !== active}
               className={`absolute inset-0 flex flex-col items-center transition-opacity duration-700 ease-in-out ${
                 i === active ? "opacity-100" : "pointer-events-none opacity-0"
@@ -160,7 +160,7 @@ export default function HeroSlider() {
         <div className="mb-2 mt-10 flex items-center justify-center gap-2">
           {slides.map((slide, i) => (
             <button
-              key={slide.src}
+              key={i}
               type="button"
               aria-label={`Show slide ${i + 1}: ${slide.eyebrow}`}
               onClick={() => setActive(i)}
