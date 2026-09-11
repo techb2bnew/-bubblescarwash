@@ -208,8 +208,7 @@ export default function CalendarView({
               key={calendarKey}
               title="Google Calendar"
               src={googleCalendarEmbedUrl!}
-              className="w-full rounded-md border-0"
-              style={{ height: "min(70vh, 720px)", minHeight: 480 }}
+              className="block h-[70vh] max-h-[720px] min-h-[320px] w-full rounded-md border-0 sm:min-h-[480px]"
             />
           </div>
         ) : (

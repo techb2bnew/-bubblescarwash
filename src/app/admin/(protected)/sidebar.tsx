@@ -72,7 +72,10 @@ const NAV_ITEMS = [
     icon: (
       <path d="M7 3v3M17 3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" />
     ),
-    children: [{ label: "Set Operations", href: "/admin/calendar/set-operations" }],
+    children: [
+      { label: "Google Calendar", href: "/admin/calendar" },
+      { label: "Set Operations", href: "/admin/calendar/set-operations" },
+    ],
   },
   {
     href: "/admin/gift-cards",
@@ -124,7 +127,7 @@ export default function Sidebar({
 }) {
   const pathname = usePathname();
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => ({
-    "/admin/calendar": pathname.startsWith("/admin/calendar"),
+    "/admin/calendar": true,
   }));
 
   return (
@@ -172,13 +175,21 @@ export default function Sidebar({
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
           {NAV_ITEMS.map((item) => {
-            const active =
-              item.href === "/admin"
+            const isExpanded = expanded[item.href] ?? false;
+            // A parent row never highlights itself — the child rows carry the
+            // active state, so an open submenu doesn't show two highlights.
+            const active = item.children
+              ? false
+              : item.href === "/admin"
                 ? pathname === "/admin"
                 : pathname === item.href;
-            const isExpanded = expanded[item.href] ?? false;
+            const inSection =
+              item.children?.some((child) => pathname === child.href) ?? false;
+            // Clicking a parent goes to its first child and opens the submenu;
+            // the chevron toggles it without navigating.
+            const primaryHref = item.children?.[0]?.href ?? item.href;
 
             return (
               <div key={item.href}>
@@ -186,12 +197,19 @@ export default function Sidebar({
                   className={`flex items-center rounded-md text-sm font-medium transition-colors ${
                     active
                       ? "bg-brand-600 text-white"
-                      : "text-white/60 hover:bg-white/10 hover:text-white"
+                      : inSection
+                        ? "text-white hover:bg-white/10"
+                        : "text-white/60 hover:bg-white/10 hover:text-white"
                   }`}
                 >
                   <Link
-                    href={item.href}
-                    onClick={onClose}
+                    href={primaryHref}
+                    onClick={() => {
+                      if (item.children) {
+                        setExpanded((prev) => ({ ...prev, [item.href]: true }));
+                      }
+                      onClose();
+                    }}
                     className="flex flex-1 items-center gap-3 px-3 py-2.5"
                   >
                     <svg
