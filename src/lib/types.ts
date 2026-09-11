@@ -158,6 +158,8 @@ export interface GiftCard {
   expires_at: string;
   redeemed_at: string | null;
   redeemed_booking_id: string | null;
+  /** Slug of the chosen occasion design — see src/lib/gift-card-designs.ts. */
+  design_slug: string | null;
   created_at: string;
   gift_card_products?: { name: string } | null;
 }

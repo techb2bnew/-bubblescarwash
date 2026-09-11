@@ -29,6 +29,7 @@ interface PaidGiftCardRow {
   recipient_email: string | null;
   message: string | null;
   expires_at: string;
+  design_slug: string | null;
 }
 
 function getPaymentIntentId(session: Stripe.Checkout.Session): string | null {
@@ -131,6 +132,7 @@ async function handleGiftCardPaid(session: Stripe.Checkout.Session, stripe: Stri
     recipientEmail: row.recipient_email,
     message: row.message,
     expiresAt: row.expires_at,
+    designSlug: row.design_slug,
   });
 }
 

@@ -1,9 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { GiftCardProduct } from "@/lib/types";
 import type { PaymentMode } from "@/lib/payment-mode";
+import {
+  DEFAULT_GIFT_CARD_DESIGN,
+  GIFT_CARD_DESIGNS,
+  MIN_GIFT_CARD_AMOUNT,
+  type GiftCardDesign,
+} from "@/lib/gift-card-designs";
 import { createGiftCardCheckoutSession, createGiftCardSimple } from "./actions";
 
 type Step = 1 | 2;
@@ -33,7 +40,12 @@ export default function GiftCardFlow({
 }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
+  const [selectedDesign, setSelectedDesign] = useState<GiftCardDesign>(
+    DEFAULT_GIFT_CARD_DESIGN,
+  );
   const [selectedProduct, setSelectedProduct] = useState<GiftCardProduct | null>(null);
+  const [customMode, setCustomMode] = useState(false);
+  const [customAmount, setCustomAmount] = useState("");
 
   const [purchaserName, setPurchaserName] = useState("");
   const [purchaserEmail, setPurchaserEmail] = useState("");
@@ -49,12 +61,45 @@ export default function GiftCardFlow({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // A custom amount has no product behind it, so it inherits the longest
+  // validity the admin currently offers - the same rule create_gift_card_purchase
+  // applies server-side.
+  const customValidityDays = products.length
+    ? Math.max(...products.map((p) => p.validity_days))
+    : 365;
+  const customValue = Number(customAmount);
+  const customValid =
+    customAmount.trim() !== "" &&
+    Number.isFinite(customValue) &&
+    customValue >= MIN_GIFT_CARD_AMOUNT;
+
+  const amount = customMode
+    ? customValid
+      ? customValue
+      : null
+    : (selectedProduct?.price ?? null);
+  const validityDays = customMode
+    ? customValidityDays
+    : (selectedProduct?.validity_days ?? null);
+
+  function chooseProduct(product: GiftCardProduct) {
+    setCustomMode(false);
+    setSelectedProduct(product);
+  }
+
+  function chooseCustom() {
+    setCustomMode(true);
+    setSelectedProduct(null);
+  }
+
   async function handleSubmit() {
-    if (!selectedProduct) return;
+    if (amount == null) return;
     setSubmitting(true);
     setError(null);
     const input = {
-      product_id: selectedProduct.id,
+      product_id: customMode ? null : selectedProduct?.id,
+      amount: customMode ? amount : null,
+      design_slug: selectedDesign.slug,
       purchaser_name: purchaserName,
       purchaser_email: purchaserEmail,
       purchaser_phone: purchaserPhone,
@@ -99,43 +144,146 @@ export default function GiftCardFlow({
 
       {step === 1 && (
         <div>
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">
-            Choose a Gift Card
+          <h2 className="mb-1 text-lg font-semibold text-gray-900">
+            Choose a Design
           </h2>
-          {products.length === 0 ? (
-            <p className="text-sm text-gray-400">
-              No gift cards are available right now.
-            </p>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {products.map((p) => (
+          <p className="mb-4 text-sm text-gray-500">
+            Pick the card the recipient will see in their email.
+          </p>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {GIFT_CARD_DESIGNS.map((design) => {
+              const active = selectedDesign.slug === design.slug;
+              return (
                 <button
-                  key={p.id}
-                  onClick={() => setSelectedProduct(p)}
-                  className={`rounded-lg border p-4 text-left ${
-                    selectedProduct?.id === p.id
-                      ? "border-brand-600 bg-brand-50"
-                      : "border-gray-300 hover:border-gray-400"
+                  key={design.slug}
+                  type="button"
+                  onClick={() => setSelectedDesign(design)}
+                  aria-pressed={active}
+                  className={`group overflow-hidden rounded-xl ring-2 transition ${
+                    active
+                      ? "ring-brand-600"
+                      : "ring-transparent hover:ring-gray-300"
                   }`}
                 >
-                  <div className="font-semibold text-gray-900">{p.name}</div>
-                  <div className="mt-1 text-xl font-bold text-brand-600">
-                    ${p.price.toFixed(2)}
-                  </div>
-                  {p.description && (
-                    <div className="mt-1 text-xs text-gray-500">{p.description}</div>
-                  )}
-                  <div className="mt-2 text-xs text-gray-400">
-                    Valid for {p.validity_days} days
-                  </div>
+                  <span className="relative block aspect-[8/5] w-full">
+                    <Image
+                      src={design.image}
+                      alt={design.name}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      className="object-cover"
+                    />
+                    {active && (
+                      <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-white">
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M20 6 9 17l-5-5" />
+                        </svg>
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    className={`block px-3 py-2 text-center text-sm font-medium ${
+                      active ? "text-brand-700" : "text-gray-700"
+                    }`}
+                  >
+                    {design.name}
+                  </span>
                 </button>
-              ))}
+              );
+            })}
+          </div>
+
+          <h2 className="mb-1 mt-8 text-lg font-semibold text-gray-900">
+            Choose an Amount
+          </h2>
+          <p className="mb-4 text-sm text-gray-500">
+            Pick one of ours or enter your own &mdash; gift cards start at $
+            {MIN_GIFT_CARD_AMOUNT}.
+          </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {products.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => chooseProduct(p)}
+                className={`rounded-lg border p-4 text-left ${
+                  !customMode && selectedProduct?.id === p.id
+                    ? "border-brand-600 bg-brand-50"
+                    : "border-gray-300 hover:border-gray-400"
+                }`}
+              >
+                <div className="text-xl font-bold text-brand-600">
+                  ${p.price.toFixed(2)}
+                </div>
+                {p.description && (
+                  <div className="mt-1 text-xs text-gray-500">{p.description}</div>
+                )}
+                <div className="mt-2 text-xs text-gray-400">
+                  Valid for {p.validity_days} days
+                </div>
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={chooseCustom}
+              className={`rounded-lg border p-4 text-left ${
+                customMode
+                  ? "border-brand-600 bg-brand-50"
+                  : "border-dashed border-gray-300 hover:border-gray-400"
+              }`}
+            >
+              <div className="text-xl font-bold text-brand-600">Other</div>
+              <div className="mt-1 text-xs text-gray-500">Choose your own amount</div>
+              <div className="mt-2 text-xs text-gray-400">
+                Valid for {customValidityDays} days
+              </div>
+            </button>
+          </div>
+
+          {customMode && (
+            <div className="mt-4 rounded-lg border border-brand-200 bg-brand-50/50 p-4">
+              <label
+                htmlFor="custom-gift-card-amount"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
+                Enter your amount
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-semibold text-gray-500">$</span>
+                <input
+                  id="custom-gift-card-amount"
+                  type="number"
+                  inputMode="decimal"
+                  min={MIN_GIFT_CARD_AMOUNT}
+                  step={1}
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(e.target.value)}
+                  placeholder={String(MIN_GIFT_CARD_AMOUNT)}
+                  className="w-40 rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              {customAmount.trim() !== "" && !customValid && (
+                <p className="mt-2 text-xs text-red-600">
+                  The minimum gift card amount is ${MIN_GIFT_CARD_AMOUNT}.
+                </p>
+              )}
             </div>
           )}
 
           <div className="mt-6 flex justify-end">
             <button
-              disabled={!selectedProduct}
+              disabled={amount == null}
               onClick={() => setStep(2)}
               className="rounded-md bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
             >
@@ -145,18 +293,29 @@ export default function GiftCardFlow({
         </div>
       )}
 
-      {step === 2 && selectedProduct && (
+      {step === 2 && amount != null && (
         <div>
           <h2 className="mb-4 text-lg font-semibold text-gray-900">Your Details</h2>
 
-          <div className="mb-4 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
-            <div className="flex justify-between font-medium text-gray-900">
-              <span>{selectedProduct.name}</span>
-              <span>${selectedProduct.price.toFixed(2)}</span>
-            </div>
-            <div className="mt-1 text-xs">
-              Valid for {selectedProduct.validity_days} days from purchase
-            </div>
+          <div className="mb-4 flex items-center gap-4 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
+            <span className="relative block aspect-[8/5] w-28 shrink-0 overflow-hidden rounded-md">
+              <Image
+                src={selectedDesign.image}
+                alt={selectedDesign.name}
+                fill
+                sizes="112px"
+                className="object-cover"
+              />
+            </span>
+            <span className="flex-1">
+              <span className="flex justify-between font-medium text-gray-900">
+                <span>{selectedDesign.name} gift card</span>
+                <span>${amount.toFixed(2)}</span>
+              </span>
+              <span className="mt-1 block text-xs">
+                Valid for {validityDays} days from purchase
+              </span>
+            </span>
           </div>
 
           <div className="space-y-3">
@@ -241,7 +400,7 @@ export default function GiftCardFlow({
               </p>
               <p className="mt-1 text-sm text-blue-700">
                 You&apos;ll be taken to Stripe&apos;s secure checkout to pay{" "}
-                <strong>${selectedProduct.price.toFixed(2)}</strong> by card.
+                <strong>${amount.toFixed(2)}</strong> by card.
               </p>
             </div>
           ) : (
@@ -350,8 +509,8 @@ export default function GiftCardFlow({
                   ? "Redirecting to Stripe..."
                   : "Processing..."
                 : paymentMode === "stripe"
-                  ? `Continue to Payment — $${selectedProduct.price.toFixed(2)}`
-                  : `Buy Gift Card — $${selectedProduct.price.toFixed(2)}`}
+                  ? `Continue to Payment — $${amount.toFixed(2)}`
+                  : `Buy Gift Card — $${amount.toFixed(2)}`}
             </button>
           </div>
         </div>

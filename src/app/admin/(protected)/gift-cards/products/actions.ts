@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { MIN_GIFT_CARD_AMOUNT } from "@/lib/gift-card-designs";
 
 export interface GiftCardProductInput {
   name: string;
@@ -12,7 +13,16 @@ export interface GiftCardProductInput {
   active: boolean;
 }
 
+function assertMinimumAmount(price: number) {
+  if (!Number.isFinite(price) || price < MIN_GIFT_CARD_AMOUNT) {
+    throw new Error(
+      `Gift card amounts start at $${MIN_GIFT_CARD_AMOUNT}. Please enter $${MIN_GIFT_CARD_AMOUNT} or more.`,
+    );
+  }
+}
+
 export async function createGiftCardProduct(input: GiftCardProductInput) {
+  assertMinimumAmount(input.price);
   const supabase = await createClient();
   const { error } = await supabase.from("gift_card_products").insert(input);
   if (error) throw new Error(error.message);
@@ -21,6 +31,7 @@ export async function createGiftCardProduct(input: GiftCardProductInput) {
 }
 
 export async function updateGiftCardProduct(id: string, input: GiftCardProductInput) {
+  assertMinimumAmount(input.price);
   const supabase = await createClient();
   const { error } = await supabase
     .from("gift_card_products")
