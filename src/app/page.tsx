@@ -872,7 +872,7 @@ export default async function Home() {
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 items-center gap-8 px-4 sm:px-8 lg:grid-cols-2">
           <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl shadow-xl">
             <Image
-              src="/real-photos/detail-collage.jpg"
+              src="/real-photos/detail-collage-2.png"
               alt="Headlight and interior detailing, ready to take a booking"
               fill
               sizes="(max-width: 1024px) 100vw, 768px"
