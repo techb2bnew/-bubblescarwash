@@ -109,7 +109,7 @@ export default function GalleryPage() {
       <section className="py-16">
         <div
           className="mx-auto grid max-w-[1600px] grid-cols-2 gap-4 px-4 sm:px-8 sm:grid-cols-4"
-          style={{ gridAutoFlow: "dense", gridAutoRows: "160px" }}
+          style={{ gridAutoFlow: "dense", gridAutoRows: "260px" }}
         >
           {photos.map((p) => (
             <figure
