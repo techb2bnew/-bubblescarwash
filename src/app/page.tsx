@@ -648,8 +648,8 @@ export default async function Home() {
       <section className="relative isolate overflow-hidden">
         <div className="relative h-80 w-full sm:h-[28rem]">
           <Image
-            src="/real-photos/detail-collage.jpg"
-            alt="Headlight and interior detailing in progress"
+            src="/real-photos/foam-wash-banner.png"
+            alt="Foam-covered car being hand washed with a pressure sprayer"
             fill
             sizes="100vw"
             className="object-cover"
