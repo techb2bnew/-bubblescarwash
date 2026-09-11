@@ -744,20 +744,13 @@ export default async function Home() {
       <section style={{ backgroundColor: "#0b1220" }} className="py-14">
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 items-center gap-8 px-4 sm:px-8 lg:grid-cols-2">
           <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl">
-            <video
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="none"
-              poster="/real-photos/hand-wax.jpg"
-              className="absolute inset-0 h-full w-full object-cover"
-            >
-              <source
-                src="https://videos.pexels.com/video-files/4863281/4863281-hd_1920_1080_30fps.mp4"
-                type="video/mp4"
-              />
-            </video>
+            <Image
+              src="/real-photos/wash-bay-cafe.png"
+              alt="Detailer pressure-washing a car outside the Bubbles cafe"
+              fill
+              sizes="(max-width: 1024px) 100vw, 720px"
+              className="object-cover"
+            />
           </div>
           <div>
             <SectionLabel align="left" tone="dark">Our Mission</SectionLabel>
