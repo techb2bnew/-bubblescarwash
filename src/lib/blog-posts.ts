@@ -5,6 +5,8 @@ export type BlogPost = {
   dateLabel: string;
   excerpt: string;
   image: string;
+  /** Wider photo for the post's own banner — the card thumbnail is too low-res to stretch full-width without blurring. */
+  bannerImage: string;
   content: string[];
 };
 
@@ -17,6 +19,7 @@ export const blogPosts: BlogPost[] = [
     excerpt:
       "Why we only use microfiber mitts and two-bucket washing to keep your paint scratch-free.",
     image: "/real-photos/blog-mitt-wash.png",
+    bannerImage: "/real-photos/foam-wash-banner.png",
     content: [
       "Swirl marks — those fine, spiderweb-like scratches you notice under bright light or direct sun — are almost always caused by dirt being dragged across the paint rather than lifted away from it. A single gritty wash mitt, reused pass after pass without rinsing, is one of the most common culprits.",
       "That's why every wash at Bubbles starts with a proper pre-rinse to knock off loose grit before a mitt ever touches the panel, and why we wash with the two-bucket method: one bucket of clean, soapy water for loading the mitt, and a second bucket of plain water for rinsing the mitt clean before it goes back in the soap. It sounds simple, but it's the single biggest factor in keeping the sand and road grime that causes swirls out of the wash process entirely.",
@@ -33,6 +36,7 @@ export const blogPosts: BlogPost[] = [
     excerpt:
       "The checklist we run through on every vehicle — from pre-rinse to a final panel wipe-down.",
     image: "/real-photos/blog-hand-wax.png",
+    bannerImage: "/real-photos/foam-red-car.png",
     content: [
       "It's easy to assume every car wash does roughly the same thing, but the steps that get skipped are usually the ones that matter most for actually protecting your paint over time — not just making the car look clean for the drive home.",
       "Every wash we run follows the same order for a reason: a full pre-rinse first, to remove loose dirt before any contact wash begins. Then a pH-neutral shampoo wash using the two-bucket method, followed by a dedicated pass on the wheels and tyres — always done with separate equipment to the panels, since brake dust is abrasive and shouldn't be anywhere near the mitt that just touched your paintwork.",
@@ -49,6 +53,7 @@ export const blogPosts: BlogPost[] = [
     excerpt:
       "Where dust and crumbs actually hide, and the vacuum technique that gets them out for good.",
     image: "/real-photos/blog-interior-vacuum.png",
+    bannerImage: "/real-photos/muddy-suv-wash.png",
     content: [
       "Most of the dust and grit in a car's interior isn't sitting on the surface where a quick once-over with a vacuum nozzle can reach it — it's packed into the seams of the seats, wedged under the runners, and settled into the door pockets and cup holder recesses.",
       "Our approach starts with a commercial-grade vacuum with strong suction, worked systematically: floor mats out first and cleaned separately, then footwells, then seats (including the gap where the backrest meets the base, which collects more crumbs than almost anywhere else in the car), then door trims and pockets, and finally the dash and console using brush attachments to get into vents and buttons without scratching anything.",

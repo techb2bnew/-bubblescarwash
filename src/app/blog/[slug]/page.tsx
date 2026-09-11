@@ -43,7 +43,7 @@ export default async function BlogPostPage({
       <section className="relative isolate overflow-hidden">
         <div className="relative h-72 w-full sm:h-96">
           <Image
-            src={post.image}
+            src={post.bannerImage}
             alt={post.title}
             fill
             sizes="100vw"

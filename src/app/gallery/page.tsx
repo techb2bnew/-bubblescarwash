@@ -11,25 +11,53 @@ export const metadata = {
 // `col` / `row` control how many grid tracks each tile spans, giving the
 // bento/masonry look (big feature tiles mixed with small square ones)
 // instead of a uniform grid of equal cards.
-const photos = [
+const photos: {
+  src: string;
+  alt: string;
+  caption: string;
+  col: number;
+  row: number;
+  position?: string;
+}[] = [
   {
-    src: "/real-photos/hero-carwash.jpg",
-    alt: "High-pressure rinse spraying down a car",
-    caption: "High-pressure rinse to loosen grime",
+    src: "/real-photos/gallery-storefront.png",
+    alt: "Bubbles Car Wash & Cafe storefront and hand wash bay",
+    caption: "Our storefront on North East Rd",
     col: 2,
     row: 2,
   },
   {
-    src: "/real-photos/tunnel-wash.jpg",
-    alt: "Car passing through the automatic wash tunnel",
-    caption: "Through the wash tunnel",
+    src: "/real-photos/gallery-ferrari-cafe.png",
+    alt: "A classic car parked outside the Bubbles cafe windows",
+    caption: "Every car gets the same care",
+    col: 2,
+    row: 1,
+  },
+  {
+    src: "/real-photos/gallery-cafe-seating.png",
+    alt: "Cafe seating booth inside Bubbles",
+    caption: "Grab a seat while you wait",
     col: 1,
     row: 1,
   },
   {
-    src: "/real-photos/cafe-coffee.jpg",
-    alt: "Barista pouring latte art into a coffee cup",
-    caption: "Fresh coffee at the cafe counter",
+    src: "/real-photos/gallery-hallway.png",
+    alt: "Cafe hallway and seating area",
+    caption: "Relax with a coffee",
+    col: 1,
+    row: 1,
+  },
+  {
+    src: "/real-photos/gallery-waiting-room.png",
+    alt: "Customer waiting area with coffee machine",
+    caption: "Our waiting area",
+    col: 1,
+    row: 1,
+  },
+  {
+    src: "/real-photos/hand-wax.jpg",
+    alt: "Detailer hand-waxing a car panel",
+    caption: "Hand wax & polish finish",
     col: 1,
     row: 1,
   },
@@ -41,25 +69,10 @@ const photos = [
     row: 1,
   },
   {
-    src: "/real-photos/gift-voucher.jpg",
-    alt: "Wrapped gift box tied with a ribbon",
-    caption: "Gift vouchers, wrapped and ready",
-    position: "80% 65%",
+    src: "/real-photos/tunnel-wash.jpg",
+    alt: "Car passing through the automatic wash tunnel",
+    caption: "Through the wash tunnel",
     col: 1,
-    row: 1,
-  },
-  {
-    src: "/real-photos/detail-collage.jpg",
-    alt: "Headlight restoration and dashboard detailing",
-    caption: "Headlight restore & interior detail",
-    col: 2,
-    row: 1,
-  },
-  {
-    src: "/real-photos/hand-wax.jpg",
-    alt: "Detailer hand-waxing a car panel",
-    caption: "Hand wax & polish finish",
-    col: 2,
     row: 1,
   },
 ];
@@ -72,8 +85,8 @@ export default function GalleryPage() {
       <section className="relative isolate overflow-hidden">
         <div className="relative h-64 w-full sm:h-80">
           <Image
-            src="/real-photos/hand-wax.jpg"
-            alt="Detailer hand-waxing a car panel"
+            src="/real-photos/gallery-storefront.png"
+            alt="Bubbles Car Wash & Cafe storefront"
             fill
             sizes="100vw"
             priority
