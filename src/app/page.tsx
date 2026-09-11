@@ -835,8 +835,8 @@ export default async function Home() {
       <section className="relative isolate overflow-hidden">
         <div className="absolute inset-0 -z-10">
           <Image
-            src="/real-photos/detail-collage.jpg"
-            alt="Headlight and interior detailing in progress"
+            src="/real-photos/muddy-suv-wash.png"
+            alt="Muddy SUV being pressure-washed clean"
             fill
             sizes="100vw"
             className="object-cover grayscale"
