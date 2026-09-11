@@ -87,8 +87,8 @@ export default function AboutPage() {
           </div>
           <div className="relative mx-auto aspect-[4/3] w-full max-w-md overflow-hidden rounded-3xl shadow-2xl shadow-black/40 ring-1 ring-white/10">
             <Image
-              src="/real-photos/hero-carwash.jpg"
-              alt="High-pressure rinse spraying down a car windscreen"
+              src="/real-photos/staff-washing-car.png"
+              alt="Bubbles staff hand-washing and rinsing a car in the bay"
               fill
               sizes="(max-width: 768px) 100vw, 480px"
               className="object-cover"
