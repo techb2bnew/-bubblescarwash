@@ -389,6 +389,69 @@ export interface AdminBookingInput {
 }
 
 /**
+ * Walk-in override: insert the booking directly, bypassing create_booking's
+ * slot/capacity validation. Priced here rather than by the RPC, and typed
+ * 'offline' so it never counts against a slot's capacity. Shared by both the
+ * Pay Later and Stripe paths — an override is about skipping the
+ * availability check, not about how the customer pays.
+ */
+async function insertOverrideBooking(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  input: AdminBookingInput,
+): Promise<string> {
+  const { data: servicePrice, error: priceError } = await supabase
+    .from("service_prices")
+    .select("price")
+    .eq("service_id", input.service_id)
+    .eq("vehicle_type", input.vehicle_type)
+    .single();
+  if (priceError) throw new Error(priceError.message);
+
+  let extraRows: { id: string; name: string; price: number }[] = [];
+  if (input.extra_ids && input.extra_ids.length > 0) {
+    const { data: extrasData, error: extrasError } = await supabase
+      .from("extras")
+      .select("id, name, price")
+      .in("id", input.extra_ids);
+    if (extrasError) throw new Error(extrasError.message);
+    extraRows = extrasData ?? [];
+  }
+  const extrasTotal = extraRows.reduce((sum, e) => sum + e.price, 0);
+
+  const { data, error } = await supabase
+    .from("bookings")
+    .insert({
+      service_id: input.service_id,
+      vehicle_type: input.vehicle_type,
+      booking_date: input.booking_date,
+      booking_time: input.booking_time,
+      customer_name: input.customer_name,
+      customer_phone: input.customer_phone,
+      customer_email: input.customer_email,
+      price: servicePrice.price + extrasTotal,
+      booking_type: "offline",
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+  const bookingId = data.id as string;
+
+  if (extraRows.length > 0) {
+    const { error: extrasInsertError } = await supabase.from("booking_extras").insert(
+      extraRows.map((e) => ({
+        booking_id: bookingId,
+        extra_id: e.id,
+        name: e.name,
+        price: e.price,
+      })),
+    );
+    if (extrasInsertError) throw new Error(extrasInsertError.message);
+  }
+
+  return bookingId;
+}
+
+/**
  * "Pay Later" path: if not overriding, reserves via create_booking (same
  * validation as the public flow); if overriding (walk-in onto a
  * full/blocked slot), inserts the row directly, bypassing that validation.
@@ -415,54 +478,7 @@ export async function createBookingAdminPayLater(
     if (error) throw new Error(error.message);
     bookingId = data as string;
   } else {
-    const { data: servicePrice, error: priceError } = await supabase
-      .from("service_prices")
-      .select("price")
-      .eq("service_id", input.service_id)
-      .eq("vehicle_type", input.vehicle_type)
-      .single();
-    if (priceError) throw new Error(priceError.message);
-
-    let extraRows: { id: string; name: string; price: number }[] = [];
-    if (input.extra_ids && input.extra_ids.length > 0) {
-      const { data: extrasData, error: extrasError } = await supabase
-        .from("extras")
-        .select("id, name, price")
-        .in("id", input.extra_ids);
-      if (extrasError) throw new Error(extrasError.message);
-      extraRows = extrasData ?? [];
-    }
-    const extrasTotal = extraRows.reduce((sum, e) => sum + e.price, 0);
-
-    const { data, error } = await supabase
-      .from("bookings")
-      .insert({
-        service_id: input.service_id,
-        vehicle_type: input.vehicle_type,
-        booking_date: input.booking_date,
-        booking_time: input.booking_time,
-        customer_name: input.customer_name,
-        customer_phone: input.customer_phone,
-        customer_email: input.customer_email,
-        price: servicePrice.price + extrasTotal,
-        booking_type: "offline",
-      })
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
-    bookingId = data.id;
-
-    if (extraRows.length > 0) {
-      const { error: extrasInsertError } = await supabase.from("booking_extras").insert(
-        extraRows.map((e) => ({
-          booking_id: bookingId,
-          extra_id: e.id,
-          name: e.name,
-          price: e.price,
-        })),
-      );
-      if (extrasInsertError) throw new Error(extrasInsertError.message);
-    }
+    bookingId = await insertOverrideBooking(supabase, input);
   }
 
   await onBookingCreated({
@@ -485,35 +501,38 @@ export async function createBookingAdminPayLater(
 /**
  * "Charge via Stripe" path — mirrors createCheckoutSession in
  * src/app/book/actions.ts exactly, just with admin-facing redirect URLs.
- * Only valid when not overriding availability: create_booking enforces
- * slot/capacity rules to reserve the booking, which is fundamentally
- * incompatible with a walk-in override onto an already-full/blocked slot.
+ * Works with an availability override too: the row is inserted directly
+ * instead of through create_booking, and from there the payment half is
+ * identical — the booking sits unpaid until the webhook marks it paid,
+ * which is what fires the calendar sync and emails.
  */
 export async function createBookingAdminCheckout(
   input: AdminBookingInput,
 ): Promise<{ url: string }> {
-  if (input.overrideAvailability) {
-    throw new Error("Availability override can't be combined with Stripe payment.");
-  }
-
   const stripe = getStripeClient();
   if (!stripe) {
     throw new Error("Online payment isn't set up yet.");
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_booking", {
-    p_service_id: input.service_id,
-    p_vehicle_type: input.vehicle_type,
-    p_booking_date: input.booking_date,
-    p_booking_time: input.booking_time,
-    p_customer_name: input.customer_name,
-    p_customer_phone: input.customer_phone,
-    p_customer_email: input.customer_email,
-    p_extra_ids: input.extra_ids ?? [],
-  });
-  if (error) throw new Error(error.message);
-  const bookingId = data as string;
+  let bookingId: string;
+
+  if (input.overrideAvailability) {
+    bookingId = await insertOverrideBooking(supabase, input);
+  } else {
+    const { data, error } = await supabase.rpc("create_booking", {
+      p_service_id: input.service_id,
+      p_vehicle_type: input.vehicle_type,
+      p_booking_date: input.booking_date,
+      p_booking_time: input.booking_time,
+      p_customer_name: input.customer_name,
+      p_customer_phone: input.customer_phone,
+      p_customer_email: input.customer_email,
+      p_extra_ids: input.extra_ids ?? [],
+    });
+    if (error) throw new Error(error.message);
+    bookingId = data as string;
+  }
 
   try {
     const [{ data: price, error: priceError }, { data: service }] = await Promise.all([

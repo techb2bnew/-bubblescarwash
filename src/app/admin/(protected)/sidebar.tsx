@@ -73,7 +73,7 @@ const NAV_ITEMS = [
       <path d="M7 3v3M17 3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" />
     ),
     children: [
-      { label: "Google Calendar", href: "/admin/calendar" },
+      { label: "Booking Calendar", href: "/admin/calendar" },
       { label: "Set Operations", href: "/admin/calendar/set-operations" },
     ],
   },

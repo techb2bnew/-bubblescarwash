@@ -190,7 +190,7 @@ export default function CreateBookingWizard({
         customer_phone: phone,
         customer_email: email,
         extra_ids: selectedExtraIds,
-        overrideAvailability: false,
+        overrideAvailability,
       });
       window.location.href = url;
     } catch (err) {
@@ -448,8 +448,8 @@ export default function CreateBookingWizard({
           </label>
           {overrideAvailability && (
             <p className="text-xs text-gray-500">
-              Allows booking a full/blocked slot. Stripe payment isn&apos;t available for an
-              overridden booking — only Pay Later.
+              Allows booking a full/blocked slot. Pay Later and Stripe both work;
+              discounts don&apos;t apply to an overridden booking.
             </p>
           )}
 
@@ -550,7 +550,7 @@ export default function CreateBookingWizard({
             >
               {submitting === "payLater" ? "Creating..." : "Pay Later"}
             </button>
-            {paymentMode === "stripe" && !overrideAvailability && (
+            {paymentMode === "stripe" && (
               <button
                 type="button"
                 onClick={handleStripe}
