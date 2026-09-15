@@ -941,7 +941,16 @@ export default function BookingFlow({
             </div>
           </div>
 
-          <div className="mt-8 flex justify-end">
+          <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
+            {!selectedService ? (
+              <p className="text-sm text-red-600">Please select a service above.</p>
+            ) : !selectedDate ? (
+              <p className="text-sm text-red-600">Please select a date above.</p>
+            ) : !selectedTime ? (
+              <p className="text-sm text-red-600">Please select a time above.</p>
+            ) : timesError ? (
+              <p className="text-sm text-red-600">{timesError}</p>
+            ) : null}
             <button
               disabled={
                 !selectedService || !selectedDate || !selectedTime || Boolean(timesError)
@@ -1468,28 +1477,38 @@ export default function BookingFlow({
 
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
-          <div className="mt-7 flex justify-between">
+          <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
             <button
               onClick={() => setStep(2)}
               className="rounded-full border-2 border-gray-200 px-6 py-3 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
             >
               Previous
             </button>
-            <button
-              disabled={!name || !phone || !email || submitting}
-              onClick={handleConfirm}
-              className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-8 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:-translate-y-0.5 hover:shadow-md disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
-            >
-              {submitting
-                ? paymentMode === "stripe" && totalPrice > 0
-                  ? "Redirecting to Stripe..."
-                  : "Confirming..."
-                : totalPrice === 0
-                  ? "Confirm Booking — Free"
-                  : paymentMode === "stripe"
-                    ? `Continue to Payment — $${totalPrice.toFixed(2)}`
-                    : `Confirm Booking — $${totalPrice.toFixed(2)} due in person`}
-            </button>
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
+              {!submitting &&
+                (!name ? (
+                  <p className="text-sm text-red-600">Please enter your full name above.</p>
+                ) : !phone ? (
+                  <p className="text-sm text-red-600">Please enter your phone number above.</p>
+                ) : !email ? (
+                  <p className="text-sm text-red-600">Please enter your email above.</p>
+                ) : null)}
+              <button
+                disabled={!name || !phone || !email || submitting}
+                onClick={handleConfirm}
+                className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-8 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:-translate-y-0.5 hover:shadow-md disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
+              >
+                {submitting
+                  ? paymentMode === "stripe" && totalPrice > 0
+                    ? "Redirecting to Stripe..."
+                    : "Confirming..."
+                  : totalPrice === 0
+                    ? "Confirm Booking — Free"
+                    : paymentMode === "stripe"
+                      ? `Continue to Payment — $${totalPrice.toFixed(2)}`
+                      : `Confirm Booking — $${totalPrice.toFixed(2)} due in person`}
+              </button>
+            </div>
           </div>
         </div>
       )}
