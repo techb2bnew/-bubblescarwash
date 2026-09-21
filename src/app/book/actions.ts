@@ -173,6 +173,7 @@ export interface CreateBookingInput {
   customer_name: string;
   customer_phone: string;
   customer_email: string;
+  car_number?: string;
   extra_ids?: string[];
   gift_card_code?: string;
   discount_code?: string;
@@ -208,6 +209,7 @@ export async function createCheckoutSession(
     p_extra_ids: input.extra_ids ?? [],
     p_gift_card_code: input.gift_card_code || null,
     p_discount_code: input.discount_code || null,
+    p_car_number: input.car_number || null,
   });
   if (error) throw new Error(error.message);
   const bookingId = data as string;
@@ -234,6 +236,7 @@ export async function createCheckoutSession(
         customerName: input.customer_name,
         customerPhone: input.customer_phone,
         customerEmail: input.customer_email,
+        carNumber: input.car_number,
         bookingDate: input.booking_date,
         bookingTime: input.booking_time,
         price: 0,
@@ -313,6 +316,7 @@ export async function createBookingSimple(
     p_extra_ids: input.extra_ids ?? [],
     p_gift_card_code: input.gift_card_code || null,
     p_discount_code: input.discount_code || null,
+    p_car_number: input.car_number || null,
   });
   if (error) throw new Error(error.message);
   const bookingId = data as string;
@@ -327,6 +331,7 @@ export async function createBookingSimple(
     customerName: input.customer_name,
     customerPhone: input.customer_phone,
     customerEmail: input.customer_email,
+    carNumber: input.car_number,
     bookingDate: input.booking_date,
     bookingTime: input.booking_time,
     price: price != null ? Number(price) : null,
@@ -343,6 +348,7 @@ export interface BookingPaymentStatus {
   bookingTime: string;
   price: number | null;
   serviceName: string | null;
+  carNumber: string | null;
 }
 
 export async function getBookingPaymentStatus(
@@ -362,6 +368,7 @@ export async function getBookingPaymentStatus(
     booking_time: string;
     price: number | null;
     service_name: string | null;
+    car_number: string | null;
   };
   return {
     status: row.status,
@@ -371,6 +378,7 @@ export async function getBookingPaymentStatus(
     bookingTime: row.booking_time,
     price: row.price,
     serviceName: row.service_name,
+    carNumber: row.car_number,
   };
 }
 

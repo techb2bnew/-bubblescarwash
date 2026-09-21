@@ -98,7 +98,8 @@ export default function BookingsTable({
         (b) =>
           b.customer_name.toLowerCase().includes(q) ||
           b.customer_phone.toLowerCase().includes(q) ||
-          b.customer_email.toLowerCase().includes(q),
+          b.customer_email.toLowerCase().includes(q) ||
+          (b.car_number ?? "").toLowerCase().includes(q),
       );
     }
     if (status !== "all") result = result.filter((b) => b.status === status);
@@ -172,7 +173,7 @@ export default function BookingsTable({
           setSearch(v);
           setPage(1);
         }}
-        searchPlaceholder="Search name, phone, email..."
+        searchPlaceholder="Search name, phone, email, car number..."
         hasActiveFilters={hasActiveFilters}
         onClear={clearFilters}
       >
@@ -239,6 +240,7 @@ export default function BookingsTable({
                 onSort={handleSort}
               />
               <th className="px-4 py-3">Contact</th>
+              <th className="px-4 py-3">Car Number</th>
               <th className="px-4 py-3">Service</th>
               <th className="px-4 py-3">Inclusions</th>
               <th className="px-4 py-3">Add-Ons</th>
@@ -267,6 +269,7 @@ export default function BookingsTable({
                   <div>{b.customer_phone}</div>
                   <div className="text-xs text-gray-400">{b.customer_email}</div>
                 </td>
+                <td className="px-4 py-3 text-gray-600">{b.car_number || "—"}</td>
                 <td className="px-4 py-3 text-gray-600">
                   {b.services ? (
                     <>
@@ -346,7 +349,7 @@ export default function BookingsTable({
             ))}
             {paged.length === 0 && (
               <tr>
-                <td colSpan={12} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={13} className="px-4 py-10 text-center text-gray-400">
                   {bookings.length === 0
                     ? "No bookings yet."
                     : "No bookings match your search/filters."}

@@ -383,6 +383,7 @@ export interface AdminBookingInput {
   customer_name: string;
   customer_phone: string;
   customer_email: string;
+  car_number?: string;
   extra_ids?: string[];
   /** Walk-in override: bypass create_booking's slot/capacity validation (a raw insert). */
   overrideAvailability: boolean;
@@ -428,6 +429,7 @@ async function insertOverrideBooking(
       customer_name: input.customer_name,
       customer_phone: input.customer_phone,
       customer_email: input.customer_email,
+      car_number: input.car_number || null,
       price: servicePrice.price + extrasTotal,
       booking_type: "offline",
     })
@@ -474,6 +476,7 @@ export async function createBookingAdminPayLater(
       p_customer_phone: input.customer_phone,
       p_customer_email: input.customer_email,
       p_extra_ids: input.extra_ids ?? [],
+      p_car_number: input.car_number || null,
     });
     if (error) throw new Error(error.message);
     bookingId = data as string;
@@ -487,6 +490,7 @@ export async function createBookingAdminPayLater(
     customerName: input.customer_name,
     customerPhone: input.customer_phone,
     customerEmail: input.customer_email,
+    carNumber: input.car_number,
     bookingDate: input.booking_date,
     bookingTime: input.booking_time,
   });
@@ -529,6 +533,7 @@ export async function createBookingAdminCheckout(
       p_customer_phone: input.customer_phone,
       p_customer_email: input.customer_email,
       p_extra_ids: input.extra_ids ?? [],
+      p_car_number: input.car_number || null,
     });
     if (error) throw new Error(error.message);
     bookingId = data as string;
@@ -616,4 +621,70 @@ export async function unblockSlot(date: string, time: string) {
     .eq("time", time);
   if (error) throw new Error(error.message);
   revalidatePath("/admin/calendar");
+}
+
+export interface CustomerCar {
+  carNumber: string;
+  vehicleType: string;
+}
+
+/**
+ * Cars (plate + vehicle type together) this customer has booked under
+ * before, matched by email or phone (bookings has no customer_id FK — same
+ * matching pattern discounts use), most recent first with duplicate plates
+ * collapsed onto their most recent vehicle type. Lets the wizard offer "same
+ * car as last time" — plate and vehicle type both filled in one pick —
+ * instead of retyping the plate and reselecting the vehicle type separately.
+ */
+export async function getCustomerCars(
+  email: string,
+  phone: string,
+): Promise<CustomerCar[]> {
+  const trimmedEmail = email.trim();
+  const trimmedPhone = phone.trim();
+  if (!trimmedEmail && !trimmedPhone) return [];
+
+  const supabase = await createClient();
+  // Two plain .eq() queries run in parallel and merged, rather than one
+  // .or() with interpolated values — keeps arbitrary email/phone input out
+  // of a hand-built PostgREST filter string entirely.
+  const [byEmail, byPhone] = await Promise.all([
+    trimmedEmail
+      ? supabase
+          .from("bookings")
+          .select("car_number, vehicle_type, created_at")
+          .eq("customer_email", trimmedEmail)
+          .not("car_number", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(50)
+      : Promise.resolve({ data: [], error: null }),
+    trimmedPhone
+      ? supabase
+          .from("bookings")
+          .select("car_number, vehicle_type, created_at")
+          .eq("customer_phone", trimmedPhone)
+          .not("car_number", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(50)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (byEmail.error) throw new Error(byEmail.error.message);
+  if (byPhone.error) throw new Error(byPhone.error.message);
+
+  const rows = [...(byEmail.data ?? []), ...(byPhone.data ?? [])] as {
+    car_number: string | null;
+    vehicle_type: string;
+    created_at: string;
+  }[];
+  rows.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+
+  const seen = new Set<string>();
+  const cars: CustomerCar[] = [];
+  for (const row of rows) {
+    if (row.car_number && !seen.has(row.car_number)) {
+      seen.add(row.car_number);
+      cars.push({ carNumber: row.car_number, vehicleType: row.vehicle_type });
+    }
+  }
+  return cars;
 }

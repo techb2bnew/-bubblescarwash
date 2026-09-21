@@ -331,6 +331,7 @@ export default function CustomersPageClient({
                       </div>
                       <div className="text-xs text-gray-500">
                         {b.booking_date} at {b.booking_time.slice(0, 5)}
+                        {b.car_number ? ` · Car: ${b.car_number}` : ""}
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-3">

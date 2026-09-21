@@ -13,6 +13,7 @@ interface PaidBookingRow {
   customer_name: string;
   customer_phone: string;
   customer_email: string;
+  car_number: string | null;
   booking_date: string;
   booking_time: string;
   price: number | null;
@@ -96,6 +97,7 @@ async function handleBookingPaid(session: Stripe.Checkout.Session, stripe: Strip
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
     customerEmail: row.customer_email,
+    carNumber: row.car_number,
     bookingDate: row.booking_date,
     bookingTime: row.booking_time,
     price: row.price,

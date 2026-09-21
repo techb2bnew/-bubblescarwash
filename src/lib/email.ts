@@ -148,6 +148,7 @@ export interface BookingEmailDetails {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  carNumber?: string | null;
   serviceName: string;
   bookingDate: string;
   bookingTime: string;
@@ -193,6 +194,7 @@ function buildBookingDetailsHtml(details: BookingEmailDetails): string {
     ["Customer", details.customerName],
     ["Phone", details.customerPhone],
     ["Email", details.customerEmail],
+    ...(details.carNumber ? [["Car Number", details.carNumber]] : []),
   ];
 
   const tableRows = rows.map(([label, value]) => detailRow(label, value)).join("");

@@ -1,13 +1,25 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { Customer, Extra, Service, ServiceCategoryRow, VehicleTypeRow } from "@/lib/types";
 import type { PaymentMode } from "@/lib/payment-mode";
 import { formatTimeLabel, unavailableDateStyle } from "@/lib/date-utils";
 import { previewCustomerDiscount, type CustomerDiscountPreview } from "@/app/book/actions";
-import { createBookingAdminCheckout, createBookingAdminPayLater } from "./actions";
+import {
+  createBookingAdminCheckout,
+  createBookingAdminPayLater,
+  getCustomerCars,
+  type CustomerCar,
+} from "./actions";
+import { loadWizardDraft, saveWizardDraft, clearWizardDraft } from "./booking-wizard-draft";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+/** Cars are attached (rather than looked up per keystroke) so the search box below matches instantly, same as name/phone/email. */
+export type WizardCustomer = Pick<Customer, "id" | "name" | "phone" | "email"> & {
+  carNumbers: string[];
+};
 
 const STEP_LABELS: Record<Step, string> = {
   1: "Customer",
@@ -37,7 +49,7 @@ export default function CreateBookingWizard({
 }: {
   services: Service[];
   vehicleTypes: VehicleTypeRow[];
-  customers: Pick<Customer, "id" | "name" | "phone" | "email">[];
+  customers: WizardCustomer[];
   extras: Extra[];
   categories: ServiceCategoryRow[];
   bookingDate: string;
@@ -50,6 +62,7 @@ export default function CreateBookingWizard({
   paymentMode: PaymentMode;
   onBooked: (time: string) => void;
 }) {
+  const searchParams = useSearchParams();
   const [step, setStep] = useState<Step>(1);
 
   const [customerMode, setCustomerMode] = useState<"existing" | "new">("existing");
@@ -59,6 +72,14 @@ export default function CreateBookingWizard({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
+  const [carNumber, setCarNumber] = useState("");
+  // Previous cars (plate + vehicle type) on file for the selected existing
+  // customer — lets the wizard offer "same car as last time" and fill both
+  // in one pick, instead of retyping the plate and reselecting the vehicle
+  // type separately. Only ever populated for an existing customer; a new
+  // customer always picks their vehicle type and types their plate.
+  const [previousCars, setPreviousCars] = useState<CustomerCar[]>([]);
+  const [carMode, setCarMode] = useState<"choose" | "new">("new");
   const [vehicleSlug, setVehicleSlug] = useState<string>("");
   const [categoryId, setCategoryId] = useState<string>(categories[0]?.id ?? "");
   const [serviceId, setServiceId] = useState("");
@@ -89,7 +110,8 @@ export default function CreateBookingWizard({
         (c) =>
           c.name.toLowerCase().includes(q) ||
           c.phone.toLowerCase().includes(q) ||
-          c.email.toLowerCase().includes(q),
+          c.email.toLowerCase().includes(q) ||
+          c.carNumbers.some((car) => car.toLowerCase().includes(q)),
       )
       .slice(0, 8);
   }, [customers, search]);
@@ -124,13 +146,148 @@ export default function CreateBookingWizard({
       : 0;
   const totalPrice = basePrice - discountAmount + extrasTotal;
 
-  function selectCustomer(c: Pick<Customer, "id" | "name" | "phone" | "email">) {
+  // Restore a draft left behind by "Charge via Stripe" not finishing —
+  // cancelling (or browser Back) reloads /admin/calendar from scratch,
+  // resetting this component. Runs once, applying whatever it finds
+  // immediately rather than waiting for the parent's own "Manage date"
+  // restore to land first — waiting on that turned into its own race: the
+  // autosave effect below fired (with the still-blank initial state) before
+  // the deferred restore got a chance to apply, silently overwriting the
+  // very draft this effect was about to read, and quietly reset the form on
+  // exactly the cancelled-payment path this was meant to protect.
+  // `hydrated` exists to prevent that: autosave stays off until this effect
+  // has genuinely finished deciding what to do, restore or not. Both are
+  // deferred to a microtask so nothing here calls setState directly inside
+  // the effect body, only the callback does.
+  const [hydrated, setHydrated] = useState(false);
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+
+    // A just-succeeded Stripe payment means the booking this draft describes
+    // is already placed — never restore it. Checked here, directly against
+    // the URL, rather than relying on the parent's own stripe_success effect
+    // to clear the draft first: React flushes a child's effects before its
+    // parent's on mount, so by the time that parent effect would run, this
+    // one has already fired and (without this check) already applied the
+    // stale draft.
+    const paymentSucceeded = Boolean(searchParams.get("stripe_success"));
+    if (paymentSucceeded) clearWizardDraft();
+    const draft = paymentSucceeded ? null : loadWizardDraft();
+
+    Promise.resolve().then(() => {
+      if (draft) {
+        setStep((draft.step >= 1 && draft.step <= 7 ? draft.step : 1) as Step);
+        setCustomerMode(draft.customerMode);
+        setSelectedCustomerId(draft.selectedCustomerId);
+        setName(draft.name);
+        setPhone(draft.phone);
+        setEmail(draft.email);
+        setCarNumber(draft.carNumber);
+        setCarMode(draft.carMode);
+        setVehicleSlug(draft.vehicleSlug);
+        setCategoryId(draft.categoryId || categories[0]?.id || "");
+        setServiceId(draft.serviceId);
+        setSelectedExtraIds(draft.extraIds.filter((id) => extras.some((e) => e.id === id)));
+        setTime(draft.time);
+        setOverrideAvailability(draft.overrideAvailability);
+
+        if (draft.email.trim() || draft.phone.trim()) {
+          previewCustomerDiscount(draft.email, draft.phone)
+            .then(setCustomerDiscount)
+            .catch(() => {});
+        }
+        if (draft.customerMode === "existing" && (draft.email.trim() || draft.phone.trim())) {
+          getCustomerCars(draft.email, draft.phone)
+            .then(setPreviousCars)
+            .catch(() => {});
+        }
+      }
+      setHydrated(true);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Autosave on every change — cheap, and means the draft above is never
+  // more than one keystroke stale by the time Stripe redirects away. Held
+  // off until the restore above has settled (see `hydrated`), so it can
+  // never write the pre-restore blank state over a real draft.
+  useEffect(() => {
+    if (!hydrated) return;
+    saveWizardDraft({
+      bookingDate,
+      step,
+      customerMode,
+      selectedCustomerId,
+      name,
+      phone,
+      email,
+      carNumber,
+      carMode,
+      vehicleSlug,
+      categoryId,
+      serviceId,
+      extraIds: selectedExtraIds,
+      time,
+      overrideAvailability,
+    });
+  }, [
+    hydrated,
+    bookingDate,
+    step,
+    customerMode,
+    selectedCustomerId,
+    name,
+    phone,
+    email,
+    carNumber,
+    carMode,
+    vehicleSlug,
+    categoryId,
+    serviceId,
+    selectedExtraIds,
+    time,
+    overrideAvailability,
+  ]);
+
+  // A browser can restore this exact page (with the wizard still filled)
+  // from its back/forward cache instead of re-running our mount logic —
+  // e.g. Back from Stripe Checkout after the admin pays. That would skip
+  // the draft check entirely (cleared once payment succeeds — see
+  // clearWizardDraft in calendar-view.tsx) and just resume the old,
+  // now-stale in-memory state. Forcing a real reload on that restore makes
+  // the normal mount-time draft check the single source of truth again.
+  useEffect(() => {
+    function handlePageShow(e: PageTransitionEvent) {
+      if (e.persisted) window.location.reload();
+    }
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
+  function selectCustomer(c: WizardCustomer) {
     setSelectedCustomerId(c.id);
     setName(c.name);
     setPhone(c.phone);
     setEmail(c.email);
     setCustomerDiscount(null);
     checkCustomerDiscount(c.email, c.phone);
+
+    setCarNumber("");
+    setPreviousCars([]);
+    setCarMode("new");
+    setVehicleSlug("");
+    getCustomerCars(c.email, c.phone)
+      .then((cars) => {
+        setPreviousCars(cars);
+        if (cars.length > 0) {
+          setCarMode("choose");
+          setCarNumber(cars[0].carNumber);
+          setVehicleSlug(cars[0].vehicleType);
+        }
+      })
+      .catch(() => {});
   }
 
   function resetWizard() {
@@ -141,6 +298,9 @@ export default function CreateBookingWizard({
     setName("");
     setPhone("");
     setEmail("");
+    setCarNumber("");
+    setPreviousCars([]);
+    setCarMode("new");
     setVehicleSlug("");
     setCategoryId(categories[0]?.id ?? "");
     setServiceId("");
@@ -164,11 +324,13 @@ export default function CreateBookingWizard({
         customer_name: name,
         customer_phone: phone,
         customer_email: email,
+        car_number: carNumber,
         extra_ids: selectedExtraIds,
         overrideAvailability,
       });
       onBooked(time);
       resetWizard();
+      clearWizardDraft();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -189,6 +351,7 @@ export default function CreateBookingWizard({
         customer_name: name,
         customer_phone: phone,
         customer_email: email,
+        car_number: carNumber,
         extra_ids: selectedExtraIds,
         overrideAvailability,
       });
@@ -242,6 +405,9 @@ export default function CreateBookingWizard({
                 setName("");
                 setPhone("");
                 setEmail("");
+                setCarNumber("");
+                setPreviousCars([]);
+                setCarMode("new");
               }}
               className={`flex-1 rounded-md border px-3 py-1.5 text-sm font-medium ${
                 customerMode === "new"
@@ -261,7 +427,7 @@ export default function CreateBookingWizard({
                   setSearch(e.target.value);
                   setSelectedCustomerId(null);
                 }}
-                placeholder="Search name, phone, email..."
+                placeholder="Search name, phone, email, car no..."
                 className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
               />
               <div className="mt-2 max-h-48 space-y-1 overflow-y-auto">
@@ -280,6 +446,11 @@ export default function CreateBookingWizard({
                     <div className="text-xs text-gray-500">
                       {c.phone} · {c.email}
                     </div>
+                    {c.carNumbers.length > 0 && (
+                      <div className="mt-0.5 text-xs text-gray-400">
+                        {c.carNumbers.join(", ")}
+                      </div>
+                    )}
                   </button>
                 ))}
                 {filteredCustomers.length === 0 && (
@@ -322,24 +493,107 @@ export default function CreateBookingWizard({
       )}
 
       {step === 2 && (
-        <div className="grid grid-cols-2 gap-2">
-          {vehicleTypes.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              onClick={() => {
-                setVehicleSlug(v.slug);
-                setServiceId("");
-              }}
-              className={`rounded-md border px-3 py-2 text-sm font-medium ${
-                vehicleSlug === v.slug
-                  ? "border-brand-600 bg-brand-50 text-brand-700"
-                  : "border-gray-300 text-gray-600 hover:border-gray-400"
-              }`}
-            >
-              {v.name}
-            </button>
-          ))}
+        <div className="space-y-3">
+          {previousCars.length > 0 && (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCarMode("choose");
+                  setCarNumber(previousCars[0].carNumber);
+                  setVehicleSlug(previousCars[0].vehicleType);
+                }}
+                className={`flex-1 rounded-md border px-3 py-1.5 text-sm font-medium ${
+                  carMode === "choose"
+                    ? "border-brand-600 bg-brand-50 text-brand-700"
+                    : "border-gray-300 text-gray-600 hover:border-gray-400"
+                }`}
+              >
+                Car on file
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCarMode("new");
+                  setCarNumber("");
+                  setVehicleSlug("");
+                }}
+                className={`flex-1 rounded-md border px-3 py-1.5 text-sm font-medium ${
+                  carMode === "new"
+                    ? "border-brand-600 bg-brand-50 text-brand-700"
+                    : "border-gray-300 text-gray-600 hover:border-gray-400"
+                }`}
+              >
+                + New car
+              </button>
+            </div>
+          )}
+
+          {carMode === "choose" && previousCars.length > 0 ? (
+            // Picking a car on file carries its plate and vehicle type
+            // together — they were the same vehicle last time, so there's
+            // nothing left to choose separately.
+            <div className="space-y-1.5">
+              {previousCars.map((car) => {
+                const active = carNumber === car.carNumber;
+                const vehicleName =
+                  vehicleTypes.find((v) => v.slug === car.vehicleType)?.name ??
+                  car.vehicleType;
+                return (
+                  <button
+                    key={car.carNumber}
+                    type="button"
+                    onClick={() => {
+                      setCarNumber(car.carNumber);
+                      setVehicleSlug(car.vehicleType);
+                      setServiceId("");
+                    }}
+                    className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm font-medium ${
+                      active
+                        ? "border-brand-600 bg-brand-50 text-brand-700"
+                        : "border-gray-300 text-gray-600 hover:border-gray-400"
+                    }`}
+                  >
+                    <span>{car.carNumber}</span>
+                    <span className="text-xs font-normal text-gray-400">{vehicleName}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                {vehicleTypes.map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => {
+                      setVehicleSlug(v.slug);
+                      setServiceId("");
+                    }}
+                    className={`rounded-md border px-3 py-2 text-sm font-medium ${
+                      vehicleSlug === v.slug
+                        ? "border-brand-600 bg-brand-50 text-brand-700"
+                        : "border-gray-300 text-gray-600 hover:border-gray-400"
+                    }`}
+                  >
+                    {v.name}
+                  </button>
+                ))}
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  Car number / plate <span className="font-normal text-gray-400">(optional)</span>
+                </label>
+                <input
+                  value={carNumber}
+                  onChange={(e) => setCarNumber(e.target.value.toUpperCase())}
+                  placeholder="e.g. ABC123"
+                  className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                />
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -504,6 +758,9 @@ export default function CreateBookingWizard({
               {time ? formatTimeLabel(time) : ""}
               {overrideAvailability ? " (override)" : ""}
             </div>
+            {carNumber && (
+              <div className="mt-1 text-xs text-gray-500">Car: {carNumber}</div>
+            )}
             {selectedExtras.length > 0 && (
               <div className="mt-1">
                 {selectedExtras.map((extra) => (

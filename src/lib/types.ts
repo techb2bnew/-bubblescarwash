@@ -192,6 +192,7 @@ export interface Booking {
   customer_name: string;
   customer_phone: string;
   customer_email: string;
+  car_number: string | null;
   booking_date: string;
   booking_time: string;
   status: BookingStatus;
