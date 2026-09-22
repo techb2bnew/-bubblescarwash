@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type {
   BlockedDate,
   BusinessSettings,
-  Customer,
   Extra,
   HoursSource,
   Service,
@@ -27,8 +26,9 @@ import {
   WEEKDAY_NAMES,
 } from "@/lib/date-utils";
 import { getDateAvailability } from "./actions";
-import CreateBookingWizard from "./create-booking-wizard";
+import CreateBookingWizard, { type WizardCustomer } from "./create-booking-wizard";
 import { getBookingPaymentStatus, cancelUnpaidBooking } from "@/app/book/actions";
+import { loadWizardDraft, clearWizardDraft } from "./booking-wizard-draft";
 
 export default function CalendarView({
   blockedDates,
@@ -45,7 +45,7 @@ export default function CalendarView({
   settings: BusinessSettings;
   services: Service[];
   vehicleTypes: VehicleTypeRow[];
-  customers: Pick<Customer, "id" | "name" | "phone" | "email">[];
+  customers: WizardCustomer[];
   extras: Extra[];
   categories: ServiceCategoryRow[];
   googleCalendarEmbedUrl: string | null;
@@ -107,6 +107,9 @@ export default function CalendarView({
       });
       router.replace("/admin/calendar");
     } else if (searchParams.get("stripe_success")) {
+      // The booking is already reserved by this point — resubmitting the
+      // wizard's saved draft would create a duplicate, so its job is done.
+      clearWizardDraft();
       getBookingPaymentStatus(bookingId).then((status) => {
         setStripeBanner(
           status?.paymentStatus === "paid"
@@ -118,6 +121,24 @@ export default function CalendarView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  // Resume managing whichever date the wizard's draft was left on (see
+  // booking-wizard-draft.ts) — otherwise a Stripe cancel/Back round trip
+  // reloads this page back to today, and the wizard below never finds the
+  // date it's waiting to restore against. Deferred to a microtask so this
+  // effect never calls setState directly, only the callback does.
+  const restoredDateRef = useRef(false);
+  useEffect(() => {
+    if (restoredDateRef.current) return;
+    restoredDateRef.current = true;
+    const draft = loadWizardDraft();
+    if (!draft || draft.bookingDate < toDateKey(today)) return;
+    Promise.resolve().then(() => {
+      setSelected(draft.bookingDate);
+      const [y, m] = draft.bookingDate.split("-").map(Number);
+      setCursor({ year: y, month: m - 1 });
+    });
+  }, [today]);
 
   useEffect(() => {
     if (!selected || dayIsClosed) return;
@@ -208,8 +229,7 @@ export default function CalendarView({
               key={calendarKey}
               title="Google Calendar"
               src={googleCalendarEmbedUrl!}
-              className="w-full rounded-md border-0"
-              style={{ height: "min(70vh, 720px)", minHeight: 480 }}
+              className="block h-[70vh] max-h-[720px] min-h-[320px] w-full rounded-md border-0 sm:min-h-[480px]"
             />
           </div>
         ) : (

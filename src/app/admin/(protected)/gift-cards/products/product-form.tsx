@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { GiftCardProduct } from "@/lib/types";
+import { MIN_GIFT_CARD_AMOUNT } from "@/lib/gift-card-designs";
 import { createGiftCardProduct, updateGiftCardProduct, type GiftCardProductInput } from "./actions";
 
 export default function GiftCardProductForm({
@@ -16,7 +17,7 @@ export default function GiftCardProductForm({
   const [form, setForm] = useState<GiftCardProductInput>({
     name: product?.name ?? "",
     description: product?.description ?? "",
-    price: product?.price ?? 0,
+    price: product?.price ?? MIN_GIFT_CARD_AMOUNT,
     validity_days: product?.validity_days ?? 90,
     sort_order: product?.sort_order ?? 0,
     active: product?.active ?? true,
@@ -29,6 +30,11 @@ export default function GiftCardProductForm({
     setSaving(true);
     setError(null);
     try {
+      if (form.price < MIN_GIFT_CARD_AMOUNT) {
+        setError(`Gift card amounts start at $${MIN_GIFT_CARD_AMOUNT}.`);
+        setSaving(false);
+        return;
+      }
       const input: GiftCardProductInput = {
         ...form,
         description: form.description?.trim() ? form.description.trim() : null,
@@ -78,19 +84,20 @@ export default function GiftCardProductForm({
       <div className="grid grid-cols-3 gap-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">
-            Price ($)
+            Amount ($)
           </label>
           <input
             type="number"
-            min={0}
-            step={0.01}
+            min={MIN_GIFT_CARD_AMOUNT}
+            step={1}
             required
             value={form.price}
-            onChange={(e) =>
-              setForm({ ...form, price: Math.max(0, Number(e.target.value) || 0) })
-            }
+            onChange={(e) => setForm({ ...form, price: Number(e.target.value) || 0 })}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
+          <p className="mt-1 text-[11px] text-gray-500">
+            Minimum ${MIN_GIFT_CARD_AMOUNT}. This is what the card is worth.
+          </p>
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">

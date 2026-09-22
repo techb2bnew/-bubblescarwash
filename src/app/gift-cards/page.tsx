@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import type { GiftCardProduct } from "@/lib/types";
+import { MIN_GIFT_CARD_AMOUNT } from "@/lib/gift-card-designs";
 import SiteHeader from "../_components/site-header";
 import SiteFooter from "../_components/site-footer";
 import { getGiftCardPaymentMode } from "./actions";
@@ -16,7 +17,8 @@ export default async function GiftCardsPage() {
       .from("gift_card_products")
       .select("*")
       .eq("active", true)
-      .order("sort_order"),
+      .gte("price", MIN_GIFT_CARD_AMOUNT)
+      .order("price"),
     getGiftCardPaymentMode(),
   ]);
 

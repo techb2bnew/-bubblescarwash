@@ -383,9 +383,74 @@ export interface AdminBookingInput {
   customer_name: string;
   customer_phone: string;
   customer_email: string;
+  car_number?: string;
   extra_ids?: string[];
   /** Walk-in override: bypass create_booking's slot/capacity validation (a raw insert). */
   overrideAvailability: boolean;
+}
+
+/**
+ * Walk-in override: insert the booking directly, bypassing create_booking's
+ * slot/capacity validation. Priced here rather than by the RPC, and typed
+ * 'offline' so it never counts against a slot's capacity. Shared by both the
+ * Pay Later and Stripe paths — an override is about skipping the
+ * availability check, not about how the customer pays.
+ */
+async function insertOverrideBooking(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  input: AdminBookingInput,
+): Promise<string> {
+  const { data: servicePrice, error: priceError } = await supabase
+    .from("service_prices")
+    .select("price")
+    .eq("service_id", input.service_id)
+    .eq("vehicle_type", input.vehicle_type)
+    .single();
+  if (priceError) throw new Error(priceError.message);
+
+  let extraRows: { id: string; name: string; price: number }[] = [];
+  if (input.extra_ids && input.extra_ids.length > 0) {
+    const { data: extrasData, error: extrasError } = await supabase
+      .from("extras")
+      .select("id, name, price")
+      .in("id", input.extra_ids);
+    if (extrasError) throw new Error(extrasError.message);
+    extraRows = extrasData ?? [];
+  }
+  const extrasTotal = extraRows.reduce((sum, e) => sum + e.price, 0);
+
+  const { data, error } = await supabase
+    .from("bookings")
+    .insert({
+      service_id: input.service_id,
+      vehicle_type: input.vehicle_type,
+      booking_date: input.booking_date,
+      booking_time: input.booking_time,
+      customer_name: input.customer_name,
+      customer_phone: input.customer_phone,
+      customer_email: input.customer_email,
+      car_number: input.car_number || null,
+      price: servicePrice.price + extrasTotal,
+      booking_type: "offline",
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+  const bookingId = data.id as string;
+
+  if (extraRows.length > 0) {
+    const { error: extrasInsertError } = await supabase.from("booking_extras").insert(
+      extraRows.map((e) => ({
+        booking_id: bookingId,
+        extra_id: e.id,
+        name: e.name,
+        price: e.price,
+      })),
+    );
+    if (extrasInsertError) throw new Error(extrasInsertError.message);
+  }
+
+  return bookingId;
 }
 
 /**
@@ -411,58 +476,12 @@ export async function createBookingAdminPayLater(
       p_customer_phone: input.customer_phone,
       p_customer_email: input.customer_email,
       p_extra_ids: input.extra_ids ?? [],
+      p_car_number: input.car_number || null,
     });
     if (error) throw new Error(error.message);
     bookingId = data as string;
   } else {
-    const { data: servicePrice, error: priceError } = await supabase
-      .from("service_prices")
-      .select("price")
-      .eq("service_id", input.service_id)
-      .eq("vehicle_type", input.vehicle_type)
-      .single();
-    if (priceError) throw new Error(priceError.message);
-
-    let extraRows: { id: string; name: string; price: number }[] = [];
-    if (input.extra_ids && input.extra_ids.length > 0) {
-      const { data: extrasData, error: extrasError } = await supabase
-        .from("extras")
-        .select("id, name, price")
-        .in("id", input.extra_ids);
-      if (extrasError) throw new Error(extrasError.message);
-      extraRows = extrasData ?? [];
-    }
-    const extrasTotal = extraRows.reduce((sum, e) => sum + e.price, 0);
-
-    const { data, error } = await supabase
-      .from("bookings")
-      .insert({
-        service_id: input.service_id,
-        vehicle_type: input.vehicle_type,
-        booking_date: input.booking_date,
-        booking_time: input.booking_time,
-        customer_name: input.customer_name,
-        customer_phone: input.customer_phone,
-        customer_email: input.customer_email,
-        price: servicePrice.price + extrasTotal,
-        booking_type: "offline",
-      })
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
-    bookingId = data.id;
-
-    if (extraRows.length > 0) {
-      const { error: extrasInsertError } = await supabase.from("booking_extras").insert(
-        extraRows.map((e) => ({
-          booking_id: bookingId,
-          extra_id: e.id,
-          name: e.name,
-          price: e.price,
-        })),
-      );
-      if (extrasInsertError) throw new Error(extrasInsertError.message);
-    }
+    bookingId = await insertOverrideBooking(supabase, input);
   }
 
   await onBookingCreated({
@@ -471,6 +490,7 @@ export async function createBookingAdminPayLater(
     customerName: input.customer_name,
     customerPhone: input.customer_phone,
     customerEmail: input.customer_email,
+    carNumber: input.car_number,
     bookingDate: input.booking_date,
     bookingTime: input.booking_time,
   });
@@ -485,35 +505,39 @@ export async function createBookingAdminPayLater(
 /**
  * "Charge via Stripe" path — mirrors createCheckoutSession in
  * src/app/book/actions.ts exactly, just with admin-facing redirect URLs.
- * Only valid when not overriding availability: create_booking enforces
- * slot/capacity rules to reserve the booking, which is fundamentally
- * incompatible with a walk-in override onto an already-full/blocked slot.
+ * Works with an availability override too: the row is inserted directly
+ * instead of through create_booking, and from there the payment half is
+ * identical — the booking sits unpaid until the webhook marks it paid,
+ * which is what fires the calendar sync and emails.
  */
 export async function createBookingAdminCheckout(
   input: AdminBookingInput,
 ): Promise<{ url: string }> {
-  if (input.overrideAvailability) {
-    throw new Error("Availability override can't be combined with Stripe payment.");
-  }
-
   const stripe = getStripeClient();
   if (!stripe) {
     throw new Error("Online payment isn't set up yet.");
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_booking", {
-    p_service_id: input.service_id,
-    p_vehicle_type: input.vehicle_type,
-    p_booking_date: input.booking_date,
-    p_booking_time: input.booking_time,
-    p_customer_name: input.customer_name,
-    p_customer_phone: input.customer_phone,
-    p_customer_email: input.customer_email,
-    p_extra_ids: input.extra_ids ?? [],
-  });
-  if (error) throw new Error(error.message);
-  const bookingId = data as string;
+  let bookingId: string;
+
+  if (input.overrideAvailability) {
+    bookingId = await insertOverrideBooking(supabase, input);
+  } else {
+    const { data, error } = await supabase.rpc("create_booking", {
+      p_service_id: input.service_id,
+      p_vehicle_type: input.vehicle_type,
+      p_booking_date: input.booking_date,
+      p_booking_time: input.booking_time,
+      p_customer_name: input.customer_name,
+      p_customer_phone: input.customer_phone,
+      p_customer_email: input.customer_email,
+      p_extra_ids: input.extra_ids ?? [],
+      p_car_number: input.car_number || null,
+    });
+    if (error) throw new Error(error.message);
+    bookingId = data as string;
+  }
 
   try {
     const [{ data: price, error: priceError }, { data: service }] = await Promise.all([
@@ -597,4 +621,70 @@ export async function unblockSlot(date: string, time: string) {
     .eq("time", time);
   if (error) throw new Error(error.message);
   revalidatePath("/admin/calendar");
+}
+
+export interface CustomerCar {
+  carNumber: string;
+  vehicleType: string;
+}
+
+/**
+ * Cars (plate + vehicle type together) this customer has booked under
+ * before, matched by email or phone (bookings has no customer_id FK — same
+ * matching pattern discounts use), most recent first with duplicate plates
+ * collapsed onto their most recent vehicle type. Lets the wizard offer "same
+ * car as last time" — plate and vehicle type both filled in one pick —
+ * instead of retyping the plate and reselecting the vehicle type separately.
+ */
+export async function getCustomerCars(
+  email: string,
+  phone: string,
+): Promise<CustomerCar[]> {
+  const trimmedEmail = email.trim();
+  const trimmedPhone = phone.trim();
+  if (!trimmedEmail && !trimmedPhone) return [];
+
+  const supabase = await createClient();
+  // Two plain .eq() queries run in parallel and merged, rather than one
+  // .or() with interpolated values — keeps arbitrary email/phone input out
+  // of a hand-built PostgREST filter string entirely.
+  const [byEmail, byPhone] = await Promise.all([
+    trimmedEmail
+      ? supabase
+          .from("bookings")
+          .select("car_number, vehicle_type, created_at")
+          .eq("customer_email", trimmedEmail)
+          .not("car_number", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(50)
+      : Promise.resolve({ data: [], error: null }),
+    trimmedPhone
+      ? supabase
+          .from("bookings")
+          .select("car_number, vehicle_type, created_at")
+          .eq("customer_phone", trimmedPhone)
+          .not("car_number", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(50)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (byEmail.error) throw new Error(byEmail.error.message);
+  if (byPhone.error) throw new Error(byPhone.error.message);
+
+  const rows = [...(byEmail.data ?? []), ...(byPhone.data ?? [])] as {
+    car_number: string | null;
+    vehicle_type: string;
+    created_at: string;
+  }[];
+  rows.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+
+  const seen = new Set<string>();
+  const cars: CustomerCar[] = [];
+  for (const row of rows) {
+    if (row.car_number && !seen.has(row.car_number)) {
+      seen.add(row.car_number);
+      cars.push({ carNumber: row.car_number, vehicleType: row.vehicle_type });
+    }
+  }
+  return cars;
 }

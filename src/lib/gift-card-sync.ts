@@ -12,6 +12,7 @@ export interface GiftCardPurchasedInput {
   recipientEmail: string | null;
   message: string | null;
   expiresAt: string;
+  designSlug?: string | null;
 }
 
 /**
@@ -42,6 +43,7 @@ export async function onGiftCardPurchased(input: GiftCardPurchasedInput): Promis
       message: input.message,
       expiresAt: input.expiresAt,
       businessName: business?.name ?? "Car Wash",
+      designSlug: input.designSlug ?? null,
     });
   } catch (err) {
     console.error("[gift-card-sync] onGiftCardPurchased failed:", err);

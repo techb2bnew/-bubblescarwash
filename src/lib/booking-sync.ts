@@ -17,6 +17,7 @@ export interface BookingNotificationInput {
   customerName: string;
   customerPhone: string;
   customerEmail: string;
+  carNumber?: string | null;
   bookingDate: string;
   bookingTime: string;
   price?: number | null;
@@ -28,6 +29,7 @@ interface BookingWithService {
   customer_name: string;
   customer_phone: string;
   customer_email: string;
+  car_number: string | null;
   booking_date: string;
   booking_time: string;
   price: number | null;
@@ -43,7 +45,7 @@ async function fetchBooking(bookingId: string): Promise<BookingWithService | nul
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "id, service_id, customer_name, customer_phone, customer_email, booking_date, booking_time, price, google_event_id, services(name, duration_minutes)",
+      "id, service_id, customer_name, customer_phone, customer_email, car_number, booking_date, booking_time, price, google_event_id, services(name, duration_minutes)",
     )
     .eq("id", bookingId)
     .single();
@@ -90,6 +92,7 @@ function buildEmailDetails(
     customerName: booking.customer_name,
     customerEmail: booking.customer_email,
     customerPhone: booking.customer_phone,
+    carNumber: booking.car_number,
     serviceName: booking.services?.name ?? "Car Wash",
     bookingDate: booking.booking_date,
     bookingTime: booking.booking_time,
@@ -156,6 +159,7 @@ export async function onBookingCreated(
       customer_name: input.customerName,
       customer_phone: input.customerPhone,
       customer_email: input.customerEmail,
+      car_number: input.carNumber ?? null,
       booking_date: input.bookingDate,
       booking_time: input.bookingTime,
       price: input.price ?? service?.price ?? null,

@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { loadBookingDraft, saveBookingDraft } from "./booking-draft";
 import type {
   BlockedDate,
   BusinessSettings,
@@ -315,6 +316,7 @@ export default function BookingFlow({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [carNumber, setCarNumber] = useState("");
   const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS[0].value);
   const [cardNumber, setCardNumber] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
@@ -359,6 +361,169 @@ export default function BookingFlow({
   const vehicleServices = services.filter(
     (s) => s.vehicle_type === vehicle && (!category || s.category_id === category),
   );
+
+  // Restore a draft left behind by a trip to Stripe Checkout that didn't
+  // finish — Back (or Stripe's own cancel link, via /book/cancelled → "Book
+  // again") both land back on this fresh mount with the form otherwise
+  // blank. Runs once; deferred to a microtask so nothing here calls
+  // setState directly inside the effect body, only the callback does (same
+  // pattern the reset-password page uses for its post-mount state changes).
+  // `hydrated` holds off the autosave effect below until this has actually
+  // settled — otherwise it fires first (with the still-blank initial state,
+  // since the restore itself hasn't landed yet) and silently overwrites the
+  // very draft this effect is about to read.
+  const [hydrated, setHydrated] = useState(false);
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    const draft = loadBookingDraft();
+
+    Promise.resolve().then(() => {
+      if (!draft) {
+        setHydrated(true);
+        return;
+      }
+      setStep((draft.step >= 1 && draft.step <= 3 ? draft.step : 1) as Step);
+      setVehicle(draft.vehicle || vehicleTypes[0]?.slug || "");
+      setCategory(draft.category || categories[0]?.id || "");
+      if (draft.serviceId) {
+        setSelectedService(services.find((s) => s.id === draft.serviceId) ?? null);
+      }
+      setSelectedExtraIds(draft.extraIds.filter((id) => extras.some((e) => e.id === id)));
+      setName(draft.name);
+      setPhone(draft.phone);
+      setEmail(draft.email);
+      setCarNumber(draft.carNumber);
+      setPaymentMethod(draft.paymentMethod || PAYMENT_METHODS[0].value);
+      if (draft.giftCard) setAppliedGiftCard(draft.giftCard);
+      if (draft.discount) setAppliedDiscount(draft.discount);
+      if (draft.email.trim() || draft.phone.trim()) {
+        previewCustomerDiscount(draft.email, draft.phone)
+          .then(setCustomerDiscount)
+          .catch(() => {});
+      }
+
+      const draftDate = draft.date;
+      if (draftDate && draftDate >= toDateKey(today)) {
+        const [y, m] = draftDate.split("-").map(Number);
+        setCursor({ year: y, month: m - 1 });
+        setSelectedDate(draftDate);
+        setLoadingTimes(true);
+        Promise.all([getBookedTimes(draftDate), getDateHours(draftDate)])
+          .then(([times, hours]) => {
+            setBookedTimes(times);
+            setBusinessHours(hours);
+            if (draft.time) {
+              setSelectedTime(draft.time);
+              getSlotCapacity(draftDate, draft.time)
+                .then(setSlotCapacity)
+                .catch(() => setSlotCapacity(null));
+            }
+          })
+          .catch((err) => {
+            setBookedTimes([]);
+            setTimesError(
+              err instanceof Error
+                ? err.message
+                : "Couldn't load availability for this date. Please try again.",
+            );
+          })
+          .finally(() => setLoadingTimes(false));
+      }
+      setHydrated(true);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Autosave on every change — cheap, and means the draft above is never
+  // more than one keystroke stale by the time Stripe redirects away. Held
+  // off until the restore above has settled (see `hydrated`), so it can
+  // never write the pre-restore blank state over a real draft.
+  useEffect(() => {
+    if (!hydrated) return;
+    saveBookingDraft({
+      step,
+      vehicle,
+      category,
+      serviceId: selectedService?.id ?? null,
+      extraIds: selectedExtraIds,
+      date: selectedDate,
+      time: selectedTime,
+      name,
+      phone,
+      email,
+      carNumber,
+      paymentMethod,
+      giftCard: appliedGiftCard,
+      discount: appliedDiscount,
+    });
+  }, [
+    hydrated,
+    step,
+    vehicle,
+    category,
+    selectedService,
+    selectedExtraIds,
+    selectedDate,
+    selectedTime,
+    name,
+    phone,
+    email,
+    carNumber,
+    paymentMethod,
+    appliedGiftCard,
+    appliedDiscount,
+  ]);
+
+  // A browser can restore this exact page (with the form still filled) from
+  // its back/forward cache instead of re-running our mount logic — e.g.
+  // Back from Stripe Checkout after paying. That would skip the sessionStorage
+  // draft entirely (cleared on confirmation once payment succeeds — see
+  // clearBookingDraft in confirmation-status.tsx) and just resume the old,
+  // now-stale in-memory state. Forcing a real reload on that restore makes
+  // the normal mount-time draft check the single source of truth again, so
+  // a completed booking never reappears half-filled.
+  useEffect(() => {
+    function handlePageShow(e: PageTransitionEvent) {
+      if (e.persisted) window.location.reload();
+    }
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
+  /** Blanks every field back to its initial value — used once a booking is confirmed. */
+  function resetForm() {
+    setStep(1);
+    setVehicle(vehicleTypes[0]?.slug ?? "");
+    setCategory(categories[0]?.id ?? "");
+    setSelectedService(null);
+    setSelectedDate(null);
+    setSelectedTime(null);
+    setSlotCapacity(null);
+    setBookedTimes([]);
+    setTimesError(null);
+    setBusinessHours(null);
+    setSelectedExtraIds([]);
+    setName("");
+    setPhone("");
+    setEmail("");
+    setCarNumber("");
+    setPaymentMethod(PAYMENT_METHODS[0].value);
+    setCardNumber("");
+    setCardExpiry("");
+    setCardCvv("");
+    setError(null);
+    setLimitConfirmCount(null);
+    setGiftCardInput("");
+    setAppliedGiftCard(null);
+    setGiftCardError(null);
+    setDiscountInput("");
+    setAppliedDiscount(null);
+    setDiscountError(null);
+    setCustomerDiscount(null);
+    setCursor({ year: today.getFullYear(), month: today.getMonth() });
+  }
 
   function toggleExtra(id: string) {
     setSelectedExtraIds((prev) =>
@@ -539,6 +704,7 @@ export default function BookingFlow({
       customer_name: name,
       customer_phone: phone,
       customer_email: email,
+      car_number: carNumber,
       extra_ids: selectedExtraIds,
       gift_card_code: appliedGiftCard?.code,
       discount_code: appliedDiscount?.code,
@@ -550,6 +716,10 @@ export default function BookingFlow({
         // Intentionally leave `submitting` true — the page is navigating away.
       } else {
         const { bookingId } = await createBookingSimple(bookingInput);
+        // No Stripe hop for this path, so the form's own state can just be
+        // blanked directly here instead of waiting on a remount to notice
+        // the draft is gone.
+        resetForm();
         router.push(`/book/confirmation?booking_id=${bookingId}`);
       }
     } catch (err) {
@@ -1329,6 +1499,26 @@ export default function BookingFlow({
                   }}
                   onBlur={handleCheckCustomerDiscount}
                   className="w-full rounded-xl border border-gray-300 py-2.5 pl-10 pr-3.5 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                />
+              </div>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+                Car number / plate 
+                {/* <span className="font-normal text-gray-400">(optional)</span> */}
+              </label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                  <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+                    <rect x="3" y="8" width="18" height="9" rx="2" stroke="currentColor" strokeWidth="1.6" />
+                    <path d="M6 8V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2M7 21v-4M17 21v-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                </span>
+                <input
+                  placeholder="e.g. ABC123"
+                  value={carNumber}
+                  onChange={(e) => setCarNumber(e.target.value.toUpperCase())}
+                  className="w-full rounded-xl border border-gray-300 py-2.5 pl-10 pr-3.5 text-sm uppercase transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
                 />
               </div>
             </div>

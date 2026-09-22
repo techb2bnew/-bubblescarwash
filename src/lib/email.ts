@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { Resend } from "resend";
 import { formatTimeLabel } from "@/lib/date-utils";
 import {
@@ -5,6 +7,48 @@ import {
   buildGoogleCalendarAddLink,
   formatTimezoneLabel,
 } from "@/lib/ics";
+import { getGiftCardDesign } from "@/lib/gift-card-designs";
+
+const LOGO_CONTENT_ID = "bubbles-logo";
+const GIFT_CARD_DESIGN_CONTENT_ID = "gift-card-design";
+
+interface InlineImageAttachment {
+  filename: string;
+  content: string;
+  contentId: string;
+  contentType: string;
+}
+
+// Images are embedded as CID attachments rather than linked by URL — inline
+// images referenced by src="cid:..." render immediately in every mail client
+// without needing "show images" permission (unlike a remote <img src>, which
+// most clients block by default), and don't depend on whichever domain
+// happens to be serving the app when the email is sent. Files under public/
+// never change at runtime, so each is read and base64-encoded once.
+const imageBase64Cache = new Map<string, string | null>();
+
+function inlineImage(publicPath: string, contentId: string): InlineImageAttachment | null {
+  const key = publicPath.replace(/^\//, "");
+  let content = imageBase64Cache.get(key);
+  if (content === undefined) {
+    try {
+      content = fs.readFileSync(path.join(process.cwd(), "public", key)).toString("base64");
+    } catch (err) {
+      console.error(`[email] failed to read inline image ${publicPath}:`, err);
+      content = null;
+    }
+    imageBase64Cache.set(key, content);
+  }
+  if (!content) return null;
+
+  const filename = key.split("/").pop() ?? "image";
+  return {
+    filename,
+    content,
+    contentId,
+    contentType: filename.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg",
+  };
+}
 
 function getResendClient(): Resend | null {
   const apiKey = process.env.RESEND_API_KEY;
@@ -52,8 +96,6 @@ interface EmailLayoutOptions {
 
 /** Wraps a fragment of body HTML in the branded header/card/footer shell. */
 function renderEmailLayout(opts: EmailLayoutOptions): string {
-  const logoUrl = `${getPublicSiteUrl()}/Bubbles-Logo.png`;
-
   const ctaSection = opts.cta
     ? `
     <div style="padding:24px 32px;background:${BRAND_DARK};text-align:center;">
@@ -76,7 +118,7 @@ function renderEmailLayout(opts: EmailLayoutOptions): string {
         <div style="margin:0;padding:32px 16px;background:#f4f5f7;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
           <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,0.08);">
             <div style="background:${BRAND_DARK};padding:24px 32px;text-align:center;">
-              <img src="${logoUrl}" alt="${opts.businessName}" height="44" style="height:44px;width:auto;" />
+              <img src="cid:${LOGO_CONTENT_ID}" alt="${opts.businessName}" height="44" style="height:44px;width:auto;" />
             </div>
             <div style="background:${BRAND_DARK};padding:0 32px 24px;">
               <p style="margin:0;color:${BRAND_ACCENT};font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;text-align:center;">${opts.eyebrow}</p>
@@ -106,6 +148,7 @@ export interface BookingEmailDetails {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  carNumber?: string | null;
   serviceName: string;
   bookingDate: string;
   bookingTime: string;
@@ -151,6 +194,7 @@ function buildBookingDetailsHtml(details: BookingEmailDetails): string {
     ["Customer", details.customerName],
     ["Phone", details.customerPhone],
     ["Email", details.customerEmail],
+    ...(details.carNumber ? [["Car Number", details.carNumber]] : []),
   ];
 
   const tableRows = rows.map(([label, value]) => detailRow(label, value)).join("");
@@ -214,21 +258,25 @@ async function sendEmail(
   html: string,
   attachCalendar = false,
   details?: BookingEmailDetails,
+  inlineImages: InlineImageAttachment[] = [],
 ): Promise<boolean> {
   const resend = getResendClient();
   const from = getFromAddress();
   if (!resend || !from) return false;
 
   try {
+    const attachments = [];
+    const logo = inlineImage("/Bubbles-Logo.png", LOGO_CONTENT_ID);
+    if (logo) attachments.push(logo);
+    attachments.push(...inlineImages);
+    if (attachCalendar && details) attachments.push(buildIcsAttachment(details));
+
     const { error } = await resend.emails.send({
       from,
       to,
       subject,
       html,
-      attachments:
-        attachCalendar && details
-          ? [buildIcsAttachment(details)]
-          : undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
     });
     if (error) {
       console.error("[email] send failed:", error);
@@ -399,6 +447,8 @@ export interface GiftCardEmailDetails {
   message: string | null;
   expiresAt: string;
   businessName: string;
+  /** Occasion design the buyer picked — see src/lib/gift-card-designs.ts. */
+  designSlug?: string | null;
 }
 
 function formatGiftCardExpiry(expiresAt: string): string {
@@ -415,12 +465,21 @@ export async function sendGiftCardEmail(details: GiftCardEmailDetails): Promise<
     details.recipientEmail && details.recipientEmail !== details.purchaserEmail,
   );
 
+  // Same card artwork the buyer picked on the website, embedded inline so it
+  // shows without the recipient having to allow remote images.
+  const design = getGiftCardDesign(details.designSlug);
+  const designImage = inlineImage(design.image, GIFT_CARD_DESIGN_CONTENT_ID);
+  const designHtml = designImage
+    ? `<img src="cid:${GIFT_CARD_DESIGN_CONTENT_ID}" alt="${design.name}" style="display:block;width:100%;max-width:100%;margin:0 0 20px;border-radius:12px;" />`
+    : "";
+
   const recipientHtml = renderEmailLayout({
     businessName: details.businessName,
     eyebrow: "Gift Card",
     title: "You've Received A Gift Card!",
     bodyHtml: `
-      ${introText(`Hi ${details.recipientName || "there"}, ${details.purchaserName} sent you a <strong>${details.productName}</strong> gift card for <strong>${details.businessName}</strong>.`)}
+      ${designHtml}
+      ${introText(`Hi ${details.recipientName || "there"}, ${details.purchaserName} sent you a gift card for <strong>${details.businessName}</strong>.`)}
       ${
         details.message
           ? `<div style="margin:0 0 20px;padding:16px 18px;background:#f9fafb;border:1px solid #eef0f2;border-radius:10px;color:#374151;font-size:14px;line-height:1.6;white-space:pre-wrap;">${details.message}</div>`
@@ -446,6 +505,9 @@ export async function sendGiftCardEmail(details: GiftCardEmailDetails): Promise<
       details.recipientEmail || details.purchaserEmail,
       `You've received a $${details.value.toFixed(2)} gift card — ${details.businessName}`,
       recipientHtml,
+      false,
+      undefined,
+      designImage ? [designImage] : [],
     ),
   ];
 
@@ -455,7 +517,7 @@ export async function sendGiftCardEmail(details: GiftCardEmailDetails): Promise<
       eyebrow: "Receipt",
       title: "Your Gift Card Purchase",
       bodyHtml: `
-        ${introText(`Hi ${details.purchaserName}, thanks for your purchase! Your <strong>${details.productName}</strong> gift card (code <strong>${details.code}</strong>, value $${details.value.toFixed(2)}) has been sent to ${details.recipientName || details.recipientEmail}.`)}
+        ${introText(`Hi ${details.purchaserName}, thanks for your purchase! Your <strong>${design.name}</strong> gift card (code <strong>${details.code}</strong>, value $${details.value.toFixed(2)}) has been sent to ${details.recipientName || details.recipientEmail}.`)}
         <p style="margin:0;color:#9ca3af;font-size:12px;">Valid until ${expiresLabel}.</p>
       `,
     });

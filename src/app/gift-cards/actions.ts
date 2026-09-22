@@ -5,6 +5,7 @@ import { getStripeClient, getStripeCurrency } from "@/lib/stripe";
 import { getPaymentMode, type PaymentMode } from "@/lib/payment-mode";
 import { onGiftCardPurchased } from "@/lib/gift-card-sync";
 import { getSiteOrigin } from "@/lib/site-origin";
+import { MIN_GIFT_CARD_AMOUNT } from "@/lib/gift-card-designs";
 import type { PaymentStatus } from "@/lib/types";
 
 export async function getGiftCardPaymentMode(): Promise<PaymentMode> {
@@ -12,13 +13,36 @@ export async function getGiftCardPaymentMode(): Promise<PaymentMode> {
 }
 
 export interface GiftCardPurchaseInput {
-  product_id: string;
+  /** Omitted when the customer entered their own amount. */
+  product_id?: string | null;
+  /** Customer-entered amount; when set it wins over the preset price. */
+  amount?: number | null;
+  design_slug?: string;
   purchaser_name: string;
   purchaser_email: string;
   purchaser_phone: string;
   recipient_name?: string;
   recipient_email?: string;
   message?: string;
+}
+
+/**
+ * A custom amount is customer input, so the floor is enforced here as well as
+ * in create_gift_card_purchase — the RPC is the real guard, this just gives a
+ * friendlier message before we ever reach Stripe.
+ */
+function resolveAmount(input: GiftCardPurchaseInput): number | null {
+  if (input.amount == null) {
+    if (!input.product_id) {
+      throw new Error("Please choose a gift card amount.");
+    }
+    return null;
+  }
+  const amount = Math.round(Number(input.amount) * 100) / 100;
+  if (!Number.isFinite(amount) || amount < MIN_GIFT_CARD_AMOUNT) {
+    throw new Error(`Gift cards start at $${MIN_GIFT_CARD_AMOUNT}.`);
+  }
+  return amount;
 }
 
 export async function createGiftCardCheckoutSession(
@@ -31,33 +55,31 @@ export async function createGiftCardCheckoutSession(
     );
   }
 
+  const amount = resolveAmount(input);
   const supabase = await createClient();
 
   const { data: giftCardId, error } = await supabase.rpc("create_gift_card_purchase", {
-    p_product_id: input.product_id,
+    p_product_id: amount == null ? (input.product_id ?? null) : null,
     p_purchaser_name: input.purchaser_name,
     p_purchaser_email: input.purchaser_email,
     p_purchaser_phone: input.purchaser_phone,
     p_recipient_name: input.recipient_name ?? "",
     p_recipient_email: input.recipient_email ?? "",
     p_message: input.message ?? "",
+    p_design_slug: input.design_slug ?? "",
+    p_amount: amount,
   });
   if (error) throw new Error(error.message);
   const id = giftCardId as string;
 
   try {
-    const [{ data: price, error: priceError }, { data: product }] = await Promise.all([
-      supabase.rpc("get_gift_card_price", { p_gift_card_id: id }),
-      supabase
-        .from("gift_card_products")
-        .select("name")
-        .eq("id", input.product_id)
-        .single(),
-    ]);
+    const { data: price, error: priceError } = await supabase.rpc(
+      "get_gift_card_price",
+      { p_gift_card_id: id },
+    );
     if (priceError) throw new Error(priceError.message);
     if (price == null) throw new Error("Could not price this gift card.");
 
-    const productName = product?.name ?? "Gift Card";
     const origin = await getSiteOrigin();
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -69,7 +91,7 @@ export async function createGiftCardCheckoutSession(
             currency: getStripeCurrency(),
             unit_amount: Math.round(Number(price) * 100),
             product_data: {
-              name: `Gift Card — ${productName}`,
+              name: `Gift Card — $${Number(price).toFixed(2)}`,
             },
           },
         },
@@ -105,16 +127,19 @@ export interface CreateGiftCardSimpleResult {
 export async function createGiftCardSimple(
   input: GiftCardPurchaseInput,
 ): Promise<CreateGiftCardSimpleResult> {
+  const amount = resolveAmount(input);
   const supabase = await createClient();
   const { data, error } = await supabase
     .rpc("complete_gift_card_purchase_simple", {
-      p_product_id: input.product_id,
+      p_product_id: amount == null ? (input.product_id ?? null) : null,
       p_purchaser_name: input.purchaser_name,
       p_purchaser_email: input.purchaser_email,
       p_purchaser_phone: input.purchaser_phone,
       p_recipient_name: input.recipient_name ?? "",
       p_recipient_email: input.recipient_email ?? "",
       p_message: input.message ?? "",
+      p_design_slug: input.design_slug ?? "",
+      p_amount: amount,
     })
     .single();
   if (error) throw new Error(error.message);
@@ -130,6 +155,7 @@ export async function createGiftCardSimple(
     recipient_email: string | null;
     message: string | null;
     expires_at: string;
+    design_slug: string | null;
   };
   await onGiftCardPurchased({
     giftCardId: row.gift_card_id,
@@ -142,6 +168,7 @@ export async function createGiftCardSimple(
     recipientEmail: row.recipient_email,
     message: row.message,
     expiresAt: row.expires_at,
+    designSlug: row.design_slug,
   });
   return { giftCardId: row.gift_card_id };
 }

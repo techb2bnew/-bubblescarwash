@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { signInAdmin } from "./actions";
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -17,14 +19,10 @@ export default function AdminLoginPage() {
     setError(null);
     setLoading(true);
 
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error: signInError } = await signInAdmin(email, password, rememberMe);
 
     if (signInError) {
-      setError(signInError.message);
+      setError(signInError);
       setLoading(false);
       return;
     }
@@ -51,11 +49,16 @@ export default function AdminLoginPage() {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="admin-email"
+              className="mb-1 block text-sm font-medium text-gray-700"
+            >
               Email
             </label>
             <input
+              id="admin-email"
               type="email"
+              autoComplete="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -63,17 +66,41 @@ export default function AdminLoginPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="admin-password"
+              className="mb-1 block text-sm font-medium text-gray-700"
+            >
               Password
             </label>
             <input
+              id="admin-password"
               type="password"
+              autoComplete="current-password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
             />
           </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 accent-brand-600"
+              />
+              Remember me
+            </label>
+            <Link
+              href="/admin/forgot-password"
+              className="text-sm font-medium text-brand-600 hover:text-brand-700"
+            >
+              Forgot password?
+            </Link>
+          </div>
+
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="submit"

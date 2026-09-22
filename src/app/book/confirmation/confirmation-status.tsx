@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatTimeLabel } from "@/lib/date-utils";
 import { getBookingPaymentStatus, type BookingPaymentStatus } from "../actions";
+import { clearBookingDraft } from "../booking-draft";
 
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLLS = 15; // ~30s of polling before we give up and say "still confirming"
@@ -27,6 +28,15 @@ export default function ConfirmationStatus({
     }, POLL_INTERVAL_MS);
     return () => clearTimeout(timer);
   }, [result, pollsLeft, bookingId]);
+
+  // The saved-in-progress form (see booking-draft.ts) has done its job the
+  // moment a booking is actually confirmed — 'unpaid' here means the
+  // pay-in-person path went through, 'paid' means Stripe cleared it.
+  useEffect(() => {
+    if (result?.paymentStatus === "unpaid" || result?.paymentStatus === "paid") {
+      clearBookingDraft();
+    }
+  }, [result?.paymentStatus]);
 
   if (!result) {
     return (
@@ -60,6 +70,9 @@ export default function ConfirmationStatus({
           {result.serviceName} on {result.bookingDate} at{" "}
           {formatTimeLabel(result.bookingTime.slice(0, 5))}
         </p>
+        {result.carNumber && (
+          <p className="mt-1 text-sm text-green-700">Car: {result.carNumber}</p>
+        )}
         <p className="mt-1 text-sm font-medium text-green-800">
           {result.price ? `Amount due at your appointment: $${result.price.toFixed(2)}` : "No payment due"}
         </p>
@@ -81,6 +94,9 @@ export default function ConfirmationStatus({
           {result.serviceName} on {result.bookingDate} at{" "}
           {formatTimeLabel(result.bookingTime.slice(0, 5))}
         </p>
+        {result.carNumber && (
+          <p className="mt-1 text-sm text-green-700">Car: {result.carNumber}</p>
+        )}
         <p className="mt-1 text-sm font-medium text-green-800">
           Total paid: ${result.price != null ? result.price.toFixed(2) : "—"}
         </p>

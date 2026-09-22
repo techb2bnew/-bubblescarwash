@@ -121,6 +121,7 @@ export default function RescheduleModal({
             </h2>
             <p className="mt-0.5 text-xs text-gray-500">
               {booking.customer_name} · {booking.services?.name ?? "Service"}
+              {booking.car_number ? ` · ${booking.car_number}` : ""}
             </p>
           </div>
           <button

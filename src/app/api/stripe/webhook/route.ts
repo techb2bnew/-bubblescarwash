@@ -13,6 +13,7 @@ interface PaidBookingRow {
   customer_name: string;
   customer_phone: string;
   customer_email: string;
+  car_number: string | null;
   booking_date: string;
   booking_time: string;
   price: number | null;
@@ -29,6 +30,7 @@ interface PaidGiftCardRow {
   recipient_email: string | null;
   message: string | null;
   expires_at: string;
+  design_slug: string | null;
 }
 
 function getPaymentIntentId(session: Stripe.Checkout.Session): string | null {
@@ -95,6 +97,7 @@ async function handleBookingPaid(session: Stripe.Checkout.Session, stripe: Strip
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
     customerEmail: row.customer_email,
+    carNumber: row.car_number,
     bookingDate: row.booking_date,
     bookingTime: row.booking_time,
     price: row.price,
@@ -131,6 +134,7 @@ async function handleGiftCardPaid(session: Stripe.Checkout.Session, stripe: Stri
     recipientEmail: row.recipient_email,
     message: row.message,
     expiresAt: row.expires_at,
+    designSlug: row.design_slug,
   });
 }
 
