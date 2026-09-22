@@ -32,6 +32,7 @@ import {
   getBookedTimes,
   getDateHours,
   getSlotCapacity,
+  lookupReturningCustomer,
   previewCustomerDiscount,
   previewDiscount,
   previewGiftCard,
@@ -344,6 +345,17 @@ export default function BookingFlow({
   const [checkingDiscount, setCheckingDiscount] = useState(false);
   const [customerDiscount, setCustomerDiscount] = useState<CustomerDiscountPreview | null>(null);
 
+  // "Returning customer?" popup shown on a fresh visit (no draft to resume)
+  // — phone + car number together identify a past booking so we can autofill
+  // instead of asking a repeat customer to retype everything. See
+  // lookupReturningCustomer / migration 0048 for why it needs both, not the
+  // plate alone.
+  const [showReturningPopup, setShowReturningPopup] = useState(false);
+  const [popupPhone, setPopupPhone] = useState("");
+  const [popupCarNumber, setPopupCarNumber] = useState("");
+  const [popupChecking, setPopupChecking] = useState(false);
+  const [popupNotFound, setPopupNotFound] = useState(false);
+
   const today = useMemo(() => startOfToday(), []);
   const [cursor, setCursor] = useState({
     year: today.getFullYear(),
@@ -381,6 +393,7 @@ export default function BookingFlow({
 
     Promise.resolve().then(() => {
       if (!draft) {
+        setShowReturningPopup(true);
         setHydrated(true);
         return;
       }
@@ -624,6 +637,32 @@ export default function BookingFlow({
     previewCustomerDiscount(email, phone)
       .then(setCustomerDiscount)
       .catch(() => {});
+  }
+
+  async function handleCheckReturningCustomer() {
+    if (!popupPhone.trim() || !popupCarNumber.trim()) return;
+    setPopupChecking(true);
+    setPopupNotFound(false);
+    try {
+      const match = await lookupReturningCustomer(popupPhone, popupCarNumber);
+      if (!match) {
+        setPopupNotFound(true);
+        return;
+      }
+      if (vehicleTypes.some((v) => v.slug === match.vehicleType)) {
+        setVehicle(match.vehicleType as VehicleType);
+        setSelectedService(null);
+      }
+      setName(match.name);
+      setPhone(match.phone);
+      setEmail(match.email);
+      setCarNumber(match.carNumber);
+      setShowReturningPopup(false);
+    } catch {
+      setPopupNotFound(true);
+    } finally {
+      setPopupChecking(false);
+    }
   }
 
   function handleSelectDate(dateKey: string) {
@@ -1736,6 +1775,68 @@ export default function BookingFlow({
           </div>
         ))}
       </div>
+
+      {showReturningPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-base font-bold text-gray-900">Booked with us before?</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Enter the phone number and car number/plate from your last booking and
+              we&apos;ll fill in your details for you.
+            </p>
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-600">
+                  Phone number
+                </label>
+                <input
+                  value={popupPhone}
+                  onChange={(e) => {
+                    setPopupPhone(e.target.value);
+                    setPopupNotFound(false);
+                  }}
+                  placeholder="e.g. 0412 345 678"
+                  className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-600">
+                  Car number / plate
+                </label>
+                <input
+                  value={popupCarNumber}
+                  onChange={(e) => {
+                    setPopupCarNumber(e.target.value.toUpperCase());
+                    setPopupNotFound(false);
+                  }}
+                  placeholder="e.g. ABC123"
+                  className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm uppercase transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                />
+              </div>
+              {popupNotFound && (
+                <p className="text-xs font-semibold text-amber-700">
+                  Couldn&apos;t find a matching booking — check the details or continue as a new customer below.
+                </p>
+              )}
+            </div>
+            <div className="mt-5 flex justify-end gap-2.5">
+              <button
+                onClick={() => setShowReturningPopup(false)}
+                className="rounded-full border-2 border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
+              >
+                I&apos;m new here
+              </button>
+              <button
+                onClick={handleCheckReturningCustomer}
+                disabled={popupChecking || !popupPhone.trim() || !popupCarNumber.trim()}
+                className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {popupChecking ? "Checking…" : "Find my details"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {limitConfirmCount !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">

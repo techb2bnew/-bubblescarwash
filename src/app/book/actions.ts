@@ -156,6 +156,47 @@ export async function previewCustomerDiscount(
   return { discountType: row.discount_type, value: row.value, name: row.name };
 }
 
+export interface ReturningCustomer {
+  name: string;
+  phone: string;
+  email: string;
+  vehicleType: string;
+  carNumber: string;
+}
+
+/**
+ * Looks up a past booking by phone + car number together (not the plate
+ * alone — see migration 0048 for why) so the public booking form can
+ * autofill a repeat customer's details instead of making them retype
+ * everything.
+ */
+export async function lookupReturningCustomer(
+  phone: string,
+  carNumber: string,
+): Promise<ReturningCustomer | null> {
+  if (!phone.trim() || !carNumber.trim()) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .rpc("lookup_returning_customer", { p_phone: phone, p_car_number: carNumber })
+    .maybeSingle();
+  if (error || !data) return null;
+
+  const row = data as {
+    customer_name: string;
+    customer_phone: string;
+    customer_email: string;
+    vehicle_type: string;
+    car_number: string;
+  };
+  return {
+    name: row.customer_name,
+    phone: row.customer_phone,
+    email: row.customer_email,
+    vehicleType: row.vehicle_type,
+    carNumber: row.car_number,
+  };
+}
+
 export async function countBookingsByEmail(email: string): Promise<number> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("count_bookings_by_email", {
