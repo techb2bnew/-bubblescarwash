@@ -889,19 +889,6 @@ export default function BookingFlow({
                         })}
                       </div>
                     )}
-                    {selectedTime && slotCapacity && (
-                      <p
-                        className={`mt-3 rounded-lg px-3 py-2 text-xs font-semibold ${
-                          slotCapacity.remaining <= 2
-                            ? "bg-amber-50 text-amber-700"
-                            : "bg-gray-50 text-gray-500"
-                        }`}
-                      >
-                        {slotCapacity.remaining <= 0
-                          ? "This time is now full — pick another."
-                          : `Only ${slotCapacity.remaining} spot${slotCapacity.remaining === 1 ? "" : "s"} left for ${formatTimeLabel(selectedTime)}.`}
-                      </p>
-                    )}
                   </>
                 ) : (
                   <p className="text-sm text-gray-400">
