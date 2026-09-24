@@ -262,7 +262,13 @@ async function sendEmail(
 ): Promise<boolean> {
   const resend = getResendClient();
   const from = getFromAddress();
-  if (!resend || !from) return false;
+  if (!resend || !from) {
+    console.error(
+      "[email] not configured — RESEND_API_KEY and/or EMAIL_FROM env vars are missing, skipping send to",
+      to,
+    );
+    return false;
+  }
 
   try {
     const attachments = [];
