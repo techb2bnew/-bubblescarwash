@@ -219,6 +219,14 @@ export default function CalendarView({
           </button>
         </div>
       )}
+      {!useGoogleCalendar && (
+        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
+          No calendar view of bookings yet — connect a Google Calendar (set{" "}
+          <code className="rounded bg-amber-100 px-1 py-0.5 text-xs">GOOGLE_CALENDAR_ID</code> and the
+          service account env vars) to see all bookings laid out visually here. Until then, use the date
+          picker below to create bookings, or the Bookings page for a full list.
+        </div>
+      )}
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         {useGoogleCalendar ? (
           <div className="w-full min-w-0 flex-1 rounded-lg border border-gray-200 bg-white p-4">
