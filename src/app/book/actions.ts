@@ -5,7 +5,44 @@ import { getStripeClient, getStripeCurrency } from "@/lib/stripe";
 import { getPaymentMode, type PaymentMode } from "@/lib/payment-mode";
 import { onBookingCreated } from "@/lib/booking-sync";
 import { getSiteOrigin } from "@/lib/site-origin";
+import { getBusinessTimezone } from "@/lib/google-calendar";
 import type { PaymentStatus } from "@/lib/types";
+
+/**
+ * Client feedback: a same-day booking needs at least an hour's notice.
+ * The booking flow's own slot picker already hides times that don't leave
+ * that much room (see SAME_DAY_BOOKING_BUFFER_MINUTES in booking-flow.tsx),
+ * but that's just what's offered — this is the actual gate, so a stale page
+ * left open past the cutoff (or a direct call) can't slip one through.
+ * Compares in the business's own timezone, not the server's, since a
+ * booking dated "today" means today where the business is.
+ */
+function assertBookingIsNotTooSoon(bookingDate: string, bookingTime: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: getBusinessTimezone(),
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  const nowDateKey = `${get("year")}-${get("month")}-${get("day")}`;
+  const nowMinutes = Number(get("hour")) * 60 + Number(get("minute"));
+
+  if (bookingDate < nowDateKey) {
+    throw new Error("This date has already passed. Please pick another date.");
+  }
+  if (bookingDate === nowDateKey) {
+    const [h, m] = bookingTime.slice(0, 5).split(":").map(Number);
+    if (h * 60 + m < nowMinutes + 60) {
+      throw new Error(
+        "This time is too soon — same-day bookings need at least 1 hour's notice. Please pick a later time.",
+      );
+    }
+  }
+}
 
 export interface BookedTime {
   time: string;
@@ -245,6 +282,7 @@ export async function createCheckoutSession(
       "Online payment isn't set up yet. Please call us to complete your booking.",
     );
   }
+  assertBookingIsNotTooSoon(input.booking_date, input.booking_time);
 
   const supabase = await createClient();
 
@@ -354,6 +392,7 @@ export interface CreateBookingSimpleResult {
 export async function createBookingSimple(
   input: CreateBookingInput,
 ): Promise<CreateBookingSimpleResult> {
+  assertBookingIsNotTooSoon(input.booking_date, input.booking_time);
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_booking", {
     p_service_id: input.service_id,

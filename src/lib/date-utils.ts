@@ -125,18 +125,23 @@ export function formatTimeLabel(time: string): string {
 }
 
 /**
- * Drops slots that have already started for today's date, so an admin can't
- * pick an already-passed time when creating a same-day booking. Slots for
- * any other date pass through unchanged.
+ * Drops slots that have already started (or start too soon) for today's
+ * date, so a same-day booking can't be made for a time that's already
+ * passed or about to start. `bufferMinutes` pushes the cutoff further out —
+ * the public booking flow uses 60 (a customer needs some notice before they
+ * show up), while the admin's own manual-booking calendar passes 0, since
+ * staff may deliberately want to log a booking for right now. Slots for any
+ * other date pass through unchanged.
  */
 export function filterPastSlots(
   slots: string[],
   dateKey: string,
   now: Date = new Date(),
+  bufferMinutes = 0,
 ): string[] {
   if (dateKey !== toDateKey(now)) return slots;
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  return slots.filter((t) => toMinutes(t) > nowMinutes);
+  const cutoffMinutes = now.getHours() * 60 + now.getMinutes() + bufferMinutes;
+  return slots.filter((t) => toMinutes(t) > cutoffMinutes);
 }
 
 export function addDaysToDateKey(dateKey: string, days: number): string {

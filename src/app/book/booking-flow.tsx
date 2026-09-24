@@ -13,6 +13,7 @@ import type {
   VehicleTypeRow,
 } from "@/lib/types";
 import {
+  filterPastSlots,
   formatTimeLabel,
   generateTimeSlots,
   getMonthGrid,
@@ -41,6 +42,12 @@ import {
 } from "./actions";
 
 const BOOKING_LIMIT = 5;
+
+// Client feedback: a same-day booking shouldn't be offered for a time
+// that's already passed, or one starting too soon for the business to
+// realistically prep for — so today's slot list needs at least this much
+// notice from the current time.
+const SAME_DAY_BOOKING_BUFFER_MINUTES = 60;
 
 // A simple car-silhouette icon per vehicle body type, matched by keywords in
 // the admin-configured vehicle type name — clean and consistent instead of
@@ -707,15 +714,15 @@ export default function BookingFlow({
     setSelectedTime(time);
   }
 
-  const timeSlots = useMemo(
-    () =>
-      generateTimeSlots(
-        businessHours?.openingTime ?? settings.opening_time,
-        businessHours?.closingTime ?? settings.closing_time,
-        settings.slot_interval_minutes,
-      ),
-    [businessHours, settings],
-  );
+  const timeSlots = useMemo(() => {
+    const slots = generateTimeSlots(
+      businessHours?.openingTime ?? settings.opening_time,
+      businessHours?.closingTime ?? settings.closing_time,
+      settings.slot_interval_minutes,
+    );
+    if (!selectedDate) return slots;
+    return filterPastSlots(slots, selectedDate, new Date(), SAME_DAY_BOOKING_BUFFER_MINUTES);
+  }, [businessHours, settings, selectedDate]);
 
   function changeMonth(delta: number) {
     setCursor((c) => {
