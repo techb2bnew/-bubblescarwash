@@ -156,45 +156,54 @@ export async function previewCustomerDiscount(
   return { discountType: row.discount_type, value: row.value, name: row.name };
 }
 
-export interface ReturningCustomer {
+export interface ReturningCustomerCar {
   name: string;
   phone: string;
   email: string;
   vehicleType: string;
   carNumber: string;
+  lastBookedAt: string;
 }
 
 /**
- * Looks up a past booking by phone + car number together (not the plate
- * alone — see migration 0048 for why) so the public booking form can
- * autofill a repeat customer's details instead of making them retype
- * everything.
+ * Looks up every distinct car a phone number has booked with before, so the
+ * public booking form can autofill a repeat customer's details instead of
+ * making them retype everything — one result autofills directly, more than
+ * one lets the form ask which car this booking is for.
+ *
+ * Phone-keyed, not plate-keyed — see migration 0050 for why the plate can't
+ * be a standalone lookup key (it's readable off the car in a public car
+ * park, so a plate-only lookup would hand a stranger's name/phone/email to
+ * anyone who read their plate).
  */
-export async function lookupReturningCustomer(
+export async function lookupReturningCustomerCars(
   phone: string,
-  carNumber: string,
-): Promise<ReturningCustomer | null> {
-  if (!phone.trim() || !carNumber.trim()) return null;
+): Promise<ReturningCustomerCar[]> {
+  if (!phone.trim()) return [];
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .rpc("lookup_returning_customer", { p_phone: phone, p_car_number: carNumber })
-    .maybeSingle();
-  if (error || !data) return null;
+  const { data, error } = await supabase.rpc("lookup_returning_customer_cars", {
+    p_phone: phone,
+  });
+  if (error || !data) return [];
 
-  const row = data as {
+  const rows = data as {
     customer_name: string;
     customer_phone: string;
     customer_email: string;
     vehicle_type: string;
-    car_number: string;
-  };
-  return {
-    name: row.customer_name,
-    phone: row.customer_phone,
-    email: row.customer_email,
-    vehicleType: row.vehicle_type,
-    carNumber: row.car_number,
-  };
+    car_number: string | null;
+    last_booked_at: string;
+  }[];
+  return rows
+    .map((row) => ({
+      name: row.customer_name,
+      phone: row.customer_phone,
+      email: row.customer_email,
+      vehicleType: row.vehicle_type,
+      carNumber: row.car_number ?? "",
+      lastBookedAt: row.last_booked_at,
+    }))
+    .sort((a, b) => (a.lastBookedAt < b.lastBookedAt ? 1 : -1));
 }
 
 export async function countBookingsByEmail(email: string): Promise<number> {
