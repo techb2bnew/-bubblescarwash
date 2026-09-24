@@ -33,10 +33,12 @@ export default function BookingsTable({
   bookings,
   blockedDates,
   settings,
+  canEdit = true,
 }: {
   bookings: Booking[];
   blockedDates: BlockedDate[];
   settings: BusinessSettings;
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -323,6 +325,7 @@ export default function BookingsTable({
                   <StatusDropdown
                     value={b.status}
                     onChange={(newStatus) => handleStatusChange(b.id, newStatus)}
+                    readOnly={!canEdit}
                   />
                 </td>
                 <td className="px-4 py-3">
@@ -337,13 +340,15 @@ export default function BookingsTable({
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <button
-                    type="button"
-                    onClick={() => setRescheduling(b)}
-                    className="rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:border-brand-300 hover:text-brand-700"
-                  >
-                    Reschedule
-                  </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => setRescheduling(b)}
+                      className="rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:border-brand-300 hover:text-brand-700"
+                    >
+                      Reschedule
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

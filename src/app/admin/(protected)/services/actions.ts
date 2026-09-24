@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requirePermission } from "@/lib/admin-role";
 import { createClient } from "@/lib/supabase/server";
 import type { VehicleType } from "@/lib/types";
 
@@ -11,6 +12,7 @@ export interface ServiceTemplateInput {
 }
 
 export async function createServiceTemplate(input: ServiceTemplateInput): Promise<{ id: string }> {
+  await requirePermission("services", "create");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("services")
@@ -24,6 +26,7 @@ export async function createServiceTemplate(input: ServiceTemplateInput): Promis
 }
 
 export async function updateServiceTemplate(id: string, input: ServiceTemplateInput) {
+  await requirePermission("services", "edit");
   const supabase = await createClient();
   const { error } = await supabase.from("services").update(input).eq("id", id);
   if (error) throw new Error(error.message);
@@ -32,6 +35,7 @@ export async function updateServiceTemplate(id: string, input: ServiceTemplateIn
 }
 
 export async function toggleServiceActive(id: string, active: boolean) {
+  await requirePermission("services", "edit");
   const supabase = await createClient();
   const { error } = await supabase
     .from("services")
@@ -42,6 +46,7 @@ export async function toggleServiceActive(id: string, active: boolean) {
 }
 
 export async function deleteServiceTemplate(id: string) {
+  await requirePermission("services", "delete");
   const supabase = await createClient();
   const { error } = await supabase.from("services").delete().eq("id", id);
   if (error) {
@@ -65,6 +70,7 @@ export async function createServicePrice(
   vehicleType: VehicleType,
   price: number,
 ): Promise<{ id: string }> {
+  await requirePermission("services", "create");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("service_prices")
@@ -78,6 +84,7 @@ export async function createServicePrice(
 }
 
 export async function updateServicePrice(id: string, price: number) {
+  await requirePermission("services", "edit");
   const supabase = await createClient();
   const { error } = await supabase.from("service_prices").update({ price }).eq("id", id);
   if (error) throw new Error(error.message);
@@ -86,6 +93,7 @@ export async function updateServicePrice(id: string, price: number) {
 }
 
 export async function deleteServicePrice(id: string) {
+  await requirePermission("services", "delete");
   const supabase = await createClient();
   const { error } = await supabase.from("service_prices").delete().eq("id", id);
   if (error) throw new Error(error.message);
@@ -102,6 +110,7 @@ export async function createServiceAddOn(
   name: string,
   sortOrder: number,
 ): Promise<{ id: string }> {
+  await requirePermission("inclusions", "create");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("inclusions")
@@ -115,6 +124,7 @@ export async function createServiceAddOn(
 }
 
 export async function updateServiceAddOn(id: string, name: string, sortOrder: number) {
+  await requirePermission("inclusions", "edit");
   const supabase = await createClient();
   const { error } = await supabase
     .from("inclusions")
@@ -126,6 +136,7 @@ export async function updateServiceAddOn(id: string, name: string, sortOrder: nu
 }
 
 export async function toggleServiceAddOnActive(id: string, active: boolean) {
+  await requirePermission("inclusions", "edit");
   const supabase = await createClient();
   const { error } = await supabase.from("inclusions").update({ active }).eq("id", id);
   if (error) throw new Error(error.message);
@@ -134,6 +145,7 @@ export async function toggleServiceAddOnActive(id: string, active: boolean) {
 }
 
 export async function deleteServiceAddOn(id: string) {
+  await requirePermission("inclusions", "delete");
   const supabase = await createClient();
   const { error } = await supabase.from("inclusions").delete().eq("id", id);
   if (error) throw new Error(error.message);

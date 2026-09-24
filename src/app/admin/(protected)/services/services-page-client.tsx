@@ -9,10 +9,16 @@ export default function ServicesPageClient({
   services,
   vehicleTypes,
   categories,
+  canCreate = true,
+  canEdit = true,
+  canDelete = true,
 }: {
   services: ServiceTemplate[];
   vehicleTypes: VehicleTypeRow[];
   categories: ServiceCategoryRow[];
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
   const [modal, setModal] = useState<"new" | ServiceTemplate | null>(null);
 
@@ -23,12 +29,14 @@ export default function ServicesPageClient({
           <h1 className="text-2xl font-semibold text-gray-900">Services</h1>
           <p className="mt-1 text-sm text-gray-500">Prices are per vehicle type.</p>
         </div>
-        <button
-          onClick={() => setModal("new")}
-          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-        >
-          + Add Service
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => setModal("new")}
+            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            + Add Service
+          </button>
+        )}
       </div>
 
       <ServicesTable
@@ -36,6 +44,8 @@ export default function ServicesPageClient({
         vehicleTypes={vehicleTypes}
         categories={categories}
         onEdit={(s) => setModal(s)}
+        canEdit={canEdit}
+        canDelete={canDelete}
       />
 
       {modal && (

@@ -5,21 +5,38 @@ import type { GiftCardProduct } from "@/lib/types";
 import GiftCardProductsTable from "./products-table";
 import GiftCardProductForm from "./product-form";
 
-export default function ProductsPanel({ products }: { products: GiftCardProduct[] }) {
+export default function ProductsPanel({
+  products,
+  canCreate = true,
+  canEdit = true,
+  canDelete = true,
+}: {
+  products: GiftCardProduct[];
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}) {
   const [modal, setModal] = useState<"new" | GiftCardProduct | null>(null);
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <button
-          onClick={() => setModal("new")}
-          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-        >
-          + Add Gift Card
-        </button>
-      </div>
+      {canCreate && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => setModal("new")}
+            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            + Add Gift Card
+          </button>
+        </div>
+      )}
 
-      <GiftCardProductsTable products={products} onEdit={(p) => setModal(p)} />
+      <GiftCardProductsTable
+        products={products}
+        onEdit={(p) => setModal(p)}
+        canEdit={canEdit}
+        canDelete={canDelete}
+      />
 
       {modal && (
         <div

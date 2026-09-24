@@ -124,6 +124,21 @@ export function formatTimeLabel(time: string): string {
   return `${h12}:${String(m).padStart(2, "0")} ${period}`;
 }
 
+/**
+ * Drops slots that have already started for today's date, so an admin can't
+ * pick an already-passed time when creating a same-day booking. Slots for
+ * any other date pass through unchanged.
+ */
+export function filterPastSlots(
+  slots: string[],
+  dateKey: string,
+  now: Date = new Date(),
+): string[] {
+  if (dateKey !== toDateKey(now)) return slots;
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  return slots.filter((t) => toMinutes(t) > nowMinutes);
+}
+
 export function addDaysToDateKey(dateKey: string, days: number): string {
   const [y, m, d] = dateKey.split("-").map(Number);
   return toDateKey(new Date(y, m - 1, d + days));

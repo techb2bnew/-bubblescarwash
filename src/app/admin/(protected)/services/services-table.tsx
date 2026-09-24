@@ -24,11 +24,15 @@ export default function ServicesTable({
   vehicleTypes,
   categories,
   onEdit,
+  canEdit = true,
+  canDelete = true,
 }: {
   services: ServiceTemplate[];
   vehicleTypes: VehicleTypeRow[];
   categories: ServiceCategoryRow[];
   onEdit: (service: ServiceTemplate) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirmDialog();
@@ -222,7 +226,8 @@ export default function ServicesTable({
                 <td className="px-4 py-3">
                   <button
                     onClick={() => handleToggle(s)}
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    disabled={!canEdit}
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium disabled:cursor-default ${
                       s.active
                         ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-200"
                         : "bg-gray-100 text-gray-500 ring-1 ring-inset ring-gray-200"
@@ -233,8 +238,8 @@ export default function ServicesTable({
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <EditButton onClick={() => onEdit(s)} />
-                    <DeleteButton onClick={() => handleDelete(s.id)} />
+                    {canEdit && <EditButton onClick={() => onEdit(s)} />}
+                    {canDelete && <DeleteButton onClick={() => handleDelete(s.id)} />}
                   </div>
                 </td>
               </tr>

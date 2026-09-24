@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAdminRole, getStaffPermissions, hasPermission } from "@/lib/admin-role";
 import type { ServiceCategoryRow } from "@/lib/types";
 import { EntityPageClient } from "../_components/entity-page-client";
 import {
@@ -10,10 +11,11 @@ import {
 
 export default async function AdminServiceCategoriesPage() {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("service_categories")
-    .select("*")
-    .order("sort_order");
+  const [{ data }, role, permissions] = await Promise.all([
+    supabase.from("service_categories").select("*").order("sort_order"),
+    getAdminRole(),
+    getStaffPermissions(),
+  ]);
 
   return (
     <EntityPageClient
@@ -27,6 +29,9 @@ export default async function AdminServiceCategoriesPage() {
       onUpdate={updateServiceCategory}
       onDelete={deleteServiceCategory}
       onToggleActive={toggleServiceCategoryActive}
+      canCreate={hasPermission(role, permissions, "categories", "create")}
+      canEdit={hasPermission(role, permissions, "categories", "edit")}
+      canDelete={hasPermission(role, permissions, "categories", "delete")}
     />
   );
 }

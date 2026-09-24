@@ -10,9 +10,15 @@ export type CustomerOption = Pick<Customer, "id" | "name" | "phone" | "email">;
 export default function DiscountsPageClient({
   discounts,
   customers,
+  canCreate = true,
+  canEdit = true,
+  canDelete = true,
 }: {
   discounts: Discount[];
   customers: CustomerOption[];
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
   const [modal, setModal] = useState<"new" | Discount | null>(null);
 
@@ -27,15 +33,17 @@ export default function DiscountsPageClient({
             redemption limits and an expiry date.
           </p>
         </div>
-        <button
-          onClick={() => setModal("new")}
-          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-        >
-          + Add Discount
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => setModal("new")}
+            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            + Add Discount
+          </button>
+        )}
       </div>
 
-      <DiscountsTable discounts={discounts} onEdit={(d) => setModal(d)} />
+      <DiscountsTable discounts={discounts} onEdit={(d) => setModal(d)} canEdit={canEdit} canDelete={canDelete} />
 
       {modal && (
         <div

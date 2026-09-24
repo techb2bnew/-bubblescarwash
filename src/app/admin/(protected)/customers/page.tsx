@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAdminRole, getStaffPermissions, hasPermission } from "@/lib/admin-role";
 import type { Booking, Customer, CustomerSummary } from "@/lib/types";
 import CustomersPageClient from "./customers-page-client";
 
@@ -76,9 +77,11 @@ function buildCustomerSummaries(
 
 export default async function AdminCustomersPage() {
   const supabase = await createClient();
-  const [{ data: customerRows }, { data: bookings }] = await Promise.all([
+  const [{ data: customerRows }, { data: bookings }, role, permissions] = await Promise.all([
     supabase.from("customers").select("*").order("name"),
     supabase.from("bookings").select("*, services(*)").order("booking_date", { ascending: false }),
+    getAdminRole(),
+    getStaffPermissions(),
   ]);
 
   const customers = buildCustomerSummaries(
@@ -86,5 +89,12 @@ export default async function AdminCustomersPage() {
     (bookings as Booking[]) ?? [],
   );
 
-  return <CustomersPageClient customers={customers} />;
+  return (
+    <CustomersPageClient
+      customers={customers}
+      canCreate={hasPermission(role, permissions, "customers", "create")}
+      canEdit={hasPermission(role, permissions, "customers", "edit")}
+      canDelete={hasPermission(role, permissions, "customers", "delete")}
+    />
+  );
 }

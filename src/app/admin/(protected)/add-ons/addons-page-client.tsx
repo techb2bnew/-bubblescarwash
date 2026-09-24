@@ -12,9 +12,15 @@ export type ServiceOption = { id: string; name: string };
 export default function AddOnsPageClient({
   addOns,
   services,
+  canCreate = true,
+  canEdit = true,
+  canDelete = true,
 }: {
   addOns: AddOnWithService[];
   services: ServiceOption[];
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
   const [modal, setModal] = useState<"new" | AddOnWithService | null>(null);
 
@@ -29,14 +35,16 @@ export default function AddOnsPageClient({
             inside its edit form on the Services page.
           </p>
         </div>
-        <button
-          onClick={() => setModal("new")}
-          disabled={services.length === 0}
-          title={services.length === 0 ? "Add a service first — an inclusion must belong to one" : undefined}
-          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-        >
-          + Add Inclusion
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => setModal("new")}
+            disabled={services.length === 0}
+            title={services.length === 0 ? "Add a service first — an inclusion must belong to one" : undefined}
+            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          >
+            + Add Inclusion
+          </button>
+        )}
       </div>
 
       {services.length === 0 && (
@@ -49,7 +57,13 @@ export default function AddOnsPageClient({
         </p>
       )}
 
-      <AddOnsTable addOns={addOns} services={services} onEdit={(a) => setModal(a)} />
+      <AddOnsTable
+        addOns={addOns}
+        services={services}
+        onEdit={(a) => setModal(a)}
+        canEdit={canEdit}
+        canDelete={canDelete}
+      />
 
       {modal && (
         <div

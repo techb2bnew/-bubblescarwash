@@ -4,10 +4,15 @@ import { useState } from "react";
 import Image from "next/image";
 import Sidebar from "./sidebar";
 import { ToastProvider } from "./_components/toast";
+import type { AdminRole, ModuleKey, StaffPermission } from "@/lib/types";
 
 export default function AdminShell({
+  role,
+  permissions,
   children,
 }: {
+  role: AdminRole;
+  permissions: Record<ModuleKey, StaffPermission> | null;
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -15,7 +20,12 @@ export default function AdminShell({
   return (
     <ToastProvider>
     <div className="flex h-screen bg-gray-50">
-      <Sidebar open={mobileOpen} onClose={() => setMobileOpen(false)} />
+      <Sidebar
+        role={role}
+        permissions={permissions}
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+      />
 
       <div className="flex h-screen flex-1 flex-col overflow-hidden">
         <header className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 md:hidden">

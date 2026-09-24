@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requirePermission } from "@/lib/admin-role";
 import { createClient } from "@/lib/supabase/server";
 import type { DiscountType } from "@/lib/types";
 
@@ -17,6 +18,7 @@ export interface DiscountInput {
 }
 
 export async function createDiscount(input: DiscountInput): Promise<{ id: string }> {
+  await requirePermission("discounts", "create");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("discounts")
@@ -29,6 +31,7 @@ export async function createDiscount(input: DiscountInput): Promise<{ id: string
 }
 
 export async function updateDiscount(id: string, input: DiscountInput) {
+  await requirePermission("discounts", "edit");
   const supabase = await createClient();
   const { error } = await supabase.from("discounts").update(input).eq("id", id);
   if (error) throw new Error(error.message);
@@ -36,6 +39,7 @@ export async function updateDiscount(id: string, input: DiscountInput) {
 }
 
 export async function toggleDiscountActive(id: string, active: boolean) {
+  await requirePermission("discounts", "edit");
   const supabase = await createClient();
   const { error } = await supabase.from("discounts").update({ active }).eq("id", id);
   if (error) throw new Error(error.message);
@@ -43,6 +47,7 @@ export async function toggleDiscountActive(id: string, active: boolean) {
 }
 
 export async function deleteDiscount(id: string) {
+  await requirePermission("discounts", "delete");
   const supabase = await createClient();
   const { error } = await supabase.from("discounts").delete().eq("id", id);
   if (error) throw new Error(error.message);

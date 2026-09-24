@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAdminRole, getStaffPermissions, hasPermission } from "@/lib/admin-role";
 import { syncBlockedDatesToGoogle } from "@/lib/blocked-date-sync";
 import { syncBlockedSlotsToGoogle } from "@/lib/blocked-slot-sync";
 import { getGoogleCalendarEmbedUrl } from "@/lib/google-calendar";
@@ -32,6 +33,8 @@ export default async function AdminCalendarPage() {
     { data: extras },
     { data: categories },
     { data: carBookings },
+    role,
+    permissions,
   ] = await Promise.all([
     supabase.from("blocked_dates").select("*").order("date"),
     supabase.from("business_settings").select("*").eq("id", 1).single(),
@@ -52,6 +55,8 @@ export default async function AdminCalendarPage() {
       .from("bookings")
       .select("customer_email, customer_phone, car_number")
       .not("car_number", "is", null),
+    getAdminRole(),
+    getStaffPermissions(),
   ]);
 
   const carsByEmail = new Map<string, Set<string>>();
@@ -104,6 +109,7 @@ export default async function AdminCalendarPage() {
         categories={(categories as ServiceCategoryRow[]) ?? []}
         googleCalendarEmbedUrl={googleCalendarEmbedUrl}
         paymentMode={getPaymentMode()}
+        canEdit={hasPermission(role, permissions, "calendar", "create")}
       />
     </div>
   );

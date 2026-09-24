@@ -14,6 +14,7 @@ import type {
 } from "@/lib/types";
 import type { PaymentMode } from "@/lib/payment-mode";
 import {
+  filterPastSlots,
   formatDateLong,
   formatTimeLabel,
   generateTimeSlots,
@@ -40,6 +41,7 @@ export default function CalendarView({
   categories,
   googleCalendarEmbedUrl,
   paymentMode,
+  canEdit = true,
 }: {
   blockedDates: BlockedDate[];
   settings: BusinessSettings;
@@ -50,6 +52,7 @@ export default function CalendarView({
   categories: ServiceCategoryRow[];
   googleCalendarEmbedUrl: string | null;
   paymentMode: PaymentMode;
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -88,10 +91,14 @@ export default function CalendarView({
 
   const weeks = useMemo(() => getMonthGrid(cursor.year, cursor.month), [cursor]);
 
-  const timeSlots = useMemo(
-    () => generateTimeSlots(dateHours.openingTime, dateHours.closingTime, settings.slot_interval_minutes),
-    [dateHours, settings.slot_interval_minutes],
-  );
+  const timeSlots = useMemo(() => {
+    const slots = generateTimeSlots(
+      dateHours.openingTime,
+      dateHours.closingTime,
+      settings.slot_interval_minutes,
+    );
+    return selected ? filterPastSlots(slots, selected) : slots;
+  }, [dateHours, settings.slot_interval_minutes, selected]);
 
   const dayIsClosed = selected ? blockedByDate.has(selected) : false;
 
@@ -318,7 +325,9 @@ export default function CalendarView({
                 }}
                 className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
               />
-              <p className="mt-1 text-xs text-gray-500">Pick a date to create a booking.</p>
+              <p className="mt-1 text-xs text-gray-500">
+                {canEdit ? "Pick a date to create a booking." : "Pick a date to view its availability."}
+              </p>
             </div>
           )}
 
@@ -333,7 +342,7 @@ export default function CalendarView({
                   : `Open ${formatTimeLabel(dateHours.openingTime)}–${formatTimeLabel(dateHours.closingTime)} · ${boothCount} booking${boothCount === 1 ? "" : "s"} allowed per hour`}
               </p>
 
-              {dayIsClosed ? (
+              {!canEdit ? null : dayIsClosed ? (
                 <p className="mt-4 text-sm text-gray-500">
                   This day is closed.{" "}
                   <Link href="/admin/calendar/set-operations" className="font-medium text-brand-600 hover:underline">
@@ -365,7 +374,9 @@ export default function CalendarView({
               )}
             </>
           ) : (
-            <p className="text-sm text-gray-500">Select a date to create a booking.</p>
+            <p className="text-sm text-gray-500">
+              {canEdit ? "Select a date to create a booking." : "Select a date to view its availability."}
+            </p>
           )}
         </div>
       </div>

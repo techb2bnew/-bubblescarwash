@@ -22,11 +22,13 @@ import {
   clearDateHours,
   clearWeekdayHours,
   getDateAvailability,
+  getOverlappingBoothCapacity,
   setBoothCapacity,
   setDateHours,
   setWeekdayHours,
   unblockDate,
   unblockSlot,
+  type OverlappingBoothPeriod,
 } from "./actions";
 import { useToast } from "../_components/toast";
 
@@ -113,6 +115,11 @@ export default function SetOperationsView({
   const [capacityRows, setCapacityRows] = useState<CapacityRow[]>([newCapacityRow(1)]);
   const [savingBooths, setSavingBooths] = useState(false);
   const [boothError, setBoothError] = useState<string | null>(null);
+  const [boothOverrideConfirm, setBoothOverrideConfirm] = useState<{
+    endDate: string;
+    overlaps: OverlappingBoothPeriod[];
+  } | null>(null);
+  const [checkingOverlap, setCheckingOverlap] = useState(false);
 
   const [rangeFrom, setRangeFrom] = useState("");
   const [rangeTo, setRangeTo] = useState("");
@@ -215,26 +222,50 @@ export default function SetOperationsView({
     setCapacityRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   }
 
-  async function handleSetBoothCapacity() {
-    const startDate = boothStartDate;
-    if (!startDate) return;
-
+function validateCapacityRows(): string | null {
     for (let i = 0; i < capacityRows.length; i++) {
       const row = capacityRows[i];
       const label = capacityRows.length > 1 ? `Row ${i + 1}: ` : "";
-      if (row.count < 1) {
-        setBoothError(`${label}Capacity must be at least 1.`);
-        return;
-      }
+      if (row.count < 1) return `${label}Capacity must be at least 1.`;
       if (Boolean(row.startTime) !== Boolean(row.endTime)) {
-        setBoothError(`${label}Pick both a start and end time, or leave both blank for all day.`);
-        return;
+        return `${label}Pick both a start and end time, or leave both blank for all day.`;
       }
       if (row.startTime && row.endTime && row.startTime >= row.endTime) {
-        setBoothError(`${label}Start time must be before end time.`);
-        return;
+        return `${label}Start time must be before end time.`;
       }
     }
+    return null;
+  }
+
+  /** Checks for existing overlapping periods and asks for confirmation before overriding them. */
+  async function handleReviewBoothCapacity() {
+    const startDate = boothStartDate;
+    if (!startDate) return;
+    const validationError = validateCapacityRows();
+    if (validationError) {
+      setBoothError(validationError);
+      return;
+    }
+    setBoothError(null);
+    setCheckingOverlap(true);
+    try {
+      const endDate = boothPeriodEndDate(startDate, boothDuration);
+      const overlaps = await getOverlappingBoothCapacity(startDate, endDate);
+      if (overlaps.length > 0) {
+        setBoothOverrideConfirm({ endDate, overlaps });
+      } else {
+        await handleSetBoothCapacity();
+      }
+    } catch (err) {
+      setBoothError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setCheckingOverlap(false);
+    }
+  }
+
+  async function handleSetBoothCapacity() {
+    const startDate = boothStartDate;
+    if (!startDate) return;
 
     setSavingBooths(true);
     setBoothError(null);
@@ -258,6 +289,7 @@ export default function SetOperationsView({
       setBoothCount(result.boothCount);
       setSlotUsage(new Map(result.slotUsage.map((s) => [s.time, s.count])));
       setActiveOp(null);
+      setBoothOverrideConfirm(null);
       refreshAfterAction();
       showToast("Booth capacity updated.");
     } catch (err) {
@@ -621,11 +653,11 @@ export default function SetOperationsView({
               {boothError && <p className="text-sm text-red-600">{boothError}</p>}
               <button
                 type="button"
-                onClick={handleSetBoothCapacity}
-                disabled={savingBooths || !boothStartDate}
+                onClick={handleReviewBoothCapacity}
+                disabled={savingBooths || checkingOverlap || !boothStartDate}
                 className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
               >
-                {savingBooths ? "Saving..." : "Apply Capacity"}
+                {checkingOverlap ? "Checking..." : savingBooths ? "Saving..." : "Apply Capacity"}
               </button>
             </div>
           )}
@@ -948,6 +980,55 @@ export default function SetOperationsView({
           )}
         </div>
       </div>
+
+      {boothOverrideConfirm && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4"
+          onClick={() => setBoothOverrideConfirm(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-base font-semibold text-gray-900">Override existing capacity?</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              <strong>{formatDateLong(boothStartDate)}</strong> to{" "}
+              <strong>{formatDateLong(boothOverrideConfirm.endDate)}</strong> already has{" "}
+              {boothOverrideConfirm.overlaps.length === 1 ? "a" : boothOverrideConfirm.overlaps.length} capacity
+              setting{boothOverrideConfirm.overlaps.length > 1 ? "s" : ""} covering part of this range. The
+              shortest/most specific period always wins, so your new setting will take priority over these for the
+              days they share:
+            </p>
+            <ul className="mt-3 max-h-40 space-y-1 overflow-y-auto rounded-md border border-gray-200 bg-gray-50 p-2 text-xs text-gray-700">
+              {boothOverrideConfirm.overlaps.map((period, i) => (
+                <li key={i}>
+                  {formatDateLong(period.startDate)}
+                  {period.endDate !== period.startDate ? ` – ${formatDateLong(period.endDate)}` : ""}:{" "}
+                  <strong>{period.boothCount}/hr</strong>
+                  {period.startTime && period.endTime
+                    ? ` (${formatTimeLabel(period.startTime)}–${formatTimeLabel(period.endTime)})`
+                    : " (all day)"}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setBoothOverrideConfirm(null)}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSetBoothCapacity}
+                disabled={savingBooths}
+                className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+              >
+                {savingBooths ? "Overriding..." : "Yes, Override"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

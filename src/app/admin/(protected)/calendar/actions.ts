@@ -11,6 +11,7 @@ import {
   onBlockedSlotsCreated,
 } from "@/lib/blocked-slot-sync";
 import { onBookingCreated } from "@/lib/booking-sync";
+import { requirePermission } from "@/lib/admin-role";
 import { createClient } from "@/lib/supabase/server";
 import { getStripeClient, getStripeCurrency } from "@/lib/stripe";
 import { getSiteOrigin } from "@/lib/site-origin";
@@ -31,6 +32,7 @@ import {
 } from "@/lib/date-utils";
 
 export async function blockDate(date: string, reason: string) {
+  await requirePermission("set_operations", "edit");
   const supabase = await createClient();
   const { error } = await supabase
     .from("blocked_dates")
@@ -43,6 +45,7 @@ export async function blockDate(date: string, reason: string) {
 }
 
 export async function unblockDate(date: string) {
+  await requirePermission("set_operations", "edit");
   const supabase = await createClient();
 
   await onBlockedDateRemoved(date);
@@ -150,12 +153,47 @@ async function peakHourlyBookings(
   return peak;
 }
 
+export interface OverlappingBoothPeriod {
+  startDate: string;
+  endDate: string;
+  boothCount: number;
+  startTime: string | null;
+  endTime: string | null;
+}
+
+/**
+ * Existing capacity periods that overlap [startDate, endDate] — shown to the
+ * admin before saving so a new period's effect on the range is clear (the
+ * shortest overlapping period always wins, per get_booth_count).
+ */
+export async function getOverlappingBoothCapacity(
+  startDate: string,
+  endDate: string,
+): Promise<OverlappingBoothPeriod[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("booth_capacity_periods")
+    .select("start_date, end_date, booth_count, start_time, end_time")
+    .lte("start_date", endDate)
+    .gte("end_date", startDate)
+    .order("start_date", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    startDate: row.start_date as string,
+    endDate: row.end_date as string,
+    boothCount: row.booth_count as number,
+    startTime: (row.start_time as string | null)?.slice(0, 5) ?? null,
+    endTime: (row.end_time as string | null)?.slice(0, 5) ?? null,
+  }));
+}
+
 export async function setBoothCapacity(
   startDate: string,
   boothCount: number,
   duration: BoothCapacityDuration,
   hours?: { startTime: string; endTime: string },
 ) {
+  await requirePermission("set_operations", "edit");
   if (boothCount < 1) throw new Error("Booth count must be at least 1.");
   if (hours && hours.startTime >= hours.endTime) {
     throw new Error("Start time must be before end time.");
@@ -235,6 +273,7 @@ export async function setWeekdayHours(
   startTime: string,
   endTime: string,
 ) {
+  await requirePermission("set_operations", "edit");
   if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
     throw new Error("Invalid day of week.");
   }
@@ -258,6 +297,7 @@ export async function setWeekdayHours(
 }
 
 export async function clearWeekdayHours(dayOfWeek: number) {
+  await requirePermission("set_operations", "edit");
   const supabase = await createClient();
   const { error } = await supabase
     .from("weekday_hours")
@@ -273,6 +313,7 @@ export async function setDateHours(
   startTime: string,
   endTime: string,
 ) {
+  await requirePermission("set_operations", "edit");
   if (startTime >= endTime) {
     throw new Error("Start time must be before end time.");
   }
@@ -288,6 +329,7 @@ export async function setDateHours(
 }
 
 export async function clearDateHours(date: string) {
+  await requirePermission("set_operations", "edit");
   const supabase = await createClient();
   const { error } = await supabase
     .from("date_hours_overrides")
@@ -364,6 +406,7 @@ export async function getDateAvailability(
 }
 
 export async function blockSlot(date: string, time: string, reason: string) {
+  await requirePermission("set_operations", "edit");
   const supabase = await createClient();
   const { error } = await supabase
     .from("blocked_slots")
@@ -463,6 +506,7 @@ async function insertOverrideBooking(
 export async function createBookingAdminPayLater(
   input: AdminBookingInput,
 ): Promise<{ bookingId: string }> {
+  await requirePermission("calendar", "create");
   const supabase = await createClient();
   let bookingId: string;
 
@@ -513,6 +557,7 @@ export async function createBookingAdminPayLater(
 export async function createBookingAdminCheckout(
   input: AdminBookingInput,
 ): Promise<{ url: string }> {
+  await requirePermission("calendar", "create");
   const stripe = getStripeClient();
   if (!stripe) {
     throw new Error("Online payment isn't set up yet.");
@@ -595,6 +640,7 @@ export async function createBookingAdminCheckout(
 
 export async function blockSlots(date: string, times: string[], reason: string) {
   if (times.length === 0) return;
+  await requirePermission("set_operations", "edit");
   const supabase = await createClient();
   const { error } = await supabase
     .from("blocked_slots")
@@ -610,6 +656,7 @@ export async function blockSlots(date: string, times: string[], reason: string) 
 }
 
 export async function unblockSlot(date: string, time: string) {
+  await requirePermission("set_operations", "edit");
   const supabase = await createClient();
 
   await onBlockedSlotRemoved(date, time);

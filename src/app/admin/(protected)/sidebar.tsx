@@ -5,8 +5,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "./logout-button";
+import type { AdminRole, ModuleKey, StaffPermission } from "@/lib/types";
 
-const NAV_ITEMS = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  /** Which staff_permissions row gates this link. Undefined = always visible (Dashboard, Permissions). */
+  module?: ModuleKey;
+  children?: { label: string; href: string; module: ModuleKey }[];
+}
+
+const NAV_ITEMS: NavItem[] = [
   {
     href: "/admin",
     label: "Dashboard",
@@ -17,11 +27,13 @@ const NAV_ITEMS = [
   {
     href: "/admin/analytics",
     label: "Analytics",
+    module: "analytics",
     icon: <path d="M3 12h4l3 8 4-16 3 8h4" />,
   },
   {
     href: "/admin/bookings",
     label: "Bookings",
+    module: "bookings",
     icon: (
       <path d="M6 3h9l3 3v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm2 7h8M8 13h8M8 16h5" />
     ),
@@ -29,6 +41,7 @@ const NAV_ITEMS = [
   {
     href: "/admin/customers",
     label: "Customers",
+    module: "customers",
     icon: (
       <path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 0a4 4 0 0 0 3-6.65M20 20v-1a4 4 0 0 0-3-3.85" />
     ),
@@ -36,6 +49,7 @@ const NAV_ITEMS = [
   {
     href: "/admin/services",
     label: "Services",
+    module: "services",
     icon: (
       <path d="M9 4h6l5 5.5a2 2 0 0 1 0 2.8L14.3 18a2 2 0 0 1-2.8 0L5 11.5V6a2 2 0 0 1 2-2Zm.5 5.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
     ),
@@ -43,6 +57,7 @@ const NAV_ITEMS = [
   {
     href: "/admin/categories",
     label: "Categories",
+    module: "categories",
     icon: (
       <path d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z" />
     ),
@@ -50,11 +65,13 @@ const NAV_ITEMS = [
   {
     href: "/admin/add-ons",
     label: "Inclusions",
+    module: "inclusions",
     icon: <path d="m5 13 4 4L19 7" />,
   },
   {
     href: "/admin/vehicle-types",
     label: "Vehicle Types",
+    module: "vehicle_types",
     icon: (
       <path d="M3 13.5 5 8a2 2 0 0 1 2-1.5h10A2 2 0 0 1 19 8l2 5.5M3 13.5V18a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-4.5M3 13.5h18M7 16.5h.01M17 16.5h.01" />
     ),
@@ -62,6 +79,7 @@ const NAV_ITEMS = [
   {
     href: "/admin/extras",
     label: "Add-Ons",
+    module: "extras",
     icon: (
       <path d="M20.6 12.9 12.9 20.6a2 2 0 0 1-2.8 0l-6.7-6.7a2 2 0 0 1 0-2.8L11.1 3.4A2 2 0 0 1 12.5 3H19a2 2 0 0 1 2 2v6.5a2 2 0 0 1-.6 1.4ZM8.5 8.5h.01" />
     ),
@@ -73,13 +91,14 @@ const NAV_ITEMS = [
       <path d="M7 3v3M17 3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" />
     ),
     children: [
-      { label: "Booking Calendar", href: "/admin/calendar" },
-      { label: "Set Operations", href: "/admin/calendar/set-operations" },
+      { label: "Booking Calendar", href: "/admin/calendar", module: "calendar" },
+      { label: "Set Operations", href: "/admin/calendar/set-operations", module: "set_operations" },
     ],
   },
   {
     href: "/admin/gift-cards",
     label: "Gift Cards",
+    module: "gift_cards",
     icon: (
       <path d="M20 7H4a1 1 0 0 0-1 1v3h18V8a1 1 0 0 0-1-1ZM3 13v5a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-5M12 7v13M7.5 7C6 7 5 5.9 5 4.5S6 2 7.5 2 10 4 12 7c2-3 3.5-5 4.5-5S19 3.1 19 4.5 18 7 16.5 7" />
     ),
@@ -87,6 +106,7 @@ const NAV_ITEMS = [
   {
     href: "/admin/discounts",
     label: "Discounts",
+    module: "discounts",
     icon: (
       <path d="M9.5 4h5.7a2 2 0 0 1 1.4.6l4.8 4.8a2 2 0 0 1 0 2.8l-6.7 6.7a2 2 0 0 1-2.8 0L4.8 11.7A2 2 0 0 1 4 10.3V6a2 2 0 0 1 2-2h3.5ZM8.5 8.5h.01M9 15l6-6" />
     ),
@@ -94,11 +114,21 @@ const NAV_ITEMS = [
   {
     href: "/admin/payments",
     label: "Payments",
+    module: "payments",
     icon: (
       <path d="M2 10h20M6 15h4M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" />
     ),
   },
 ];
+
+/** Admin-only, regardless of any staff_permissions row — staff can never see or reach this. */
+const PERMISSIONS_NAV_ITEM: NavItem = {
+  href: "/admin/permissions",
+  label: "Permissions",
+  icon: (
+    <path d="M12 2 4 5v6c0 5 3.5 8.5 8 11 4.5-2.5 8-6 8-11V5l-8-3ZM9.5 12l1.8 1.8L15 10" />
+  ),
+};
 
 function ChevronIcon({ open }: { open: boolean }) {
   return (
@@ -119,9 +149,13 @@ function ChevronIcon({ open }: { open: boolean }) {
 }
 
 export default function Sidebar({
+  role,
+  permissions,
   open,
   onClose,
 }: {
+  role: AdminRole;
+  permissions: Record<ModuleKey, StaffPermission> | null;
   open: boolean;
   onClose: () => void;
 }) {
@@ -129,6 +163,17 @@ export default function Sidebar({
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => ({
     "/admin/calendar": true,
   }));
+
+  const navItems: NavItem[] =
+    role === "staff" && permissions
+      ? NAV_ITEMS.filter((item) => !item.module || permissions[item.module]?.can_view).map((item) => {
+          const children = item.children?.filter((child) => permissions[child.module]?.can_view);
+          // Drop the submenu entirely once it's down to a single link (e.g.
+          // Calendar with only "Booking Calendar" left) — render it as a
+          // plain nav item instead of a one-item dropdown.
+          return children && children.length > 1 ? { ...item, children } : { ...item, children: undefined };
+        })
+      : [...NAV_ITEMS, PERMISSIONS_NAV_ITEM];
 
   return (
     <>
@@ -176,7 +221,7 @@ export default function Sidebar({
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const isExpanded = expanded[item.href] ?? false;
             // A parent row never highlights itself — the child rows carry the
             // active state, so an open submenu doesn't show two highlights.
