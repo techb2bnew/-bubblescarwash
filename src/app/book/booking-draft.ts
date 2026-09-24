@@ -74,3 +74,28 @@ export function clearBookingDraft(): void {
     // ignore
   }
 }
+
+/**
+ * Whether the "Booked with us before?" popup has already been shown on this
+ * browser — localStorage rather than sessionStorage, since client feedback
+ * was that it should only ever ask once per visitor, not once per tab.
+ */
+const RETURNING_POPUP_SEEN_KEY = "bcw:returning-popup-seen";
+
+export function hasSeenReturningPopup(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    return window.localStorage.getItem(RETURNING_POPUP_SEEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markReturningPopupSeen(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(RETURNING_POPUP_SEEN_KEY, "1");
+  } catch {
+    // ignore
+  }
+}

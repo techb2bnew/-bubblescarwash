@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { loadBookingDraft, saveBookingDraft } from "./booking-draft";
+import {
+  hasSeenReturningPopup,
+  loadBookingDraft,
+  markReturningPopupSeen,
+  saveBookingDraft,
+} from "./booking-draft";
 import type {
   BlockedDate,
   BusinessSettings,
@@ -400,7 +405,7 @@ export default function BookingFlow({
 
     Promise.resolve().then(() => {
       if (!draft) {
-        setShowReturningPopup(true);
+        if (!hasSeenReturningPopup()) setShowReturningPopup(true);
         setHydrated(true);
         return;
       }
@@ -653,6 +658,7 @@ export default function BookingFlow({
     setCarNumber(match.carNumber);
     setShowReturningPopup(false);
     setPopupCarChoices([]);
+    markReturningPopupSeen();
   }
 
   async function handleCheckReturningCustomer() {
@@ -1488,7 +1494,7 @@ export default function BookingFlow({
           </div>
 
           <h3 className="mb-3 text-sm font-bold text-gray-900">
-            Your <span className="wave-word">Information</span>
+            Your Details <span className="wave-word">&amp; Payment</span>
           </h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
@@ -1603,9 +1609,7 @@ export default function BookingFlow({
             </div>
           ) : (
             <div className="mt-6">
-              <h3 className="mb-3 text-sm font-bold text-gray-900">
-                Select <span className="wave-word">Payment</span> Method
-              </h3>
+              <p className="mb-3 text-sm font-semibold text-gray-700">Payment method</p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {PAYMENT_METHODS.map((m) => (
                   <button
@@ -1864,7 +1868,10 @@ export default function BookingFlow({
             </div>
             <div className="mt-5 flex justify-end gap-2.5">
               <button
-                onClick={() => setShowReturningPopup(false)}
+                onClick={() => {
+                  setShowReturningPopup(false);
+                  markReturningPopupSeen();
+                }}
                 className="rounded-full border-2 border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
               >
                 I&apos;m new here

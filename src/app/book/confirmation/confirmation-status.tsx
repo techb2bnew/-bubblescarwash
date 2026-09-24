@@ -65,8 +65,7 @@ export default function ConfirmationStatus({
         <h1 className="text-lg font-semibold text-green-800">
           Booking Confirmed!
         </h1>
-        <p className="mt-2 text-sm text-green-700">Booking reference: {bookingId}</p>
-        <p className="mt-1 text-sm text-green-700">
+        <p className="mt-2 text-sm text-green-700">
           {result.serviceName} on {result.bookingDate} at{" "}
           {formatTimeLabel(result.bookingTime.slice(0, 5))}
         </p>
@@ -79,6 +78,7 @@ export default function ConfirmationStatus({
         <p className="mt-3 text-xs text-green-600">
           A confirmation email is on its way to you.
         </p>
+        <p className="mt-1 text-xs text-green-600">Booking reference: {bookingId}</p>
       </div>
     );
   }
@@ -89,8 +89,7 @@ export default function ConfirmationStatus({
         <h1 className="text-lg font-semibold text-green-800">
           Booking Confirmed!
         </h1>
-        <p className="mt-2 text-sm text-green-700">Booking reference: {bookingId}</p>
-        <p className="mt-1 text-sm text-green-700">
+        <p className="mt-2 text-sm text-green-700">
           {result.serviceName} on {result.bookingDate} at{" "}
           {formatTimeLabel(result.bookingTime.slice(0, 5))}
         </p>
@@ -103,6 +102,7 @@ export default function ConfirmationStatus({
         <p className="mt-3 text-xs text-green-600">
           A confirmation email is on its way to you.
         </p>
+        <p className="mt-1 text-xs text-green-600">Booking reference: {bookingId}</p>
       </div>
     );
   }
