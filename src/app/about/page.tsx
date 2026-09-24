@@ -77,7 +77,8 @@ export default function AboutPage() {
               Our Story
             </span>
             <h1 className="mt-6 text-4xl font-extrabold leading-tight text-white sm:text-5xl">
-              Fifteen years of clean cars and good <span className="wave-word wave-word-dark">coffee</span>
+              Fifteen years, millions of bubbles &amp; great{" "}
+              <span className="wave-word wave-word-dark">coffee</span>
             </h1>
             <p className="mt-5 max-w-md text-base text-gray-400">
               Bubbles Car Wash &amp; Cafe has been part of Adelaide&apos;s north east since 2011 —
@@ -105,8 +106,8 @@ export default function AboutPage() {
             <div className="pointer-events-none absolute -top-10 left-6 h-40 w-40 rounded-full bg-brand-100/70" />
             <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[2.5rem] shadow-xl shadow-gray-900/10">
               <Image
-                src="/real-photos/cafe-interior.png"
-                alt="Bubbles Car Wash & Cafe seating and cafe interior"
+                src="/real-photos/wash-bay-cafe.png"
+                alt="A car being hand-washed in the bay with the cafe seating visible behind it"
                 fill
                 sizes="(max-width: 1024px) 100vw, 480px"
                 className="object-cover"
@@ -187,7 +188,7 @@ export default function AboutPage() {
             href="/book"
             className="mt-6 inline-flex rounded-full bg-brand-600 px-7 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:bg-brand-700"
           >
-            Book a Wash
+            Book Now
           </Link>
         </div>
       </section>
