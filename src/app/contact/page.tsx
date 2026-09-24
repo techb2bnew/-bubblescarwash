@@ -166,7 +166,7 @@ export default function ContactPage() {
                     <rect x="4" y="5" width="16" height="15" rx="2" stroke="currentColor" strokeWidth="1.6" />
                     <path d="M4 9h16M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                   </svg>
-                  Book a Wash
+                  Book Now
                 </Link>
               </div>
 

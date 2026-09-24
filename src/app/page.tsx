@@ -893,7 +893,7 @@ export default async function Home() {
                 href="/book"
                 className="rounded-full bg-brand-600 px-8 py-4 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:bg-brand-700"
               >
-                Book a Wash
+                Book Now
               </Link>
               <a
                 href="tel:0870805959"

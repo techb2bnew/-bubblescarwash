@@ -115,7 +115,7 @@ export default function FaqPage() {
               href="/book"
               className="rounded-full px-7 py-3 text-sm font-semibold text-white ring-1 ring-white/20 transition hover:bg-white/10"
             >
-              Book a Wash
+              Book Now
             </Link>
           </div>
         </div>

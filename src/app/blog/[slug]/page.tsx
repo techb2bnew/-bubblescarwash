@@ -88,7 +88,7 @@ export default async function BlogPostPage({
                 href="/book"
                 className="mt-4 inline-block rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-7 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               >
-                Book a Wash
+                Book Now
               </Link>
             </div>
           </article>

@@ -149,7 +149,7 @@ export default function GalleryPage() {
             href="/book"
             className="mt-6 inline-flex rounded-full bg-brand-600 px-7 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:bg-brand-700"
           >
-            Book a Wash
+            Book Now
           </Link>
         </div>
       </section>

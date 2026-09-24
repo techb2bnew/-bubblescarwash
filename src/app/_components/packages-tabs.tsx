@@ -115,7 +115,7 @@ export default function PackagesTabs({
                   featured ? "bg-brand-600 hover:bg-brand-700" : "bg-gray-900 hover:bg-brand-600"
                 }`}
               >
-                Book This
+                Book Now
               </Link>
             </div>
           );
