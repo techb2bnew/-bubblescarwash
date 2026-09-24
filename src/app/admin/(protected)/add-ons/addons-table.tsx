@@ -27,10 +27,14 @@ export default function AddOnsTable({
   addOns,
   services,
   onEdit,
+  canEdit = true,
+  canDelete = true,
 }: {
   addOns: AddOnWithService[];
   services: ServiceOption[];
   onEdit: (addOn: AddOnWithService) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirmDialog();
@@ -171,13 +175,14 @@ export default function AddOnsTable({
                         <button
                           type="button"
                           onClick={() => handleToggle(instance)}
+                          disabled={!canEdit}
                           title={instance.active ? "Visible — click to hide" : "Hidden — click to show"}
-                          className="hover:underline"
+                          className="hover:underline disabled:cursor-default disabled:no-underline"
                         >
                           {instance.services?.name ?? "—"}
                         </button>
-                        <EditButton onClick={() => onEdit(instance)} />
-                        <DeleteButton onClick={() => handleDelete(instance.id)} />
+                        {canEdit && <EditButton onClick={() => onEdit(instance)} />}
+                        {canDelete && <DeleteButton onClick={() => handleDelete(instance.id)} />}
                       </div>
                     ))}
                   </div>

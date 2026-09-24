@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requirePermission } from "@/lib/admin-role";
 import { createClient } from "@/lib/supabase/server";
 
 export interface CustomerInput {
@@ -10,6 +11,7 @@ export interface CustomerInput {
 }
 
 export async function createCustomer(input: CustomerInput) {
+  await requirePermission("customers", "create");
   const supabase = await createClient();
   const { error } = await supabase.from("customers").insert(input);
   if (error) throw new Error(error.message);
@@ -17,6 +19,7 @@ export async function createCustomer(input: CustomerInput) {
 }
 
 export async function updateCustomer(id: string, input: CustomerInput) {
+  await requirePermission("customers", "edit");
   const supabase = await createClient();
   const { error } = await supabase
     .from("customers")
@@ -27,6 +30,7 @@ export async function updateCustomer(id: string, input: CustomerInput) {
 }
 
 export async function deleteCustomer(id: string) {
+  await requirePermission("customers", "delete");
   const supabase = await createClient();
   const { error } = await supabase.from("customers").delete().eq("id", id);
   if (error) throw new Error(error.message);

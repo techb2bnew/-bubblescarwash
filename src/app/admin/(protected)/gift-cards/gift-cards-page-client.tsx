@@ -10,9 +10,15 @@ type Tab = "products" | "issued";
 export default function GiftCardsPageClient({
   products,
   cards,
+  canCreate = true,
+  canEdit = true,
+  canDelete = true,
 }: {
   products: GiftCardProduct[];
   cards: GiftCard[];
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("products");
 
@@ -47,7 +53,7 @@ export default function GiftCardsPageClient({
       </div>
 
       {tab === "products" ? (
-        <ProductsPanel products={products} />
+        <ProductsPanel products={products} canCreate={canCreate} canEdit={canEdit} canDelete={canDelete} />
       ) : (
         <IssuedTable cards={cards} />
       )}

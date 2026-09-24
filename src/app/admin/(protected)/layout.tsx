@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getStaffPermissions } from "@/lib/admin-role";
 import AdminShell from "./admin-shell";
+import type { AdminRole } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +22,7 @@ export default async function AdminLayout({
 
   const { data: adminRow } = await supabase
     .from("admin_users")
-    .select("id")
+    .select("role")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -28,5 +30,15 @@ export default async function AdminLayout({
     redirect("/admin/login");
   }
 
-  return <AdminShell>{children}</AdminShell>;
+  // Route-level restriction for "staff" is enforced in the proxy
+  // (src/lib/supabase/middleware.ts) — it sees the pathname on every
+  // navigation, which a Server Component layout is not guaranteed to.
+  const role = (adminRow.role as AdminRole | null) ?? "admin";
+  const permissions = role === "staff" ? await getStaffPermissions() : null;
+
+  return (
+    <AdminShell role={role} permissions={permissions}>
+      {children}
+    </AdminShell>
+  );
 }

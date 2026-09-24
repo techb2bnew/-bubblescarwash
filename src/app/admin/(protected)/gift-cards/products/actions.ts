@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requirePermission } from "@/lib/admin-role";
 import { createClient } from "@/lib/supabase/server";
 import { MIN_GIFT_CARD_AMOUNT } from "@/lib/gift-card-designs";
 
@@ -22,6 +23,7 @@ function assertMinimumAmount(price: number) {
 }
 
 export async function createGiftCardProduct(input: GiftCardProductInput) {
+  await requirePermission("gift_cards", "create");
   assertMinimumAmount(input.price);
   const supabase = await createClient();
   const { error } = await supabase.from("gift_card_products").insert(input);
@@ -31,6 +33,7 @@ export async function createGiftCardProduct(input: GiftCardProductInput) {
 }
 
 export async function updateGiftCardProduct(id: string, input: GiftCardProductInput) {
+  await requirePermission("gift_cards", "edit");
   assertMinimumAmount(input.price);
   const supabase = await createClient();
   const { error } = await supabase
@@ -43,6 +46,7 @@ export async function updateGiftCardProduct(id: string, input: GiftCardProductIn
 }
 
 export async function toggleGiftCardProductActive(id: string, active: boolean) {
+  await requirePermission("gift_cards", "edit");
   const supabase = await createClient();
   const { error } = await supabase
     .from("gift_card_products")
@@ -54,6 +58,7 @@ export async function toggleGiftCardProductActive(id: string, active: boolean) {
 }
 
 export async function deleteGiftCardProduct(id: string) {
+  await requirePermission("gift_cards", "delete");
   const supabase = await createClient();
   const { error } = await supabase.from("gift_card_products").delete().eq("id", id);
   if (error) throw new Error(error.message);

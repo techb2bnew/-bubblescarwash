@@ -28,9 +28,11 @@ const DOT_STYLES: Record<BookingStatus, string> = {
 export default function StatusDropdown({
   value,
   onChange,
+  readOnly = false,
 }: {
   value: BookingStatus;
   onChange: (status: BookingStatus) => void;
+  readOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ top: 0, right: 0 });
@@ -73,6 +75,17 @@ export default function StatusDropdown({
   }, [open]);
 
   const current = STATUS_OPTIONS.find((o) => o.value === value)!;
+
+  if (readOnly) {
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[value]}`}
+      >
+        <span className={`h-1.5 w-1.5 rounded-full ${DOT_STYLES[value]}`} />
+        {current.label}
+      </span>
+    );
+  }
 
   return (
     <div className="relative inline-block text-left">

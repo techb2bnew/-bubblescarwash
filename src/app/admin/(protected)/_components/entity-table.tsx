@@ -23,6 +23,8 @@ export function EntityTable({
   onEdit,
   onDelete,
   onToggleActive,
+  canEdit = true,
+  canDelete = true,
 }: {
   entities: SimpleEntity[];
   entityLabel: string;
@@ -30,6 +32,8 @@ export function EntityTable({
   onEdit: (entity: SimpleEntity) => void;
   onDelete: (id: string) => Promise<void>;
   onToggleActive: (id: string, active: boolean) => Promise<void>;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirmDialog();
@@ -167,7 +171,8 @@ export function EntityTable({
                 <td className="px-4 py-3">
                   <button
                     onClick={() => handleToggle(e)}
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    disabled={!canEdit}
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium disabled:cursor-default ${
                       e.active
                         ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-200"
                         : "bg-gray-100 text-gray-500 ring-1 ring-inset ring-gray-200"
@@ -178,8 +183,8 @@ export function EntityTable({
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <EditButton onClick={() => onEdit(e)} />
-                    <DeleteButton onClick={() => handleDelete(e.id)} />
+                    {canEdit && <EditButton onClick={() => onEdit(e)} />}
+                    {canDelete && <DeleteButton onClick={() => handleDelete(e.id)} />}
                   </div>
                 </td>
               </tr>

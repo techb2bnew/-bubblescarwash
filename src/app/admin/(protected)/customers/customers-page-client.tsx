@@ -21,8 +21,14 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function CustomersPageClient({
   customers,
+  canCreate = true,
+  canEdit = true,
+  canDelete = true,
 }: {
   customers: CustomerSummary[];
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirmDialog();
@@ -101,12 +107,14 @@ export default function CustomersPageClient({
             Everyone who has made a booking, with their history.
           </p>
         </div>
-        <button
-          onClick={() => setModal("new")}
-          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-        >
-          + Add Customer
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => setModal("new")}
+            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            + Add Customer
+          </button>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -178,8 +186,10 @@ export default function CustomersPageClient({
                       <ViewButton onClick={() => setSelected(c)} label="View history" />
                       {c.id && (
                         <>
-                          <EditButton onClick={() => setModal(c)} label="Edit customer" />
-                          <DeleteButton onClick={() => handleDelete(c.id!)} label="Delete customer" />
+                          {canEdit && <EditButton onClick={() => setModal(c)} label="Edit customer" />}
+                          {canDelete && (
+                            <DeleteButton onClick={() => handleDelete(c.id!)} label="Delete customer" />
+                          )}
                         </>
                       )}
                     </div>
@@ -331,7 +341,7 @@ export default function CustomersPageClient({
                       </div>
                       <div className="text-xs text-gray-500">
                         {b.booking_date} at {b.booking_time.slice(0, 5)}
-                        {b.car_number ? ` · Car: ${b.car_number}` : ""}
+                        {b.car_number ? ` · Rego: ${b.car_number}` : ""}
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-3">

@@ -20,9 +20,13 @@ const VISIBILITY_OPTIONS = [
 export default function GiftCardProductsTable({
   products,
   onEdit,
+  canEdit = true,
+  canDelete = true,
 }: {
   products: GiftCardProduct[];
   onEdit: (product: GiftCardProduct) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const { confirm, dialog } = useConfirmDialog();
@@ -170,7 +174,8 @@ export default function GiftCardProductsTable({
                 <td className="px-4 py-3">
                   <button
                     onClick={() => handleToggle(p)}
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    disabled={!canEdit}
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium disabled:cursor-default ${
                       p.active
                         ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-200"
                         : "bg-gray-100 text-gray-500 ring-1 ring-inset ring-gray-200"
@@ -181,8 +186,8 @@ export default function GiftCardProductsTable({
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <EditButton onClick={() => onEdit(p)} />
-                    <DeleteButton onClick={() => handleDelete(p.id)} />
+                    {canEdit && <EditButton onClick={() => onEdit(p)} />}
+                    {canDelete && <DeleteButton onClick={() => handleDelete(p.id)} />}
                   </div>
                 </td>
               </tr>

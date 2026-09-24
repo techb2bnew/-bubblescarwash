@@ -5,7 +5,17 @@ import type { Extra } from "@/lib/types";
 import ExtrasTable from "./extras-table";
 import ExtraForm from "./extra-form";
 
-export default function ExtrasPageClient({ extras }: { extras: Extra[] }) {
+export default function ExtrasPageClient({
+  extras,
+  canCreate = true,
+  canEdit = true,
+  canDelete = true,
+}: {
+  extras: Extra[];
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}) {
   const [modal, setModal] = useState<"new" | Extra | null>(null);
 
   return (
@@ -18,15 +28,17 @@ export default function ExtrasPageClient({ extras }: { extras: Extra[] }) {
             choosing a date and time.
           </p>
         </div>
-        <button
-          onClick={() => setModal("new")}
-          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-        >
-          + Add Add-On
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => setModal("new")}
+            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            + Add Add-On
+          </button>
+        )}
       </div>
 
-      <ExtrasTable extras={extras} onEdit={(e) => setModal(e)} />
+      <ExtrasTable extras={extras} onEdit={(e) => setModal(e)} canEdit={canEdit} canDelete={canDelete} />
 
       {modal && (
         <div

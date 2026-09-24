@@ -1,5 +1,31 @@
 /** Slug of a vehicle_types row (e.g. "sedan"). Values are admin-managed, not fixed. */
 export type VehicleType = string;
+/** "admin" has full access everywhere; "staff" is gated per module by StaffPermission rows. */
+export type AdminRole = "admin" | "staff";
+
+/** Every module a staff permission row can govern. Dashboard is excluded — it's the safe landing page, always visible. */
+export type ModuleKey =
+  | "analytics"
+  | "bookings"
+  | "calendar"
+  | "set_operations"
+  | "customers"
+  | "services"
+  | "inclusions"
+  | "categories"
+  | "vehicle_types"
+  | "extras"
+  | "gift_cards"
+  | "discounts"
+  | "payments";
+
+export interface StaffPermission {
+  module: ModuleKey;
+  can_view: boolean;
+  can_create: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+}
 export type BookingStatus =
   | "confirmed"
   | "cancelled"

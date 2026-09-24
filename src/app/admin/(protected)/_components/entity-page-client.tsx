@@ -15,6 +15,9 @@ export function EntityPageClient({
   onUpdate,
   onDelete,
   onToggleActive,
+  canCreate = true,
+  canEdit = true,
+  canDelete = true,
 }: {
   entities: SimpleEntity[];
   title: string;
@@ -26,6 +29,9 @@ export function EntityPageClient({
   onUpdate: (id: string, input: SimpleEntityInput) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onToggleActive: (id: string, active: boolean) => Promise<void>;
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
   const [modal, setModal] = useState<"new" | SimpleEntity | null>(null);
 
@@ -36,12 +42,14 @@ export function EntityPageClient({
           <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
           <p className="mt-1 text-sm text-gray-500">{description}</p>
         </div>
-        <button
-          onClick={() => setModal("new")}
-          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-        >
-          + Add {entityLabel}
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => setModal("new")}
+            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            + Add {entityLabel}
+          </button>
+        )}
       </div>
 
       <EntityTable
@@ -51,6 +59,8 @@ export function EntityPageClient({
         onEdit={(e) => setModal(e)}
         onDelete={onDelete}
         onToggleActive={onToggleActive}
+        canEdit={canEdit}
+        canDelete={canDelete}
       />
 
       {modal && (

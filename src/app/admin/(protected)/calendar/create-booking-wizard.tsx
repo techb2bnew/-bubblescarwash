@@ -427,7 +427,7 @@ export default function CreateBookingWizard({
                   setSearch(e.target.value);
                   setSelectedCustomerId(null);
                 }}
-                placeholder="Search name, phone, email, car no..."
+                placeholder="Search name, phone, email, rego plate..."
                 className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
               />
               <div className="mt-2 max-h-48 space-y-1 overflow-y-auto">
@@ -583,7 +583,7 @@ export default function CreateBookingWizard({
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600">
-                  Car number / plate <span className="font-normal text-gray-400">(optional)</span>
+                  Rego Plate <span className="font-normal text-gray-400">(optional)</span>
                 </label>
                 <input
                   value={carNumber}
@@ -759,7 +759,7 @@ export default function CreateBookingWizard({
               {overrideAvailability ? " (override)" : ""}
             </div>
             {carNumber && (
-              <div className="mt-1 text-xs text-gray-500">Car: {carNumber}</div>
+              <div className="mt-1 text-xs text-gray-500">Rego Plate: {carNumber}</div>
             )}
             {selectedExtras.length > 0 && (
               <div className="mt-1">
