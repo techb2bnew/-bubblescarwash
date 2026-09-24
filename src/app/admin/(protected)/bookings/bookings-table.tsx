@@ -34,13 +34,16 @@ export default function BookingsTable({
   blockedDates,
   settings,
   canEdit = true,
+  googleCalendarEmbedUrl = null,
 }: {
   bookings: Booking[];
   blockedDates: BlockedDate[];
   settings: BusinessSettings;
   canEdit?: boolean;
+  googleCalendarEmbedUrl?: string | null;
 }) {
   const router = useRouter();
+  const [view, setView] = useState<"list" | "calendar">("list");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [type, setType] = useState("all");
@@ -157,6 +160,31 @@ export default function BookingsTable({
     setPage(1);
   }
 
+  const viewToggle = (
+    <div className="flex rounded-md border border-gray-300 p-0.5 text-sm sm:ml-auto">
+      <button
+        type="button"
+        onClick={() => setView("list")}
+        className={`rounded px-3 py-1 font-medium ${
+          view === "list" ? "bg-brand-600 text-white" : "text-gray-600 hover:bg-gray-50"
+        }`}
+      >
+        List
+      </button>
+      <button
+        type="button"
+        onClick={() => setView("calendar")}
+        disabled={!googleCalendarEmbedUrl}
+        title={googleCalendarEmbedUrl ? undefined : "Google Calendar isn't set up yet"}
+        className={`rounded px-3 py-1 font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
+          view === "calendar" ? "bg-brand-600 text-white" : "text-gray-600 hover:bg-gray-50"
+        }`}
+      >
+        Calendar
+      </button>
+    </div>
+  );
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3 text-xs text-gray-500">
@@ -169,6 +197,7 @@ export default function BookingsTable({
           <span className="font-semibold text-gray-700">{typeCounts.offline}</span>
         </span>
       </div>
+
       <TableToolbar
         search={search}
         onSearchChange={(v) => {
@@ -220,8 +249,18 @@ export default function BookingsTable({
             className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
           />
         </div>
+        {viewToggle}
       </TableToolbar>
 
+      {view === "calendar" ? (
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <iframe
+            title="Bookings Calendar"
+            src={googleCalendarEmbedUrl!}
+            className="block h-[75vh] max-h-[800px] min-h-[420px] w-full rounded-md border-0"
+          />
+        </div>
+      ) : (
       <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -371,6 +410,7 @@ export default function BookingsTable({
           onPageChange={setPage}
         />
       </div>
+      )}
 
       {rescheduling && (
         <RescheduleModal
