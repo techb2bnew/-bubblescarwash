@@ -175,7 +175,7 @@ export default function BookingsTable({
           setSearch(v);
           setPage(1);
         }}
-        searchPlaceholder="Search name, phone, email, car number..."
+        searchPlaceholder="Search name, phone, email, rego plate..."
         hasActiveFilters={hasActiveFilters}
         onClear={clearFilters}
       >
@@ -242,7 +242,7 @@ export default function BookingsTable({
                 onSort={handleSort}
               />
               <th className="px-4 py-3">Contact</th>
-              <th className="px-4 py-3">Car Number</th>
+              <th className="px-4 py-3">Rego Plate</th>
               <th className="px-4 py-3">Service</th>
               <th className="px-4 py-3">Inclusions</th>
               <th className="px-4 py-3">Add-Ons</th>
