@@ -1561,7 +1561,7 @@ export default function BookingFlow({
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1.5 block text-sm font-semibold text-gray-700">
-                Car number / plate 
+                Rego Plate
                 {/* <span className="font-normal text-gray-400">(optional)</span> */}
               </label>
               <div className="relative">
@@ -1820,7 +1820,7 @@ export default function BookingFlow({
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-gray-600">
-                  Car number / plate{" "}
+                  Rego Plate{" "}
                   <span className="font-normal text-gray-400">(optional, if you have more than one car with us)</span>
                 </label>
                 <input

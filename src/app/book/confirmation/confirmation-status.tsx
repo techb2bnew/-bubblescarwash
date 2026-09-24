@@ -71,7 +71,7 @@ export default function ConfirmationStatus({
           {formatTimeLabel(result.bookingTime.slice(0, 5))}
         </p>
         {result.carNumber && (
-          <p className="mt-1 text-sm text-green-700">Car: {result.carNumber}</p>
+          <p className="mt-1 text-sm text-green-700">Rego: {result.carNumber}</p>
         )}
         <p className="mt-1 text-sm font-medium text-green-800">
           {result.price ? `Amount due at your appointment: $${result.price.toFixed(2)}` : "No payment due"}
@@ -95,7 +95,7 @@ export default function ConfirmationStatus({
           {formatTimeLabel(result.bookingTime.slice(0, 5))}
         </p>
         {result.carNumber && (
-          <p className="mt-1 text-sm text-green-700">Car: {result.carNumber}</p>
+          <p className="mt-1 text-sm text-green-700">Rego: {result.carNumber}</p>
         )}
         <p className="mt-1 text-sm font-medium text-green-800">
           Total paid: ${result.price != null ? result.price.toFixed(2) : "—"}
