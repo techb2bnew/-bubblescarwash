@@ -14,6 +14,19 @@ export default function SiteHeader() {
 
   return (
     <header>
+      {/* Compact mobile-only bar — address, hours, phone always visible (client feedback: these should be a constant bar on mobile, not hidden). */}
+      <div style={{ backgroundColor: "#0b1220" }} className="text-gray-400 sm:hidden">
+        <div className="flex flex-col gap-1 px-4 py-2 text-xs">
+          <div className="flex items-center justify-between gap-2">
+            <a href="tel:0870805959" className="font-semibold text-brand-300">
+              (08) 7080 5959
+            </a>
+            <span>Mon–Sat 8–5, Sun 9–5</span>
+          </div>
+          <span className="truncate">273 North East Rd, Hampstead Gardens SA 5086</span>
+        </div>
+      </div>
+
       {/* Slim utility bar — hours, address, socials (scrolls away, not sticky) */}
       <div style={{ backgroundColor: "#0b1220" }} className="hidden text-gray-400 sm:block">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 text-sm sm:px-8">
@@ -109,6 +122,12 @@ export default function SiteHeader() {
               </span>
               (08) 7080 5959
             </a>
+            <Link
+              href="/book"
+              className="flex items-center rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:shadow-md md:hidden"
+            >
+              Book Now
+            </Link>
             <button
               type="button"
               onClick={() => setMenuOpen((open) => !open)}
