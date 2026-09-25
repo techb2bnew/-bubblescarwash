@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { Resend } from "resend";
+import nodemailer, { type Transporter } from "nodemailer";
 import { formatTimeLabel } from "@/lib/date-utils";
 import {
   buildBookingIcs,
@@ -50,14 +50,34 @@ function inlineImage(publicPath: string, contentId: string): InlineImageAttachme
   };
 }
 
-function getResendClient(): Resend | null {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return null;
-  return new Resend(apiKey);
+// Cached across calls in the same server process — building a new SMTP
+// connection pool per email would be wasteful, and nodemailer's transporter
+// already handles connection reuse/retries internally.
+let cachedTransport: Transporter | null = null;
+
+function getSmtpTransport(): Transporter | null {
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASSWORD;
+  if (!host || !user || !pass) return null;
+
+  if (!cachedTransport) {
+    const port = Number(process.env.SMTP_PORT ?? 465);
+    cachedTransport = nodemailer.createTransport({
+      host,
+      port,
+      // Port 465 is implicit TLS; anything else (587, 25) starts in plaintext
+      // and upgrades via STARTTLS, which nodemailer does automatically when
+      // `secure` is false.
+      secure: port === 465,
+      auth: { user, pass },
+    });
+  }
+  return cachedTransport;
 }
 
 function getFromAddress(): string | null {
-  return process.env.EMAIL_FROM ?? null;
+  return process.env.EMAIL_FROM ?? process.env.SMTP_USER ?? null;
 }
 
 /**
@@ -249,6 +269,7 @@ function buildIcsAttachment(details: BookingEmailDetails) {
   return {
     filename: "booking.ics",
     content: Buffer.from(ics).toString("base64"),
+    contentType: "text/calendar; charset=utf-8",
   };
 }
 
@@ -260,28 +281,49 @@ async function sendEmail(
   details?: BookingEmailDetails,
   inlineImages: InlineImageAttachment[] = [],
 ): Promise<boolean> {
-  const resend = getResendClient();
+  const transport = getSmtpTransport();
   const from = getFromAddress();
-  if (!resend || !from) return false;
+  if (!transport || !from) return false;
 
   try {
-    const attachments = [];
+    const attachments: {
+      filename: string;
+      content: string;
+      encoding: "base64";
+      cid?: string;
+      contentType?: string;
+    }[] = [];
     const logo = inlineImage("/Bubbles-Logo.png", LOGO_CONTENT_ID);
-    if (logo) attachments.push(logo);
-    attachments.push(...inlineImages);
-    if (attachCalendar && details) attachments.push(buildIcsAttachment(details));
+    if (logo) {
+      attachments.push({
+        filename: logo.filename,
+        content: logo.content,
+        encoding: "base64",
+        cid: logo.contentId,
+        contentType: logo.contentType,
+      });
+    }
+    for (const img of inlineImages) {
+      attachments.push({
+        filename: img.filename,
+        content: img.content,
+        encoding: "base64",
+        cid: img.contentId,
+        contentType: img.contentType,
+      });
+    }
+    if (attachCalendar && details) {
+      const ics = buildIcsAttachment(details);
+      attachments.push({ filename: ics.filename, content: ics.content, encoding: "base64", contentType: ics.contentType });
+    }
 
-    const { error } = await resend.emails.send({
+    await transport.sendMail({
       from,
       to,
       subject,
       html,
       attachments: attachments.length > 0 ? attachments : undefined,
     });
-    if (error) {
-      console.error("[email] send failed:", error);
-      return false;
-    }
     return true;
   } catch (err) {
     console.error("[email] send failed:", err);
@@ -534,7 +576,7 @@ export async function sendGiftCardEmail(details: GiftCardEmailDetails): Promise<
 }
 
 export function isEmailConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD);
 }
 
 export interface ContactEnquiryDetails {
