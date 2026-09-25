@@ -166,13 +166,25 @@ export default function Sidebar({
 
   const navItems: NavItem[] =
     role === "staff" && permissions
-      ? NAV_ITEMS.filter((item) => !item.module || permissions[item.module]?.can_view).map((item) => {
-          const children = item.children?.filter((child) => permissions[child.module]?.can_view);
-          // Drop the submenu entirely once it's down to a single link (e.g.
-          // Calendar with only "Booking Calendar" left) — render it as a
-          // plain nav item instead of a one-item dropdown.
-          return children && children.length > 1 ? { ...item, children } : { ...item, children: undefined };
-        })
+      ? NAV_ITEMS.map((item) => {
+          if (!item.children) {
+            return !item.module || permissions[item.module]?.can_view ? item : null;
+          }
+          // A parent with children (Calendar) has no module of its own — its
+          // visibility depends entirely on whether any child is visible, not
+          // on `!item.module` (which is always true for it and would
+          // otherwise always let it through regardless of permissions).
+          const visibleChildren = item.children.filter((child) => permissions[child.module]?.can_view);
+          if (visibleChildren.length === 0) return null;
+          // Collapse to a single plain link once only one child remains,
+          // pointing at THAT child's href/label rather than the parent's own
+          // (e.g. if only "Set Operations" is visible, link there — not to
+          // the parent's default "/admin/calendar").
+          if (visibleChildren.length === 1) {
+            return { ...item, href: visibleChildren[0].href, children: undefined };
+          }
+          return { ...item, children: visibleChildren };
+        }).filter((item): item is NavItem => item !== null)
       : [...NAV_ITEMS, STAFF_NAV_ITEM];
 
   return (

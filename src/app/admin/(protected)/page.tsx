@@ -1,17 +1,20 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getAdminRole, getStaffPermissions, hasPermission } from "@/lib/admin-role";
 import { toDateKey } from "@/lib/date-utils";
+import type { ModuleKey } from "@/lib/types";
 import BookingBreakdownChart from "./booking-breakdown-chart";
 import DayOfWeekChart from "./day-of-week-chart";
 
 const WEEKDAY_FULL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 /** Just the most-used shortcuts — everything else is one click away in the sidebar. */
-const NAV_CARDS = [
+const NAV_CARDS: { href: string; title: string; desc: string; module: ModuleKey; icon: React.ReactNode }[] = [
   {
     href: "/admin/bookings",
     title: "Bookings",
     desc: "View and manage customer bookings",
+    module: "bookings",
     icon: (
       <path d="M6 3h9l3 3v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm2 7h8M8 13h8M8 16h5" />
     ),
@@ -20,6 +23,7 @@ const NAV_CARDS = [
     href: "/admin/customers",
     title: "Customers",
     desc: "See everyone who has booked and their history",
+    module: "customers",
     icon: (
       <path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 0a4 4 0 0 0 3-6.65M20 20v-1a4 4 0 0 0-3-3.85" />
     ),
@@ -28,6 +32,7 @@ const NAV_CARDS = [
     href: "/admin/calendar",
     title: "Calendar",
     desc: "Block off days the car wash is closed",
+    module: "calendar",
     icon: (
       <path d="M7 3v3M17 3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" />
     ),
@@ -36,6 +41,7 @@ const NAV_CARDS = [
     href: "/admin/gift-cards",
     title: "Gift Cards",
     desc: "Manage gift card products and issued codes",
+    module: "gift_cards",
     icon: (
       <path d="M20 7H4a1 1 0 0 0-1 1v3h18V8a1 1 0 0 0-1-1ZM3 13v5a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-5M12 7v13M7.5 7C6 7 5 5.9 5 4.5S6 2 7.5 2 10 4 12 7c2-3 3.5-5 4.5-5S19 3.1 19 4.5 18 7 16.5 7" />
     ),
@@ -56,6 +62,8 @@ export default async function AdminDashboardPage() {
     { data: customerEmails },
     { count: totalBlockedDatesCount },
     { count: totalGiftCardsCount },
+    role,
+    permissions,
   ] = await Promise.all([
     supabase
       .from("services")
@@ -82,7 +90,11 @@ export default async function AdminDashboardPage() {
     supabase.from("bookings").select("customer_email"),
     supabase.from("blocked_dates").select("*", { count: "exact", head: true }),
     supabase.from("gift_cards").select("*", { count: "exact", head: true }),
+    getAdminRole(),
+    getStaffPermissions(),
   ]);
+
+  const visibleNavCards = NAV_CARDS.filter((c) => hasPermission(role, permissions, c.module, "view"));
 
   const totalRevenue = (revenueBookings ?? []).reduce(
     (sum, b) => sum + (b.price ?? 0),
@@ -192,12 +204,13 @@ export default async function AdminDashboardPage() {
         ))}
       </div>
 
+      {visibleNavCards.length > 0 && (
       <div>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
           Manage
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {NAV_CARDS.map((c) => (
+          {visibleNavCards.map((c) => (
             <Link
               key={c.href}
               href={c.href}
@@ -232,6 +245,7 @@ export default async function AdminDashboardPage() {
           ))}
         </div>
       </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <BookingBreakdownChart data={breakdownData} />
