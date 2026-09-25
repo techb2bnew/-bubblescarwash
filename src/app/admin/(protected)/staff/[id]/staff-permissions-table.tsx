@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { MODULES } from "@/lib/permission-modules";
 import type { ModuleKey, StaffPermission } from "@/lib/types";
-import { setStaffPermission } from "./actions";
-import { useToast } from "../_components/toast";
+import { setStaffPermission } from "../actions";
+import { useToast } from "../../_components/toast";
 
 type Column = "can_view" | "can_create" | "can_edit" | "can_delete";
 const COLUMN_LABELS: Record<Column, string> = {
@@ -14,9 +14,11 @@ const COLUMN_LABELS: Record<Column, string> = {
   can_delete: "Delete",
 };
 
-export default function PermissionsTable({
+export default function StaffPermissionsTable({
+  userId,
   initialPermissions,
 }: {
+  userId: string;
   initialPermissions: Record<ModuleKey, StaffPermission>;
 }) {
   const [permissions, setPermissions] = useState(initialPermissions);
@@ -29,7 +31,7 @@ export default function PermissionsTable({
     setSavingKey(cellKey);
     setPermissions((prev) => ({ ...prev, [module]: { ...prev[module], [column]: next } }));
     try {
-      await setStaffPermission(module, { [column]: next });
+      await setStaffPermission(userId, module, { [column]: next });
     } catch (err) {
       // Roll back on failure.
       setPermissions((prev) => ({ ...prev, [module]: { ...prev[module], [column]: !next } }));

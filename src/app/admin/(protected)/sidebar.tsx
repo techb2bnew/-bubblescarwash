@@ -11,7 +11,7 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
-  /** Which staff_permissions row gates this link. Undefined = always visible (Dashboard, Permissions). */
+  /** Which staff_permissions row gates this link. Undefined = always visible (Dashboard, Staff). */
   module?: ModuleKey;
   children?: { label: string; href: string; module: ModuleKey }[];
 }
@@ -122,9 +122,9 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 /** Admin-only, regardless of any staff_permissions row — staff can never see or reach this. */
-const PERMISSIONS_NAV_ITEM: NavItem = {
-  href: "/admin/permissions",
-  label: "Permissions",
+const STAFF_NAV_ITEM: NavItem = {
+  href: "/admin/staff",
+  label: "Staff & Permissions",
   icon: (
     <path d="M12 2 4 5v6c0 5 3.5 8.5 8 11 4.5-2.5 8-6 8-11V5l-8-3ZM9.5 12l1.8 1.8L15 10" />
   ),
@@ -173,7 +173,7 @@ export default function Sidebar({
           // plain nav item instead of a one-item dropdown.
           return children && children.length > 1 ? { ...item, children } : { ...item, children: undefined };
         })
-      : [...NAV_ITEMS, PERMISSIONS_NAV_ITEM];
+      : [...NAV_ITEMS, STAFF_NAV_ITEM];
 
   return (
     <>

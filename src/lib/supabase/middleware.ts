@@ -51,9 +51,9 @@ export async function updateSession(request: NextRequest) {
       .maybeSingle();
 
     if (adminRow?.role === "staff" && pathname !== "/admin") {
-      // /admin/permissions has no module row at all (moduleForPathname
-      // returns null) — that's deliberate, staff can never reach it. Any
-      // other unmatched module also fails closed.
+      // /admin/staff has no module row at all (moduleForPathname returns
+      // null) — that's deliberate, staff can never reach it. Any other
+      // unmatched module also fails closed.
       const moduleKey = moduleForPathname(pathname);
       const allowed = moduleKey
         ? Boolean(
@@ -61,6 +61,7 @@ export async function updateSession(request: NextRequest) {
               await supabase
                 .from("staff_permissions")
                 .select("can_view")
+                .eq("admin_user_id", user.id)
                 .eq("module", moduleKey)
                 .maybeSingle()
             ).data?.can_view,
