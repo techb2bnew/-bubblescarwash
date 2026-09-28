@@ -781,16 +781,26 @@ export default function BookingFlow({
     };
     try {
       if (paymentMode === "stripe") {
-        const { url } = await createCheckoutSession(bookingInput);
-        window.location.href = url;
+        const result = await createCheckoutSession(bookingInput);
+        if (result.error || !result.url) {
+          setError(result.error ?? "Something went wrong");
+          setSubmitting(false);
+          return;
+        }
+        window.location.href = result.url;
         // Intentionally leave `submitting` true — the page is navigating away.
       } else {
-        const { bookingId } = await createBookingSimple(bookingInput);
+        const result = await createBookingSimple(bookingInput);
+        if (result.error || !result.bookingId) {
+          setError(result.error ?? "Something went wrong");
+          setSubmitting(false);
+          return;
+        }
         // No Stripe hop for this path, so the form's own state can just be
         // blanked directly here instead of waiting on a remount to notice
         // the draft is gone.
         resetForm();
-        router.push(`/book/confirmation?booking_id=${bookingId}`);
+        router.push(`/book/confirmation?booking_id=${result.bookingId}`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");

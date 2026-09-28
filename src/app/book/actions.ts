@@ -266,41 +266,59 @@ export interface CreateBookingInput {
   discount_code?: string;
 }
 
+export interface CreateCheckoutSessionResult {
+  url?: string;
+  error?: string;
+}
+
 /**
  * Reserves the slot immediately (via create_booking, same validation as
  * always) so it can't be taken while the customer is on Stripe's hosted
  * page, then starts a Checkout Session for the total. Calendar sync and
  * confirmation emails are deferred until the Stripe webhook confirms
  * payment — see /api/stripe/webhook.
+ *
+ * Returns `{ error }` instead of throwing: Next.js redacts a Server
+ * Action's thrown error message in production builds (replaced with a
+ * generic "Server Components render" message + digest, to avoid leaking
+ * implementation details) — which meant a perfectly normal validation
+ * error like "This time slot is fully booked" was showing up to real
+ * customers as gibberish. Returning the message as data sidesteps that
+ * redaction entirely.
  */
 export async function createCheckoutSession(
   input: CreateBookingInput,
-): Promise<{ url: string }> {
+): Promise<CreateCheckoutSessionResult> {
   const stripe = getStripeClient();
   if (!stripe) {
-    throw new Error(
-      "Online payment isn't set up yet. Please call us to complete your booking.",
-    );
+    return {
+      error: "Online payment isn't set up yet. Please call us to complete your booking.",
+    };
   }
-  assertBookingIsNotTooSoon(input.booking_date, input.booking_time);
 
+  let bookingId: string;
   const supabase = await createClient();
+  try {
+    assertBookingIsNotTooSoon(input.booking_date, input.booking_time);
 
-  const { data, error } = await supabase.rpc("create_booking", {
-    p_service_id: input.service_id,
-    p_vehicle_type: input.vehicle_type,
-    p_booking_date: input.booking_date,
-    p_booking_time: input.booking_time,
-    p_customer_name: input.customer_name,
-    p_customer_phone: input.customer_phone,
-    p_customer_email: input.customer_email,
-    p_extra_ids: input.extra_ids ?? [],
-    p_gift_card_code: input.gift_card_code || null,
-    p_discount_code: input.discount_code || null,
-    p_car_number: input.car_number || null,
-  });
-  if (error) throw new Error(error.message);
-  const bookingId = data as string;
+    const { data, error } = await supabase.rpc("create_booking", {
+      p_service_id: input.service_id,
+      p_vehicle_type: input.vehicle_type,
+      p_booking_date: input.booking_date,
+      p_booking_time: input.booking_time,
+      p_customer_name: input.customer_name,
+      p_customer_phone: input.customer_phone,
+      p_customer_email: input.customer_email,
+      p_extra_ids: input.extra_ids ?? [],
+      p_gift_card_code: input.gift_card_code || null,
+      p_discount_code: input.discount_code || null,
+      p_car_number: input.car_number || null,
+    });
+    if (error) throw new Error(error.message);
+    bookingId = data as string;
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Something went wrong" };
+  }
 
   try {
     const [{ data: price, error: priceError }, { data: service }] = await Promise.all([
@@ -374,59 +392,70 @@ export async function createCheckoutSession(
     return { url: session.url };
   } catch (err) {
     await supabase.rpc("cancel_unpaid_booking", { p_booking_id: bookingId });
-    throw err instanceof Error
-      ? err
-      : new Error("Something went wrong starting payment. Please try again.");
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : "Something went wrong starting payment. Please try again.",
+    };
   }
 }
 
 export interface CreateBookingSimpleResult {
-  bookingId: string;
+  bookingId?: string;
+  error?: string;
 }
 
 /**
  * No-Stripe "pay in person" path: creates the booking directly (payment_status
  * stays 'unpaid' by column default) and fires calendar sync + emails
  * immediately, since there's no payment gate to wait on.
+ *
+ * Returns `{ error }` instead of throwing — see createCheckoutSession for
+ * why (Next.js redacts a Server Action's thrown message in production).
  */
 export async function createBookingSimple(
   input: CreateBookingInput,
 ): Promise<CreateBookingSimpleResult> {
-  assertBookingIsNotTooSoon(input.booking_date, input.booking_time);
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_booking", {
-    p_service_id: input.service_id,
-    p_vehicle_type: input.vehicle_type,
-    p_booking_date: input.booking_date,
-    p_booking_time: input.booking_time,
-    p_customer_name: input.customer_name,
-    p_customer_phone: input.customer_phone,
-    p_customer_email: input.customer_email,
-    p_extra_ids: input.extra_ids ?? [],
-    p_gift_card_code: input.gift_card_code || null,
-    p_discount_code: input.discount_code || null,
-    p_car_number: input.car_number || null,
-  });
-  if (error) throw new Error(error.message);
-  const bookingId = data as string;
+  try {
+    assertBookingIsNotTooSoon(input.booking_date, input.booking_time);
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("create_booking", {
+      p_service_id: input.service_id,
+      p_vehicle_type: input.vehicle_type,
+      p_booking_date: input.booking_date,
+      p_booking_time: input.booking_time,
+      p_customer_name: input.customer_name,
+      p_customer_phone: input.customer_phone,
+      p_customer_email: input.customer_email,
+      p_extra_ids: input.extra_ids ?? [],
+      p_gift_card_code: input.gift_card_code || null,
+      p_discount_code: input.discount_code || null,
+      p_car_number: input.car_number || null,
+    });
+    if (error) throw new Error(error.message);
+    const bookingId = data as string;
 
-  const { data: price } = await supabase.rpc("get_booking_price", {
-    p_booking_id: bookingId,
-  });
+    const { data: price } = await supabase.rpc("get_booking_price", {
+      p_booking_id: bookingId,
+    });
 
-  await onBookingCreated({
-    bookingId,
-    serviceId: input.service_id,
-    customerName: input.customer_name,
-    customerPhone: input.customer_phone,
-    customerEmail: input.customer_email,
-    carNumber: input.car_number,
-    bookingDate: input.booking_date,
-    bookingTime: input.booking_time,
-    price: price != null ? Number(price) : null,
-  });
+    await onBookingCreated({
+      bookingId,
+      serviceId: input.service_id,
+      customerName: input.customer_name,
+      customerPhone: input.customer_phone,
+      customerEmail: input.customer_email,
+      carNumber: input.car_number,
+      bookingDate: input.booking_date,
+      bookingTime: input.booking_time,
+      price: price != null ? Number(price) : null,
+    });
 
-  return { bookingId };
+    return { bookingId };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Something went wrong" };
+  }
 }
 
 export interface BookingPaymentStatus {
