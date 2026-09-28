@@ -48,6 +48,31 @@ export function DeleteButton({ onClick, label = "Delete" }: { onClick: () => voi
   );
 }
 
+export function PermissionsButton({ onClick, label = "Permissions" }: { onClick: () => void; label?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="rounded-md p-1.5 text-brand-600 hover:bg-brand-50"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12 3 5 6v5.5c0 4.6 3 8.3 7 9.5 4-1.2 7-4.9 7-9.5V6l-7-3Z" />
+        <path d="m9.5 12 1.8 1.8L15 10" />
+      </svg>
+    </button>
+  );
+}
+
 export function ViewButton({ onClick, label = "View" }: { onClick: () => void; label?: string }) {
   return (
     <button

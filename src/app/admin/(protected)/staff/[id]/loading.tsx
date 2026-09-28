@@ -1,4 +1,4 @@
-import { PageHeaderSkeleton, TableSkeleton } from "../_components/skeletons";
+import { PageHeaderSkeleton, TableSkeleton } from "../../_components/skeletons";
 
 export default function Loading() {
   return (

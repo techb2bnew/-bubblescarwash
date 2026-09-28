@@ -11,7 +11,7 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
-  /** Which staff_permissions row gates this link. Undefined = always visible (Dashboard, Permissions). */
+  /** Which staff_permissions row gates this link. Undefined = always visible (Dashboard, Staff). */
   module?: ModuleKey;
   children?: { label: string; href: string; module: ModuleKey }[];
 }
@@ -122,9 +122,9 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 /** Admin-only, regardless of any staff_permissions row — staff can never see or reach this. */
-const PERMISSIONS_NAV_ITEM: NavItem = {
-  href: "/admin/permissions",
-  label: "Permissions",
+const STAFF_NAV_ITEM: NavItem = {
+  href: "/admin/staff",
+  label: "Staff & Permissions",
   icon: (
     <path d="M12 2 4 5v6c0 5 3.5 8.5 8 11 4.5-2.5 8-6 8-11V5l-8-3ZM9.5 12l1.8 1.8L15 10" />
   ),
@@ -166,14 +166,26 @@ export default function Sidebar({
 
   const navItems: NavItem[] =
     role === "staff" && permissions
-      ? NAV_ITEMS.filter((item) => !item.module || permissions[item.module]?.can_view).map((item) => {
-          const children = item.children?.filter((child) => permissions[child.module]?.can_view);
-          // Drop the submenu entirely once it's down to a single link (e.g.
-          // Calendar with only "Booking Calendar" left) — render it as a
-          // plain nav item instead of a one-item dropdown.
-          return children && children.length > 1 ? { ...item, children } : { ...item, children: undefined };
-        })
-      : [...NAV_ITEMS, PERMISSIONS_NAV_ITEM];
+      ? NAV_ITEMS.map((item) => {
+          if (!item.children) {
+            return !item.module || permissions[item.module]?.can_view ? item : null;
+          }
+          // A parent with children (Calendar) has no module of its own — its
+          // visibility depends entirely on whether any child is visible, not
+          // on `!item.module` (which is always true for it and would
+          // otherwise always let it through regardless of permissions).
+          const visibleChildren = item.children.filter((child) => permissions[child.module]?.can_view);
+          if (visibleChildren.length === 0) return null;
+          // Collapse to a single plain link once only one child remains,
+          // pointing at THAT child's href/label rather than the parent's own
+          // (e.g. if only "Set Operations" is visible, link there — not to
+          // the parent's default "/admin/calendar").
+          if (visibleChildren.length === 1) {
+            return { ...item, href: visibleChildren[0].href, children: undefined };
+          }
+          return { ...item, children: visibleChildren };
+        }).filter((item): item is NavItem => item !== null)
+      : [...NAV_ITEMS, STAFF_NAV_ITEM];
 
   return (
     <>

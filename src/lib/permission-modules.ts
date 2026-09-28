@@ -28,7 +28,7 @@ export const MODULES: ModuleDef[] = [
 /**
  * Which module governs a given /admin/* pathname, or null for the dashboard
  * (always visible — not gated) and unrecognized/admin-only paths like
- * /admin/permissions (never shown to staff, regardless of any permission row).
+ * /admin/staff (never shown to staff, regardless of any permission row).
  */
 export function moduleForPathname(pathname: string): ModuleKey | null {
   if (pathname === "/admin/calendar/set-operations" || pathname.startsWith("/admin/calendar/set-operations/")) {

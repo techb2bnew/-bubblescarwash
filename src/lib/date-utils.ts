@@ -125,23 +125,65 @@ export function formatTimeLabel(time: string): string {
 }
 
 /**
+ * The current wall-clock date/time as seen in `timeZone`, independent of
+ * whatever timezone the browser or server happens to be running in. Slot
+ * strings ("08:00") are always the business's own local time (Australia,
+ * say) — comparing them against a visitor's browser-local `now` silently
+ * shifts the cutoff by however many hours that visitor's timezone differs
+ * from the business's (e.g. an India-based visitor's midday local clock
+ * doesn't correspond to midday in Australia), hiding/showing the wrong
+ * slots. Going through Intl with an explicit `timeZone` sidesteps that.
+ */
+function nowInTimezone(timeZone: string, now: Date): { dateKey: string; minutes: number } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+  // Some environments render midnight as "24" rather than "00" for hour12: false.
+  const hour = Number(get("hour")) % 24;
+  return {
+    dateKey: `${get("year")}-${get("month")}-${get("day")}`,
+    minutes: hour * 60 + Number(get("minute")),
+  };
+}
+
+/**
+ * Today's date as seen in the business's timezone — not the viewer's. Two
+ * people looking at the same instant can disagree on what day "today" is
+ * (e.g. late evening in India is already past midnight in Australia), so
+ * this is what "today" should mean for picking/graying out booking dates.
+ */
+export function todayKeyInTimezone(timeZone: string, now: Date = new Date()): string {
+  return nowInTimezone(timeZone, now).dateKey;
+}
+
+/**
  * Drops slots that have already started (or start too soon) for today's
- * date, so a same-day booking can't be made for a time that's already
- * passed or about to start. `bufferMinutes` pushes the cutoff further out —
- * the public booking flow uses 60 (a customer needs some notice before they
- * show up), while the admin's own manual-booking calendar passes 0, since
- * staff may deliberately want to log a booking for right now. Slots for any
- * other date pass through unchanged.
+ * date — today and "now" both measured in the business's own timezone, not
+ * the viewer's (see nowInTimezone) — so nobody can pick an already-passed
+ * or about-to-start time when creating a same-day booking. `bufferMinutes`
+ * pushes the cutoff further out — the public booking flow uses 60 (a
+ * customer needs some notice before they show up), while the admin's own
+ * manual-booking calendar passes 0, since staff may deliberately want to
+ * log a booking for right now. Slots for any other date pass through
+ * unchanged.
  */
 export function filterPastSlots(
   slots: string[],
   dateKey: string,
+  timeZone: string,
   now: Date = new Date(),
   bufferMinutes = 0,
 ): string[] {
-  if (dateKey !== toDateKey(now)) return slots;
-  const cutoffMinutes = now.getHours() * 60 + now.getMinutes() + bufferMinutes;
-  return slots.filter((t) => toMinutes(t) > cutoffMinutes);
+  const business = nowInTimezone(timeZone, now);
+  if (dateKey !== business.dateKey) return slots;
+  return slots.filter((t) => toMinutes(t) > business.minutes + bufferMinutes);
 }
 
 export function addDaysToDateKey(dateKey: string, days: number): string {

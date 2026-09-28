@@ -2,6 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { MODULES } from "@/lib/permission-modules";
 import type { AdminRole, ModuleKey, StaffPermission } from "@/lib/types";
 
+function closedPermission(module: ModuleKey): StaffPermission {
+  return { module, can_view: false, can_create: false, can_edit: false, can_delete: false };
+}
+
 /** The signed-in admin's role. Defaults to "admin" if something's missing, matching the DB default. */
 export async function getAdminRole(): Promise<AdminRole> {
   const supabase = await createClient();
@@ -17,15 +21,21 @@ export async function getAdminRole(): Promise<AdminRole> {
   return (data?.role as AdminRole | null) ?? "admin";
 }
 
-/** Every module's permission row, defaulting anything missing from the table to fully closed. */
+/** Every module's permission row for the SIGNED-IN staff account, defaulting anything missing to fully closed. */
 export async function getStaffPermissions(): Promise<Record<ModuleKey, StaffPermission>> {
   const supabase = await createClient();
-  const { data } = await supabase.from("staff_permissions").select("*");
-  const byModule = new Map(((data as StaffPermission[] | null) ?? []).map((p) => [p.module, p]));
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const result = {} as Record<ModuleKey, StaffPermission>;
+  if (!user) {
+    for (const m of MODULES) result[m.key] = closedPermission(m.key);
+    return result;
+  }
+  const { data } = await supabase.from("staff_permissions").select("*").eq("admin_user_id", user.id);
+  const byModule = new Map(((data as StaffPermission[] | null) ?? []).map((p) => [p.module, p]));
   for (const m of MODULES) {
-    result[m.key] =
-      byModule.get(m.key) ?? { module: m.key, can_view: false, can_create: false, can_edit: false, can_delete: false };
+    result[m.key] = byModule.get(m.key) ?? closedPermission(m.key);
   }
   return result;
 }
@@ -44,10 +54,10 @@ export function hasPermission(
 }
 
 /**
- * Blocks a "staff" admin from a mutation their role isn't granted for that
- * module, even if they reach it directly (bypassing the UI, which already
- * hides these controls). "admin" role always passes. Throws so the calling
- * action's try/catch surfaces it as a normal error toast.
+ * Blocks a "staff" admin from a mutation their own account isn't granted for
+ * that module, even if they reach it directly (bypassing the UI, which
+ * already hides these controls). "admin" role always passes. Throws so the
+ * calling action's try/catch surfaces it as a normal error toast.
  */
 export async function requirePermission(module: ModuleKey, action: Action): Promise<void> {
   const supabase = await createClient();
@@ -63,6 +73,7 @@ export async function requirePermission(module: ModuleKey, action: Action): Prom
   const { data: perm } = await supabase
     .from("staff_permissions")
     .select("can_view, can_create, can_edit, can_delete")
+    .eq("admin_user_id", user.id)
     .eq("module", module)
     .maybeSingle();
   const allowed = Boolean(perm?.[`can_${action}` as const]);

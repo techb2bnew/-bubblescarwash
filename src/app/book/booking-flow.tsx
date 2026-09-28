@@ -24,8 +24,8 @@ import {
   getMonthGrid,
   isSameMonth,
   MONTH_NAMES,
-  startOfToday,
   toDateKey,
+  todayKeyInTimezone,
   unavailableDateStyle,
   WEEKDAY_NAMES,
 } from "@/lib/date-utils";
@@ -297,6 +297,7 @@ export default function BookingFlow({
   settings,
   blockedDates,
   paymentMode,
+  businessTimezone,
 }: {
   services: Service[];
   extras: Extra[];
@@ -305,6 +306,7 @@ export default function BookingFlow({
   settings: BusinessSettings;
   blockedDates: BlockedDate[];
   paymentMode: PaymentMode;
+  businessTimezone: string;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
@@ -368,7 +370,12 @@ export default function BookingFlow({
   const [popupNotFound, setPopupNotFound] = useState(false);
   const [popupCarChoices, setPopupCarChoices] = useState<ReturningCustomerCar[]>([]);
 
-  const today = useMemo(() => startOfToday(), []);
+  // "Today" per the business's own clock, not whatever timezone the visitor's
+  // browser happens to be in — see filterPastSlots/todayKeyInTimezone.
+  const today = useMemo(() => {
+    const [y, m, d] = todayKeyInTimezone(businessTimezone).split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }, [businessTimezone]);
   const [cursor, setCursor] = useState({
     year: today.getFullYear(),
     month: today.getMonth(),
@@ -727,8 +734,8 @@ export default function BookingFlow({
       settings.slot_interval_minutes,
     );
     if (!selectedDate) return slots;
-    return filterPastSlots(slots, selectedDate, new Date(), SAME_DAY_BOOKING_BUFFER_MINUTES);
-  }, [businessHours, settings, selectedDate]);
+    return filterPastSlots(slots, selectedDate, businessTimezone, new Date(), SAME_DAY_BOOKING_BUFFER_MINUTES);
+  }, [businessHours, settings, selectedDate, businessTimezone]);
 
   function changeMonth(delta: number) {
     setCursor((c) => {
@@ -1048,9 +1055,6 @@ export default function BookingFlow({
                         <span className="flex items-center gap-1">
                           <span className="h-2 w-2 rounded-full bg-brand-500" /> Available
                         </span>
-                        <span className="flex items-center gap-1">
-                          <span className="h-2 w-2 rounded-full bg-blue-400" /> Booked
-                        </span>
                       </div>
                     </div>
                     {loadingTimes ? (
@@ -1067,60 +1071,51 @@ export default function BookingFlow({
                         </button>
                       </div>
                     ) : (
-                      // A Google-Calendar-style day agenda: one row per slot, in
-                      // chronological order, booked slots shown as a solid event
-                      // block instead of just being omitted — so it's visually
-                      // obvious which part of the day is already taken.
-                      <div className="max-h-80 divide-y divide-gray-100 overflow-y-auto rounded-xl border border-gray-100">
-                        {timeSlots.map((t) => {
-                          const bookedEntry = bookedTimes.find((bt) => bt.time === t);
-                          const taken = Boolean(bookedEntry);
-                          const blocked = bookedEntry?.isBlocked ?? false;
-                          const active = selectedTime === t;
+                      // Client feedback: don't list booked/blocked times at
+                      // all (they used to show as a disabled "Booked" row) —
+                      // only the actually available ones.
+                      (() => {
+                        const availableSlots = timeSlots.filter(
+                          (t) => !bookedTimes.some((bt) => bt.time === t),
+                        );
+                        if (availableSlots.length === 0) {
                           return (
-                            <button
-                              key={t}
-                              type="button"
-                              disabled={taken}
-                              onClick={() => handleSelectTime(t)}
-                              title={
-                                taken
-                                  ? bookedEntry?.reason ||
-                                    (blocked ? "Not available" : "Already booked")
-                                  : undefined
-                              }
-                              className={`flex w-full items-center gap-3 px-3 py-2 text-left text-xs transition ${
-                                taken ? "cursor-not-allowed" : "hover:bg-brand-50/60"
-                              } ${active ? "bg-brand-50" : ""}`}
-                            >
-                              <span className="w-14 flex-none font-semibold text-gray-500">
-                                {formatTimeLabel(t)}
-                              </span>
-                              {taken ? (
-                                <span
-                                  className={`flex-1 truncate rounded-md px-2.5 py-1.5 font-semibold ${
-                                    blocked
-                                      ? "bg-red-100 text-red-700"
-                                      : "bg-blue-100 text-blue-700"
-                                  }`}
-                                >
-                                  {bookedEntry?.reason || (blocked ? "Not available" : "Booked")}
-                                </span>
-                              ) : (
-                                <span
-                                  className={`flex-1 rounded-md border-2 px-2.5 py-1.5 font-semibold ${
-                                    active
-                                      ? "border-brand-600 bg-white text-brand-700"
-                                      : "border-dashed border-brand-200 text-brand-500"
-                                  }`}
-                                >
-                                  Available
-                                </span>
-                              )}
-                            </button>
+                            <p className="p-3 text-sm text-gray-400">
+                              No times available for this date — try another day.
+                            </p>
                           );
-                        })}
-                      </div>
+                        }
+                        return (
+                          <div className="max-h-80 divide-y divide-gray-100 overflow-y-auto rounded-xl border border-gray-100">
+                            {availableSlots.map((t) => {
+                              const active = selectedTime === t;
+                              return (
+                                <button
+                                  key={t}
+                                  type="button"
+                                  onClick={() => handleSelectTime(t)}
+                                  className={`flex w-full items-center gap-3 px-3 py-2 text-left text-xs transition hover:bg-brand-50/60 ${
+                                    active ? "bg-brand-50" : ""
+                                  }`}
+                                >
+                                  <span className="w-14 flex-none font-semibold text-gray-500">
+                                    {formatTimeLabel(t)}
+                                  </span>
+                                  <span
+                                    className={`flex-1 rounded-md border-2 px-2.5 py-1.5 font-semibold ${
+                                      active
+                                        ? "border-brand-600 bg-white text-brand-700"
+                                        : "border-dashed border-brand-200 text-brand-500"
+                                    }`}
+                                  >
+                                    Available
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()
                     )}
                   </>
                 ) : (
