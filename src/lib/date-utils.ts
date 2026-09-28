@@ -125,18 +125,59 @@ export function formatTimeLabel(time: string): string {
 }
 
 /**
- * Drops slots that have already started for today's date, so an admin can't
- * pick an already-passed time when creating a same-day booking. Slots for
- * any other date pass through unchanged.
+ * The current wall-clock date/time as seen in `timeZone`, independent of
+ * whatever timezone the browser or server happens to be running in. Slot
+ * strings ("08:00") are always the business's own local time (Australia,
+ * say) — comparing them against a visitor's browser-local `now` silently
+ * shifts the cutoff by however many hours that visitor's timezone differs
+ * from the business's (e.g. an India-based visitor's midday local clock
+ * doesn't correspond to midday in Australia), hiding/showing the wrong
+ * slots. Going through Intl with an explicit `timeZone` sidesteps that.
+ */
+function nowInTimezone(timeZone: string, now: Date): { dateKey: string; minutes: number } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+  // Some environments render midnight as "24" rather than "00" for hour12: false.
+  const hour = Number(get("hour")) % 24;
+  return {
+    dateKey: `${get("year")}-${get("month")}-${get("day")}`,
+    minutes: hour * 60 + Number(get("minute")),
+  };
+}
+
+/**
+ * Today's date as seen in the business's timezone — not the viewer's. Two
+ * people looking at the same instant can disagree on what day "today" is
+ * (e.g. late evening in India is already past midnight in Australia), so
+ * this is what "today" should mean for picking/graying out booking dates.
+ */
+export function todayKeyInTimezone(timeZone: string, now: Date = new Date()): string {
+  return nowInTimezone(timeZone, now).dateKey;
+}
+
+/**
+ * Drops slots that have already started for today's date (today and "now"
+ * both measured in the business's own timezone, not the viewer's), so
+ * nobody can pick an already-passed time when creating a same-day booking.
+ * Slots for any other date pass through unchanged.
  */
 export function filterPastSlots(
   slots: string[],
   dateKey: string,
+  timeZone: string,
   now: Date = new Date(),
 ): string[] {
-  if (dateKey !== toDateKey(now)) return slots;
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  return slots.filter((t) => toMinutes(t) > nowMinutes);
+  const business = nowInTimezone(timeZone, now);
+  if (dateKey !== business.dateKey) return slots;
+  return slots.filter((t) => toMinutes(t) > business.minutes);
 }
 
 export function addDaysToDateKey(dateKey: string, days: number): string {

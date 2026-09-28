@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdminRole, getStaffPermissions, hasPermission } from "@/lib/admin-role";
 import { syncBlockedDatesToGoogle } from "@/lib/blocked-date-sync";
 import { syncBlockedSlotsToGoogle } from "@/lib/blocked-slot-sync";
-import { getGoogleCalendarEmbedUrl } from "@/lib/google-calendar";
+import { getBusinessTimezone, getGoogleCalendarEmbedUrl } from "@/lib/google-calendar";
 import { getPaymentMode } from "@/lib/payment-mode";
 import { flattenServiceTemplates, type ServiceTemplateRow } from "@/lib/pricing";
 import type {
@@ -110,6 +110,7 @@ export default async function AdminCalendarPage() {
         googleCalendarEmbedUrl={googleCalendarEmbedUrl}
         paymentMode={getPaymentMode()}
         canEdit={hasPermission(role, permissions, "calendar", "create")}
+        businessTimezone={getBusinessTimezone()}
       />
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import type { Customer, Extra, Service, ServiceCategoryRow, VehicleTypeRow } from "@/lib/types";
 import type { PaymentMode } from "@/lib/payment-mode";
 import { formatTimeLabel, unavailableDateStyle } from "@/lib/date-utils";
@@ -709,6 +710,19 @@ export default function CreateBookingWizard({
 
           {loadingSlots ? (
             <p className="text-sm text-gray-400">Loading...</p>
+          ) : timeSlots.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              No slots are available for this date-time.{" "}
+              <br/>
+              <Link
+                href="/admin/calendar/set-operations"
+                // target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-brand-600 hover:underline"
+              >
+                You can change slot times and schedule in Set Operations →
+              </Link>
+            </p>
           ) : (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
               {timeSlots.map((t) => {

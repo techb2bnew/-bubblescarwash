@@ -21,7 +21,7 @@ import {
   getMonthGrid,
   isSameMonth,
   MONTH_NAMES,
-  startOfToday,
+  todayKeyInTimezone,
   toDateKey,
   unavailableDateStyle,
   WEEKDAY_NAMES,
@@ -42,6 +42,7 @@ export default function CalendarView({
   googleCalendarEmbedUrl,
   paymentMode,
   canEdit = true,
+  businessTimezone,
 }: {
   blockedDates: BlockedDate[];
   settings: BusinessSettings;
@@ -53,10 +54,16 @@ export default function CalendarView({
   googleCalendarEmbedUrl: string | null;
   paymentMode: PaymentMode;
   canEdit?: boolean;
+  businessTimezone: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const today = useMemo(() => startOfToday(), []);
+  // "Today" per the business's own clock, not whatever timezone the viewer's
+  // browser happens to be in — see filterPastSlots/todayKeyInTimezone.
+  const today = useMemo(() => {
+    const [y, m, d] = todayKeyInTimezone(businessTimezone).split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }, [businessTimezone]);
   const useGoogleCalendar = Boolean(googleCalendarEmbedUrl);
   const [calendarKey, setCalendarKey] = useState(0);
   const [cursor, setCursor] = useState({
@@ -97,8 +104,8 @@ export default function CalendarView({
       dateHours.closingTime,
       settings.slot_interval_minutes,
     );
-    return selected ? filterPastSlots(slots, selected) : slots;
-  }, [dateHours, settings.slot_interval_minutes, selected]);
+    return selected ? filterPastSlots(slots, selected, businessTimezone) : slots;
+  }, [dateHours, settings.slot_interval_minutes, selected, businessTimezone]);
 
   const dayIsClosed = selected ? blockedByDate.has(selected) : false;
 
