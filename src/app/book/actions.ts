@@ -243,6 +243,36 @@ export async function lookupReturningCustomerCars(
     .sort((a, b) => (a.lastBookedAt < b.lastBookedAt ? 1 : -1));
 }
 
+export interface PlateLookupResult {
+  maskedName: string;
+  vehicleType: string;
+  carNumber: string;
+}
+
+/**
+ * Plate-alone lookup — deliberately returns only a masked name ("John
+ * Smith" -> "J*** S***") plus vehicle type, never phone or email. A plate
+ * is visible on the car in a public car park, so a plate-only lookup that
+ * handed back real contact details would let a stranger who read someone's
+ * plate pull up their name/phone/email. The masked name lets the customer
+ * confirm "yes, that's me" before their vehicle type autofills, without
+ * exposing anything usable to actually contact or impersonate them. See
+ * migration 0054.
+ */
+export async function lookupCarByPlateMasked(
+  carNumber: string,
+): Promise<PlateLookupResult | null> {
+  if (!carNumber.trim()) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .rpc("lookup_car_by_plate_masked", { p_car_number: carNumber })
+    .maybeSingle();
+  if (error || !data) return null;
+
+  const row = data as { masked_name: string; vehicle_type: string; car_number: string };
+  return { maskedName: row.masked_name, vehicleType: row.vehicle_type, carNumber: row.car_number };
+}
+
 export async function countBookingsByEmail(email: string): Promise<number> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("count_bookings_by_email", {

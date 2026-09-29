@@ -37,12 +37,14 @@ import {
   createCheckoutSession,
   getBookedTimes,
   getDateHours,
+  lookupCarByPlateMasked,
   lookupReturningCustomerCars,
   previewCustomerDiscount,
   previewDiscount,
   previewGiftCard,
   type BookedTime,
   type CustomerDiscountPreview,
+  type PlateLookupResult,
   type ReturningCustomerCar,
 } from "./actions";
 
@@ -359,16 +361,17 @@ export default function BookingFlow({
 
   // "Returning customer?" popup shown on a fresh visit (no draft to resume)
   // — phone number identifies past bookings so we can autofill instead of
-  // asking a repeat customer to retype everything. Car number is only an
-  // optional hint to preselect one of that phone's own cars; it's never a
-  // standalone lookup key. See lookupReturningCustomerCars / migration 0050
-  // for why.
+  // asking a repeat customer to retype everything. Car number alone also
+  // works, but only ever surfaces a masked name + vehicle type (see
+  // lookupCarByPlateMasked / migration 0054) — never phone/email, since a
+  // plate is visible on the car in a public car park.
   const [showReturningPopup, setShowReturningPopup] = useState(false);
   const [popupPhone, setPopupPhone] = useState("");
   const [popupCarNumber, setPopupCarNumber] = useState("");
   const [popupChecking, setPopupChecking] = useState(false);
   const [popupNotFound, setPopupNotFound] = useState(false);
   const [popupCarChoices, setPopupCarChoices] = useState<ReturningCustomerCar[]>([]);
+  const [popupPlateMatch, setPopupPlateMatch] = useState<PlateLookupResult | null>(null);
 
   // "Today" per the business's own clock, not whatever timezone the visitor's
   // browser happens to be in — see filterPastSlots/todayKeyInTimezone.
@@ -665,15 +668,43 @@ export default function BookingFlow({
     setCarNumber(match.carNumber);
     setShowReturningPopup(false);
     setPopupCarChoices([]);
+    setPopupPlateMatch(null);
+    markReturningPopupSeen();
+  }
+
+  // Confirming a masked plate match only ever fills vehicle type + car
+  // number — never name/phone/email, since that match was found by plate
+  // alone (see lookupCarByPlateMasked for why).
+  function applyPlateMatch(match: PlateLookupResult) {
+    if (vehicleTypes.some((v) => v.slug === match.vehicleType)) {
+      setVehicle(match.vehicleType as VehicleType);
+      setSelectedService(null);
+    }
+    setCarNumber(match.carNumber);
+    setShowReturningPopup(false);
+    setPopupPlateMatch(null);
     markReturningPopupSeen();
   }
 
   async function handleCheckReturningCustomer() {
-    if (!popupPhone.trim()) return;
     setPopupChecking(true);
     setPopupNotFound(false);
     setPopupCarChoices([]);
+    setPopupPlateMatch(null);
     try {
+      if (!popupPhone.trim()) {
+        // No phone typed — fall back to a plate-alone lookup, which only
+        // ever returns a masked name + vehicle type for the customer to
+        // confirm, never contact details.
+        const match = await lookupCarByPlateMasked(popupCarNumber);
+        if (!match) {
+          setPopupNotFound(true);
+          return;
+        }
+        setPopupPlateMatch(match);
+        return;
+      }
+
       const cars = await lookupReturningCustomerCars(popupPhone);
       if (cars.length === 0) {
         setPopupNotFound(true);
@@ -1808,86 +1839,132 @@ export default function BookingFlow({
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
             <h3 className="text-base font-bold text-gray-900">Booked with us before?</h3>
             <p className="mt-2 text-sm text-gray-600">
-              Enter the phone number from your last booking and we&apos;ll fill in your
-              details for you.
+              Enter the phone number or rego plate from your last booking and we&apos;ll fill in
+              your details for you.
             </p>
-            <div className="mt-4 space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-gray-600">
-                  Phone number
-                </label>
-                <input
-                  value={popupPhone}
-                  onChange={(e) => {
-                    setPopupPhone(e.target.value);
-                    setPopupNotFound(false);
-                    setPopupCarChoices([]);
-                  }}
-                  placeholder="e.g. 0412 345 678"
-                  className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-gray-600">
-                  Rego Plate{" "}
-                  <span className="font-normal text-gray-400">(optional, if you have more than one car with us)</span>
-                </label>
-                <input
-                  value={popupCarNumber}
-                  onChange={(e) => {
-                    setPopupCarNumber(e.target.value.toUpperCase());
-                    setPopupNotFound(false);
-                  }}
-                  placeholder="e.g. ABC123"
-                  className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm uppercase transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                />
-              </div>
-              {popupNotFound && (
-                <p className="text-xs font-semibold text-amber-700">
-                  Couldn&apos;t find a matching booking — check the number or continue as a new customer below.
-                </p>
-              )}
-              {popupCarChoices.length > 0 && (
-                <div>
-                  <p className="mb-1.5 text-xs font-semibold text-gray-600">
-                    We found more than one car for this number — which one is this booking for?
+            {popupPlateMatch ? (
+              <div className="mt-4 space-y-3">
+                <div className="rounded-xl border-2 border-brand-200 bg-brand-50 p-3.5 text-sm">
+                  <p className="font-semibold text-gray-800">
+                    Found a booking for plate <strong>{popupPlateMatch.carNumber}</strong>
                   </p>
-                  <div className="space-y-1.5">
-                    {popupCarChoices.map((car) => (
-                      <button
-                        key={car.carNumber || car.lastBookedAt}
-                        onClick={() => applyReturningCustomer(car)}
-                        className="w-full rounded-xl border-2 border-gray-200 px-3.5 py-2 text-left text-sm font-semibold text-gray-700 transition hover:border-brand-500 hover:bg-brand-50"
-                      >
-                        {car.carNumber || "No plate on file"}
-                        {car.vehicleType && (
-                          <span className="ml-1.5 font-normal text-gray-400">
-                            ({vehicleTypes.find((v) => v.slug === car.vehicleType)?.name ?? car.vehicleType})
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                  <p className="mt-1 text-gray-600">
+                    Name on file: <strong>{popupPlateMatch.maskedName}</strong>
+                    {popupPlateMatch.vehicleType && (
+                      <>
+                        {" "}
+                        ·{" "}
+                        {vehicleTypes.find((v) => v.slug === popupPlateMatch.vehicleType)?.name ??
+                          popupPlateMatch.vehicleType}
+                      </>
+                    )}
+                  </p>
+                  <p className="mt-2 text-xs text-gray-500">
+                    For privacy, only your vehicle type will be filled in — you&apos;ll still enter
+                    your name, phone and email yourself.
+                  </p>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-gray-600">
+                    Phone number
+                  </label>
+                  <input
+                    value={popupPhone}
+                    onChange={(e) => {
+                      setPopupPhone(e.target.value);
+                      setPopupNotFound(false);
+                      setPopupCarChoices([]);
+                    }}
+                    placeholder="e.g. 0412 345 678"
+                    className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-gray-600">
+                    Rego Plate{" "}
+                    <span className="font-normal text-gray-400">
+                      (works alone too, if you don&apos;t have your phone number handy)
+                    </span>
+                  </label>
+                  <input
+                    value={popupCarNumber}
+                    onChange={(e) => {
+                      setPopupCarNumber(e.target.value.toUpperCase());
+                      setPopupNotFound(false);
+                    }}
+                    placeholder="e.g. ABC123"
+                    className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm uppercase transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                  />
+                </div>
+                {popupNotFound && (
+                  <p className="text-xs font-semibold text-amber-700">
+                    Couldn&apos;t find a matching booking — check the details or continue as a new customer below.
+                  </p>
+                )}
+                {popupCarChoices.length > 0 && (
+                  <div>
+                    <p className="mb-1.5 text-xs font-semibold text-gray-600">
+                      We found more than one car for this number — which one is this booking for?
+                    </p>
+                    <div className="space-y-1.5">
+                      {popupCarChoices.map((car) => (
+                        <button
+                          key={car.carNumber || car.lastBookedAt}
+                          onClick={() => applyReturningCustomer(car)}
+                          className="w-full rounded-xl border-2 border-gray-200 px-3.5 py-2 text-left text-sm font-semibold text-gray-700 transition hover:border-brand-500 hover:bg-brand-50"
+                        >
+                          {car.carNumber || "No plate on file"}
+                          {car.vehicleType && (
+                            <span className="ml-1.5 font-normal text-gray-400">
+                              ({vehicleTypes.find((v) => v.slug === car.vehicleType)?.name ?? car.vehicleType})
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="mt-5 flex justify-end gap-2.5">
-              <button
-                onClick={() => {
-                  setShowReturningPopup(false);
-                  markReturningPopupSeen();
-                }}
-                className="rounded-full border-2 border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
-              >
-                I&apos;m new here
-              </button>
-              <button
-                onClick={handleCheckReturningCustomer}
-                disabled={popupChecking || !popupPhone.trim()}
-                className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {popupChecking ? "Checking…" : "Find my details"}
-              </button>
+              {popupPlateMatch ? (
+                <>
+                  <button
+                    onClick={() => setPopupPlateMatch(null)}
+                    className="rounded-full border-2 border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
+                  >
+                    Not me
+                  </button>
+                  <button
+                    onClick={() => applyPlateMatch(popupPlateMatch)}
+                    className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:shadow-md"
+                  >
+                    Yes, that&apos;s me
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      setShowReturningPopup(false);
+                      markReturningPopupSeen();
+                    }}
+                    className="rounded-full border-2 border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
+                  >
+                    I&apos;m new here
+                  </button>
+                  <button
+                    onClick={handleCheckReturningCustomer}
+                    disabled={popupChecking || (!popupPhone.trim() && !popupCarNumber.trim())}
+                    className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {popupChecking ? "Checking…" : "Find my details"}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
