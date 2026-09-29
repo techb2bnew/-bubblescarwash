@@ -101,8 +101,9 @@ export default function SiteFooter() {
             className="h-24 w-auto"
           />
           <p className="mt-4 max-w-xs text-sm text-gray-400">
-            Adelaide&apos;s north east wash &amp; cafe since 2011 — a clean car and a good coffee,
-            every time.
+            Bubbles Car Wash &amp; Cafe has been part of Adelaide&apos;s north east since 2011 — a
+            family-run wash bay that grew into a proper stop for your car and your coffee break,
+            both.
           </p>
           <div className="mt-5 flex items-center gap-2">
             {socials.map((s) => (
