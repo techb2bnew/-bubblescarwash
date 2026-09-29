@@ -85,25 +85,33 @@ export default function SiteHeader() {
             />
           </Link>
           <nav className="hidden items-center gap-9 text-base font-bold text-gray-700 md:flex">
-            {siteNavLinks.map((link) => {
-              const active = isActive(link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`group relative flex items-center py-1 transition hover:text-brand-600 ${
-                    active ? "text-brand-600" : ""
-                  }`}
-                >
-                  {link.label === "Book" ? "Book Now" : link.label}
-                  <span
-                    className={`absolute -bottom-0.5 left-0 h-0.5 rounded-full bg-brand-600 transition-all duration-200 ${
-                      active ? "w-full" : "w-0 group-hover:w-full"
+            {siteNavLinks
+              .filter((link) => link.label !== "Book")
+              .map((link) => {
+                const active = isActive(link.href);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`group relative flex items-center py-1 transition hover:text-brand-600 ${
+                      active ? "text-brand-600" : ""
                     }`}
-                  />
-                </Link>
-              );
-            })}
+                  >
+                    {link.label}
+                    <span
+                      className={`absolute -bottom-0.5 left-0 h-0.5 rounded-full bg-brand-600 transition-all duration-200 ${
+                        active ? "w-full" : "w-0 group-hover:w-full"
+                      }`}
+                    />
+                  </Link>
+                );
+              })}
+            <Link
+              href="/book"
+              className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              Book Now
+            </Link>
           </nav>
           <div className="flex items-center gap-3">
             <a
@@ -151,24 +159,33 @@ export default function SiteHeader() {
         {/* Mobile dropdown menu */}
         {menuOpen && (
           <nav className="flex flex-col gap-1 border-t border-gray-100 bg-white px-4 py-3 text-base font-bold text-gray-700 md:hidden">
-            {siteNavLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMenuOpen(false)}
-                className={`rounded-lg px-3 py-2.5 transition hover:bg-brand-50 hover:text-brand-600 ${
-                  isActive(link.href) ? "bg-brand-50 text-brand-600" : ""
-                }`}
-              >
-                {link.label === "Book" ? "Book Now" : link.label}
-              </Link>
-            ))}
+            {siteNavLinks
+              .filter((link) => link.label !== "Book")
+              .map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMenuOpen(false)}
+                  className={`rounded-lg px-3 py-2.5 transition hover:bg-brand-50 hover:text-brand-600 ${
+                    isActive(link.href) ? "bg-brand-50 text-brand-600" : ""
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ))}
             <a
               href="tel:0870805959"
               className="rounded-lg px-3 py-2.5 transition hover:bg-brand-50 hover:text-brand-600"
             >
               (08) 7080 5959
             </a>
+            <Link
+              href="/book"
+              onClick={() => setMenuOpen(false)}
+              className="mt-2 rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2.5 text-center text-white shadow-sm"
+            >
+              Book Now
+            </Link>
           </nav>
         )}
       </div>
