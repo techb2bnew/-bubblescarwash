@@ -524,9 +524,11 @@ export default async function Home() {
 
       <HeroSlider />
 
-      {/* Trust pills — overlaps the hero/white boundary like a badge strip */}
+      {/* Trust pills — overlaps the hero/white boundary like a badge strip.
+          Smaller negative margin on mobile — the full -mt-16 overlap left no
+          gap between the hero's "Rated on Google" line and this card. */}
       <section className="relative z-10 bg-white">
-        <div className="mx-auto -mt-16 max-w-[1600px] px-4 sm:px-8">
+        <div className="mx-auto -mt-6 max-w-[1600px] px-4 sm:-mt-16 sm:px-8">
           <div className="grid grid-cols-2 gap-y-6 divide-y divide-gray-100 rounded-2xl border border-gray-100 bg-white p-6 shadow-xl shadow-brand-600/10 sm:grid-cols-4 sm:gap-x-4 sm:gap-y-6 sm:divide-y-0 sm:p-7 lg:grid-cols-7 lg:gap-x-4 lg:gap-y-0">
             {trustPills.map((p, i) => (
               <div
@@ -558,7 +560,9 @@ export default async function Home() {
             <p className="mt-2 text-center text-xs text-gray-400">
               Drag the slider to see the difference
             </p>
-            <div className="absolute bottom-0 right-4 flex flex-col items-center justify-center rounded-2xl bg-brand-600 px-6 py-5 text-center text-white shadow-xl shadow-brand-600/30 sm:-bottom-6 sm:-right-6">
+            {/* Mobile: top-right, clear of the slider's own Before/After tags
+                at the bottom corners. sm+: the original bottom-right overlap. */}
+            <div className="absolute right-4 top-4 flex flex-col items-center justify-center rounded-2xl bg-brand-600 px-6 py-5 text-center text-white shadow-xl shadow-brand-600/30 sm:bottom-[-1.5rem] sm:right-[-1.5rem] sm:top-auto">
               <p className="text-3xl font-extrabold">15+</p>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-50">
                 Years Running
@@ -813,7 +817,7 @@ export default async function Home() {
               Good products, used <span className="wave-word">properly</span>
             </h2>
           </div></Reveal>
-          <div className="mt-10 grid grid-cols-2 gap-5 sm:grid-cols-4">
+          <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-4">
             {careItems.map((c, i) => (
               <Reveal key={c.title} delay={i * 90}>
                 <div className="rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
@@ -889,12 +893,6 @@ export default async function Home() {
               Prefer to talk it through first? Give the team a call.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Link
-                href="/book"
-                className="rounded-full bg-brand-600 px-8 py-4 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:bg-brand-700"
-              >
-                Book Now
-              </Link>
               <a
                 href="tel:0870805959"
                 className="flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-brand-600"
@@ -911,6 +909,12 @@ export default async function Home() {
                 </span>
                 (08) 7080 5959
               </a>
+              <Link
+                href="/book"
+                className="rounded-full bg-brand-600 px-8 py-4 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:bg-brand-700"
+              >
+                Book Now
+              </Link>
             </div>
           </div>
         </div>

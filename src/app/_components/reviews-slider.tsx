@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Review = {
   name: string;
@@ -43,7 +43,19 @@ function GoogleStars() {
 
 export default function ReviewsSlider({ reviews }: { reviews: Review[] }) {
   const [page, setPage] = useState(0);
-  const perPage = 3;
+  // Client feedback: mobile should show one review per slide, not three
+  // stacked in the same frame — matches the sm:grid-cols-3 breakpoint below.
+  const [perPage, setPerPage] = useState(3);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 640px)");
+    const apply = () => {
+      setPerPage(mq.matches ? 3 : 1);
+      setPage(0);
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
   const pageCount = Math.ceil(reviews.length / perPage);
 
   return (

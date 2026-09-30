@@ -14,16 +14,40 @@ export default function SiteHeader() {
 
   return (
     <header>
-      {/* Compact mobile-only bar — address, hours, phone always visible (client feedback: these should be a constant bar on mobile, not hidden). */}
+      {/* Compact mobile-only bar — address, hours, phone always visible (client feedback: these should be a constant bar on mobile, not hidden). Icons match the desktop utility bar below. */}
       <div style={{ backgroundColor: "#0b1220" }} className="text-gray-400 sm:hidden">
         <div className="flex flex-col gap-1 px-4 py-2 text-xs">
           <div className="flex items-center justify-between gap-2">
-            <a href="tel:0870805959" className="font-semibold text-brand-300">
+            <a href="tel:0870805959" className="flex items-center gap-1.5 font-semibold text-brand-300">
+              <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5 flex-none">
+                <path
+                  d="M4 5c0 8.8 6.2 15 15 15l1-4-5-2-2 2c-2-1-4-3-5-5l2-2-2-5-4 1Z"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinejoin="round"
+                />
+              </svg>
               (08) 7080 5959
             </a>
-            <span>Mon–Sat 8–5, Sun 9–5</span>
+            <span className="flex items-center gap-1.5">
+              <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5 flex-none text-brand-400">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+                <path d="M12 7v5l3.5 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+              Mon–Sat 8–5, Sun 9–5
+            </span>
           </div>
-          <span className="truncate">273 North East Rd, Hampstead Gardens SA 5086</span>
+          <span className="flex items-center gap-1.5">
+            <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5 flex-none text-brand-400">
+              <path
+                d="M12 21s7-6.5 7-11.5a7 7 0 1 0-14 0C5 14.5 12 21 12 21Z"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span className="truncate">273 North East Rd, Hampstead Gardens SA 5086</span>
+          </span>
         </div>
       </div>
 
