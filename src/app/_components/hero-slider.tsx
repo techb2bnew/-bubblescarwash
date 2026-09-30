@@ -64,7 +64,7 @@ export default function HeroSlider() {
           href="https://www.google.com/search?q=Bubbles+Car+Wash+%26+Cafe+Hampstead+Gardens+reviews"
           target="_blank"
           rel="noreferrer"
-          className="mt-11 flex items-center justify-center gap-3 text-white/80 transition hover:text-white"
+          className="mt-11 flex flex-col items-center justify-center gap-2 text-center text-white/80 transition hover:text-white sm:flex-row sm:gap-3"
         >
           <StarRow />
           <span className="text-base text-gray-300 underline-offset-4 hover:underline">
