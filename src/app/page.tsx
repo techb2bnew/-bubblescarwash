@@ -562,7 +562,7 @@ export default async function Home() {
             </p>
             {/* Mobile: top-right, clear of the slider's own Before/After tags
                 at the bottom corners. sm+: the original bottom-right overlap. */}
-            <div className="absolute right-4 top-4 flex flex-col items-center justify-center rounded-2xl bg-brand-600 px-6 py-5 text-center text-white shadow-xl shadow-brand-600/30 sm:bottom-[-1.5rem] sm:right-[-1.5rem] sm:top-auto">
+            <div className="absolute -top-4 right-4 flex flex-col items-center justify-center rounded-2xl bg-brand-600 px-6 py-5 text-center text-white shadow-xl shadow-brand-600/30 sm:bottom-[-1.5rem] sm:right-[-1.5rem] sm:top-auto">
               <p className="text-3xl font-extrabold">15+</p>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-50">
                 Years Running
