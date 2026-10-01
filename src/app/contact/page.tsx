@@ -103,7 +103,7 @@ export default function ContactPage() {
                     href={c.action.href}
                     target={c.action.href.startsWith("http") ? "_blank" : undefined}
                     rel={c.action.href.startsWith("http") ? "noreferrer" : undefined}
-                    className="mt-2 block truncate text-sm font-semibold text-brand-600 hover:text-brand-700"
+                    className="mt-2 block text-sm font-semibold text-brand-600 hover:text-brand-700"
                   >
                     {c.action.label}
                   </a>
