@@ -337,6 +337,7 @@ export default function BookingFlow({
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCvv, setCardCvv] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limitConfirmCount, setLimitConfirmCount] = useState<number | null>(null);
 
@@ -1749,6 +1750,46 @@ export default function BookingFlow({
             </div>
           )}
 
+          <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+            <p className="text-sm font-bold text-gray-900">Disclaimer</p>
+            <div className="mt-2 max-h-40 overflow-y-auto pr-2 text-xs leading-relaxed text-gray-600">
+              <p>
+                In order to limit the risk of loss or damage to your personal property please
+                ensure:
+              </p>
+              <ul className="mt-2 list-disc space-y-1.5 pl-4">
+                <li>Your vehicle&apos;s windows and sunroof (if applicable) are closed.</li>
+                <li>Any personal items are removed from your vehicle.</li>
+                <li>
+                  If your vehicle has automatic door locks or any aftermarket alterations or
+                  modifications, that you have completed and returned a care instruction form to
+                  the operator prior to the provision of any services. Forms are available from
+                  the operator.
+                </li>
+              </ul>
+              <p className="mt-2">
+                If you request the provision of car washing and related services (collectively,
+                services) from the operator of this Bubbles Car Wash and Cafe business (operator)
+                and the operator agrees to provide those services, you and the operator agree
+                that, subject to any rights you have at law that cannot be waived, neither the
+                operator nor Bubbles Car Wash and Cafe Pty Ltd (ACN 138 032 210) is liable and you
+                will not bring any action or claim against either of them, in respect of any loss
+                or damage suffered or incurred by you in connection with the provision of services
+                by the operator. Without limiting the above, this includes any loss or damage to
+                your vehicle or other personal property.
+              </p>
+            </div>
+            <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={disclaimerAccepted}
+                onChange={(e) => setDisclaimerAccepted(e.target.checked)}
+                className="mt-0.5 h-4 w-4 flex-none rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              />
+              I have read and agree to the disclaimer above.
+            </label>
+          </div>
+
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
           <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
@@ -1766,9 +1807,11 @@ export default function BookingFlow({
                   <p className="text-sm text-red-600">Please enter your phone number above.</p>
                 ) : !email ? (
                   <p className="text-sm text-red-600">Please enter your email above.</p>
+                ) : !disclaimerAccepted ? (
+                  <p className="text-sm text-red-600">Please accept the disclaimer above.</p>
                 ) : null)}
               <button
-                disabled={!name || !phone || !email || submitting}
+                disabled={!name || !phone || !email || !disclaimerAccepted || submitting}
                 onClick={handleConfirm}
                 className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-8 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:-translate-y-0.5 hover:shadow-md disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
               >
