@@ -49,7 +49,7 @@ export default function HeroSlider() {
         <div className="mt-10 flex flex-row flex-nowrap items-center justify-center gap-3 sm:gap-4">
           <Link
             href="/book"
-            className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-brand-600/40 sm:px-9 sm:py-5 sm:text-lg"
+            className="hidden rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-9 py-5 text-lg font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-brand-600/40 sm:block"
           >
             Book Now
           </Link>

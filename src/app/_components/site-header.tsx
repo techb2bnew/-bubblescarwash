@@ -203,13 +203,9 @@ export default function SiteHeader() {
             >
               (08) 7080 5959
             </a>
-            <Link
-              href="/book"
-              onClick={() => setMenuOpen(false)}
-              className="mt-2 rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2.5 text-center text-white shadow-sm"
-            >
-              Book Now
-            </Link>
+            <span className="rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-500">
+              273 North East Rd, Hampstead Gardens SA 5086
+            </span>
           </nav>
         )}
       </div>
