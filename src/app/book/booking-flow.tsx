@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import {
   hasSeenReturningPopup,
@@ -340,6 +340,14 @@ export default function BookingFlow({
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limitConfirmCount, setLimitConfirmCount] = useState<number | null>(null);
+
+  const serviceSectionRef = useRef<HTMLDivElement>(null);
+  const slotSectionRef = useRef<HTMLDivElement>(null);
+  const scrollToSection = (ref: RefObject<HTMLDivElement | null>) => {
+    requestAnimationFrame(() => {
+      ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
 
   const [giftCardInput, setGiftCardInput] = useState("");
   const [appliedGiftCard, setAppliedGiftCard] = useState<{
@@ -908,6 +916,7 @@ export default function BookingFlow({
                       onClick={() => {
                         setVehicle(v.slug);
                         setSelectedService(null);
+                        scrollToSection(serviceSectionRef);
                       }}
                       className={`flex flex-col items-center gap-2 rounded-2xl border-2 px-4 py-6 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
                         active
@@ -948,6 +957,7 @@ export default function BookingFlow({
             </div>
           )}
 
+          <div ref={serviceSectionRef}>
           <p className="mb-2.5 text-sm font-semibold text-gray-700">Select Service</p>
           {vehicleServices.length === 0 ? (
             <p className="text-sm text-gray-400">
@@ -969,7 +979,10 @@ export default function BookingFlow({
                   <button
                     key={s.id}
                     type="button"
-                    onClick={() => setSelectedService(s)}
+                    onClick={() => {
+                      setSelectedService(s);
+                      scrollToSection(slotSectionRef);
+                    }}
                     className={`relative flex flex-col rounded-2xl border-2 p-5 text-left shadow-sm transition hover:-translate-y-0.5 ${
                       active
                         ? "border-brand-600 bg-brand-50/50 shadow-lg shadow-brand-600/10"
@@ -1017,8 +1030,9 @@ export default function BookingFlow({
               })}
             </div>
           )}
+          </div>
 
-          <div className="mt-9 border-t border-gray-100 pt-7">
+          <div ref={slotSectionRef} className="mt-9 border-t border-gray-100 pt-7">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-600">
               Pick A Slot
             </p>
