@@ -2,6 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    // Vercel's image optimizer returns 402 once the plan's monthly quota is
+    // used up, which blanks every next/image on the site (logo, hero, gallery).
+    // Serve the original files on Vercel instead; self-hosted builds keep
+    // the optimizer.
+    unoptimized: Boolean(process.env.VERCEL),
     remotePatterns: [
       {
         protocol: "https",
