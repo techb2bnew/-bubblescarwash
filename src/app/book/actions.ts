@@ -301,6 +301,9 @@ export interface CreateBookingInput {
 
 export interface CreateCheckoutSessionResult {
   url?: string;
+  /** Set instead of `url` when Stripe Checkout should render inline (embedded). */
+  clientSecret?: string;
+  bookingId?: string;
   error?: string;
 }
 
@@ -392,8 +395,22 @@ export async function createCheckoutSession(
     }`;
 
     const origin = await getSiteOrigin();
+    // Embedded Checkout keeps the customer on our page so Apple Pay / Google
+    // Pay prompt (Face ID etc.) inline; it needs the publishable key on the
+    // client, so without one we fall back to the hosted redirect.
+    const embedded = Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+    const returnUrls = embedded
+      ? {
+          ui_mode: "embedded_page" as const,
+          return_url: `${origin}/book/confirmation?booking_id=${bookingId}`,
+        }
+      : {
+          success_url: `${origin}/book/confirmation?booking_id=${bookingId}`,
+          cancel_url: `${origin}/book/cancelled?booking_id=${bookingId}`,
+        };
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      ...returnUrls,
       customer_email: input.customer_email,
       line_items: [
         {
@@ -410,11 +427,11 @@ export async function createCheckoutSession(
       ],
       metadata: { type: "booking", booking_id: bookingId },
       expires_at: Math.floor(Date.now() / 1000) + 32 * 60,
-      success_url: `${origin}/book/confirmation?booking_id=${bookingId}`,
-      cancel_url: `${origin}/book/cancelled?booking_id=${bookingId}`,
     });
 
-    if (!session.url) throw new Error("Stripe did not return a checkout URL.");
+    if (embedded ? !session.client_secret : !session.url) {
+      throw new Error("Stripe did not return a checkout session.");
+    }
 
     const { error: sessionError } = await supabase.rpc("set_booking_checkout_session", {
       p_booking_id: bookingId,
@@ -422,7 +439,9 @@ export async function createCheckoutSession(
     });
     if (sessionError) throw new Error(sessionError.message);
 
-    return { url: session.url };
+    return embedded
+      ? { clientSecret: session.client_secret ?? undefined, bookingId }
+      : { url: session.url ?? undefined };
   } catch (err) {
     await supabase.rpc("cancel_unpaid_booking", { p_booking_id: bookingId });
     return {

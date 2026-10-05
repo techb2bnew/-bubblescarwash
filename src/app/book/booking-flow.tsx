@@ -31,7 +31,10 @@ import {
 } from "@/lib/date-utils";
 import type { PaymentMode } from "@/lib/payment-mode";
 import { normalizeTitleCase } from "@/lib/format";
+import { loadStripe } from "@stripe/stripe-js";
+import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import {
+  cancelUnpaidBooking,
   countBookingsByEmail,
   createBookingSimple,
   createCheckoutSession,
@@ -49,6 +52,10 @@ import {
 } from "./actions";
 
 const BOOKING_LIMIT = 5;
+
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  : null;
 
 // Client feedback: a same-day booking shouldn't be offered for a time
 // that's already passed, or one starting too soon for the business to
@@ -338,6 +345,14 @@ export default function BookingFlow({
   const [cardCvv, setCardCvv] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
+  const [checkout, setCheckout] = useState<{ clientSecret: string; bookingId: string } | null>(
+    null,
+  );
+
+  function closeCheckout() {
+    if (checkout) cancelUnpaidBooking(checkout.bookingId).catch(() => {});
+    setCheckout(null);
+  }
   const [error, setError] = useState<string | null>(null);
   const [limitConfirmCount, setLimitConfirmCount] = useState<number | null>(null);
 
@@ -855,6 +870,12 @@ export default function BookingFlow({
     try {
       if (paymentMode === "stripe") {
         const result = await createCheckoutSession(bookingInput);
+        if (result.clientSecret && result.bookingId) {
+          // Inline checkout — Apple Pay / Google Pay prompt right here.
+          setCheckout({ clientSecret: result.clientSecret, bookingId: result.bookingId });
+          setSubmitting(false);
+          return;
+        }
         if (result.error || !result.url) {
           setError(result.error ?? "Something went wrong");
           setSubmitting(false);
@@ -2105,6 +2126,30 @@ export default function BookingFlow({
                 </>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {checkout && stripePromise && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm sm:items-center">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-4 shadow-2xl sm:p-6">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="text-base font-bold text-gray-900">Complete your payment</h3>
+              <button
+                type="button"
+                onClick={closeCheckout}
+                aria-label="Close payment and release my slot"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100"
+              >
+                ✕
+              </button>
+            </div>
+            <EmbeddedCheckoutProvider
+              stripe={stripePromise}
+              options={{ clientSecret: checkout.clientSecret }}
+            >
+              <EmbeddedCheckout />
+            </EmbeddedCheckoutProvider>
           </div>
         </div>
       )}
