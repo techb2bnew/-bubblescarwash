@@ -20,35 +20,35 @@ const photos: {
   position?: string;
 }[] = [
   {
-    src: "/real-photos/gallery-storefront.png",
+    src: "/real-photos/gallery-storefront.jpg",
     alt: "Bubbles Car Wash & Cafe storefront and hand wash bay",
     caption: "Our storefront on North East Rd",
     col: 2,
     row: 2,
   },
   {
-    src: "/real-photos/gallery-ferrari-cafe.png",
+    src: "/real-photos/gallery-ferrari-cafe.jpg",
     alt: "A classic car parked outside the Bubbles cafe windows",
     caption: "Every car gets the same care",
     col: 2,
     row: 1,
   },
   {
-    src: "/real-photos/gallery-cafe-seating.png",
+    src: "/real-photos/gallery-cafe-seating.jpg",
     alt: "Cafe seating booth inside Bubbles",
     caption: "Grab a seat while you wait",
     col: 1,
     row: 1,
   },
   {
-    src: "/real-photos/gallery-hallway.png",
+    src: "/real-photos/gallery-hallway.jpg",
     alt: "Cafe hallway and seating area",
     caption: "Relax with a coffee",
     col: 1,
     row: 1,
   },
   {
-    src: "/real-photos/gallery-waiting-room.png",
+    src: "/real-photos/gallery-waiting-room.jpg",
     alt: "Customer waiting area with coffee machine",
     caption: "Our waiting area",
     col: 1,
@@ -85,7 +85,7 @@ export default function GalleryPage() {
       <section className="relative isolate overflow-hidden">
         <div className="relative h-64 w-full sm:h-80">
           <Image
-            src="/real-photos/gallery-storefront.png"
+            src="/real-photos/gallery-storefront.jpg"
             alt="Bubbles Car Wash & Cafe storefront"
             fill
             sizes="100vw"
