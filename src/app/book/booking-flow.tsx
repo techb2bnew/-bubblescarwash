@@ -381,6 +381,11 @@ export default function BookingFlow({
   const [popupNotFound, setPopupNotFound] = useState(false);
   const [popupCarChoices, setPopupCarChoices] = useState<ReturningCustomerCar[]>([]);
   const [popupPlateMatch, setPopupPlateMatch] = useState<PlateLookupResult | null>(null);
+  // Set when a returning customer's last booking was autofilled, so step 1
+  // can show it as a collapsed summary with an Edit button instead of
+  // making them re-pick the vehicle and service.
+  const [returningFilled, setReturningFilled] = useState(false);
+  const [editingSelection, setEditingSelection] = useState(false);
 
   // "Today" per the business's own clock, not whatever timezone the visitor's
   // browser happens to be in — see filterPastSlots/todayKeyInTimezone.
@@ -539,6 +544,8 @@ export default function BookingFlow({
     setVehicle(vehicleTypes[0]?.slug ?? "");
     setCategory(categories[0]?.id ?? "");
     setSelectedService(null);
+    setReturningFilled(false);
+    setEditingSelection(false);
     setSelectedDate(null);
     setSelectedTime(null);
     setBookedTimes([]);
@@ -667,14 +674,40 @@ export default function BookingFlow({
   }
 
   function applyReturningCustomer(match: ReturningCustomerCar) {
-    if (vehicleTypes.some((v) => v.slug === match.vehicleType)) {
-      setVehicle(match.vehicleType as VehicleType);
+    const vehicleOk = vehicleTypes.some((v) => v.slug === match.vehicleType);
+    const lastService = match.serviceId
+      ? services.find((s) => s.id === match.serviceId && s.vehicle_type === match.vehicleType)
+      : undefined;
+    if (vehicleOk) setVehicle(match.vehicleType as VehicleType);
+    if (vehicleOk && lastService) {
+      if (lastService.category_id) setCategory(lastService.category_id);
+      setSelectedService(lastService);
+    } else {
       setSelectedService(null);
     }
+    setReturningFilled(Boolean(vehicleOk && lastService));
+    setEditingSelection(false);
     setName(match.name);
     setPhone(match.phone);
     setEmail(match.email);
     setCarNumber(match.carNumber);
+    setShowReturningPopup(false);
+    setPopupCarChoices([]);
+    setPopupPlateMatch(null);
+    markReturningPopupSeen();
+    if (vehicleOk && lastService) scrollToSection(slotSectionRef);
+  }
+
+  // "A different car": keep who the customer is, but leave the vehicle,
+  // service and rego for them to pick fresh.
+  function applyReturningCustomerNewCar(match: ReturningCustomerCar) {
+    setName(match.name);
+    setPhone(match.phone);
+    setEmail(match.email);
+    setCarNumber("");
+    setSelectedService(null);
+    setReturningFilled(false);
+    setEditingSelection(false);
     setShowReturningPopup(false);
     setPopupCarChoices([]);
     setPopupPlateMatch(null);
@@ -904,6 +937,47 @@ export default function BookingFlow({
             Choose the vehicle that best matches what you drive.
           </p>
 
+          {returningFilled && selectedService && !editingSelection && (
+            <div className="mb-7 rounded-2xl border border-brand-200 bg-brand-50/60 p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-wide text-brand-700">
+                    Welcome back{name ? `, ${name.split(" ")[0]}` : ""}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600">
+                    We&apos;ve filled in your last booking — just pick a date and time.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingSelection(true)}
+                  className="flex-none rounded-full border-2 border-brand-600 px-4 py-1.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-600 hover:text-white"
+                >
+                  Edit
+                </button>
+              </div>
+              <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+                <div>
+                  <dt className="text-xs text-gray-500">Vehicle</dt>
+                  <dd className="font-semibold text-gray-900">
+                    {vehicleTypes.find((v) => v.slug === vehicle)?.name ?? vehicle}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-gray-500">Service</dt>
+                  <dd className="font-semibold text-gray-900">
+                    {normalizeTitleCase(selectedService.name)} — ${selectedService.price.toFixed(2)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-gray-500">Rego</dt>
+                  <dd className="font-semibold text-gray-900">{carNumber || "—"}</dd>
+                </div>
+              </dl>
+            </div>
+          )}
+
+          <div className={returningFilled && selectedService && !editingSelection ? "hidden" : undefined}>
           {vehicleTypes.length > 0 && (
             <div className="mb-7">
               <p className="mb-4 text-sm font-semibold text-gray-700">What are you driving?</p>
@@ -1030,6 +1104,7 @@ export default function BookingFlow({
               })}
             </div>
           )}
+          </div>
           </div>
 
           <div ref={slotSectionRef} className="mt-9 border-t border-gray-100 pt-7">
@@ -1964,7 +2039,8 @@ export default function BookingFlow({
                 {popupCarChoices.length > 0 && (
                   <div>
                     <p className="mb-1.5 text-xs font-semibold text-gray-600">
-                      We found more than one car for this number — which one is this booking for?
+                      We found {popupCarChoices.length} cars for this number — which one is this
+                      booking for, or is it a different car?
                     </p>
                     <div className="space-y-1.5">
                       {popupCarChoices.map((car) => (
@@ -1981,6 +2057,12 @@ export default function BookingFlow({
                           )}
                         </button>
                       ))}
+                      <button
+                        onClick={() => applyReturningCustomerNewCar(popupCarChoices[0])}
+                        className="w-full rounded-xl border-2 border-dashed border-gray-300 px-3.5 py-2 text-left text-sm font-semibold text-gray-600 transition hover:border-brand-500 hover:bg-brand-50"
+                      >
+                        + A different / new car
+                      </button>
                     </div>
                   </div>
                 )}

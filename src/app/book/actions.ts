@@ -199,6 +199,7 @@ export interface ReturningCustomerCar {
   email: string;
   vehicleType: string;
   carNumber: string;
+  serviceId: string | null;
   lastBookedAt: string;
 }
 
@@ -229,6 +230,7 @@ export async function lookupReturningCustomerCars(
     customer_email: string;
     vehicle_type: string;
     car_number: string | null;
+    service_id?: string | null;
     last_booked_at: string;
   }[];
   return rows
@@ -238,6 +240,7 @@ export async function lookupReturningCustomerCars(
       email: row.customer_email,
       vehicleType: row.vehicle_type,
       carNumber: row.car_number ?? "",
+      serviceId: row.service_id ?? null,
       lastBookedAt: row.last_booked_at,
     }))
     .sort((a, b) => (a.lastBookedAt < b.lastBookedAt ? 1 : -1));
