@@ -205,7 +205,6 @@ function detailRow(label: string, value: string): string {
 function buildBookingDetailsHtml(details: BookingEmailDetails): string {
   const tzLabel = formatTimezoneLabel();
   const rows = [
-    ["Booking ID", details.bookingId],
     ["Service", details.serviceName],
     ["Date", formatDate(details.bookingDate)],
     ["Time", `${formatTimeLabel(details.bookingTime)} (${tzLabel})`],
@@ -215,13 +214,14 @@ function buildBookingDetailsHtml(details: BookingEmailDetails): string {
     ["Phone", details.customerPhone],
     ["Email", details.customerEmail],
     ...(details.carNumber ? [["Rego Plate", details.carNumber]] : []),
+    ["Booking ID", details.bookingId],
   ];
 
   const tableRows = rows.map(([label, value]) => detailRow(label, value)).join("");
 
   const addToCalendarLink = buildGoogleCalendarAddLink({
     summary: `${details.serviceName} — ${details.businessName}`,
-    description: `Booking ID: ${details.bookingId}\nCustomer: ${details.customerName}\nPhone: ${details.customerPhone}`,
+    description: `Customer: ${details.customerName}\nPhone: ${details.customerPhone}\nBooking ID: ${details.bookingId}`,
     location: details.businessAddress,
     startDate: details.bookingDate,
     startTime: details.bookingTime,
@@ -253,12 +253,12 @@ function buildIcsAttachment(details: BookingEmailDetails) {
     uid: `${details.bookingId}@bubblescarwash`,
     summary: `${details.serviceName} — ${details.businessName}`,
     description: [
-      `Booking ID: ${details.bookingId}`,
       `Customer: ${details.customerName}`,
       `Phone: ${details.customerPhone}`,
       `Email: ${details.customerEmail}`,
       `Service: ${details.serviceName}`,
       `Price: ${details.price != null ? `$${details.price.toFixed(2)}` : "TBC"}`,
+      `Booking ID: ${details.bookingId}`,
     ].join("\n"),
     location: details.businessAddress,
     startDate: details.bookingDate,
