@@ -3,9 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import {
-  hasSeenReturningPopup,
   loadBookingDraft,
-  markReturningPopupSeen,
   saveBookingDraft,
 } from "./booking-draft";
 import type {
@@ -460,9 +458,14 @@ export default function BookingFlow({
 
     Promise.resolve().then(() => {
       if (!draft) {
-        if (!hasSeenReturningPopup()) setShowReturningPopup(true);
+        setShowReturningPopup(true);
         setHydrated(true);
         return;
+      }
+      // Ask on every visit until the customer's details are filled in — a
+      // draft that only has a vehicle/service picked doesn't count.
+      if (!draft.name.trim() && !draft.phone.trim() && !draft.email.trim()) {
+        setShowReturningPopup(true);
       }
       setStep((draft.step >= 1 && draft.step <= 3 ? draft.step : 1) as Step);
       setVehicle(draft.vehicle || vehicleTypes[0]?.slug || "");
@@ -725,7 +728,6 @@ export default function BookingFlow({
     setShowReturningPopup(false);
     setPopupCarChoices([]);
     setPopupPlateMatch(null);
-    markReturningPopupSeen();
     if (vehicleOk && lastService) scrollToSection(slotSectionRef);
   }
 
@@ -742,7 +744,6 @@ export default function BookingFlow({
     setShowReturningPopup(false);
     setPopupCarChoices([]);
     setPopupPlateMatch(null);
-    markReturningPopupSeen();
   }
 
   // Confirming a masked plate match fills the booking details (vehicle,
@@ -765,7 +766,6 @@ export default function BookingFlow({
     setCarNumber(match.carNumber);
     setShowReturningPopup(false);
     setPopupPlateMatch(null);
-    markReturningPopupSeen();
     if (vehicleOk && lastService) scrollToSection(slotSectionRef);
   }
 
@@ -2196,7 +2196,6 @@ export default function BookingFlow({
                   <button
                     onClick={() => {
                       setShowReturningPopup(false);
-                      markReturningPopupSeen();
                     }}
                     className="rounded-full border-2 border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
                   >
