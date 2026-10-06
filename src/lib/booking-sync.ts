@@ -115,12 +115,12 @@ function buildCalendarInput(
   return {
     summary: `${booking.customer_name} — ${serviceName}`,
     description: [
-      `Booking ID: ${booking.id}`,
       `Customer: ${booking.customer_name}`,
       `Phone: ${booking.customer_phone}`,
       `Email: ${booking.customer_email}`,
       `Service: ${serviceName}`,
       `Business: ${businessName}`,
+      `Booking ID: ${booking.id}`,
     ].join("\n"),
     startDate: booking.booking_date,
     startTime: booking.booking_time,
