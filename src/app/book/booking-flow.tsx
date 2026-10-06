@@ -353,6 +353,18 @@ export default function BookingFlow({
     if (checkout) cancelUnpaidBooking(checkout.bookingId).catch(() => {});
     setCheckout(null);
   }
+
+  useEffect(() => {
+    if (!checkout) return;
+    const bookingId = checkout.bookingId;
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      cancelUnpaidBooking(bookingId).catch(() => {});
+      setCheckout(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [checkout]);
   const [error, setError] = useState<string | null>(null);
   const [limitConfirmCount, setLimitConfirmCount] = useState<number | null>(null);
 
@@ -2131,25 +2143,27 @@ export default function BookingFlow({
       )}
 
       {checkout && stripePromise && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm sm:items-center">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-4 shadow-2xl sm:p-6">
-            <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm sm:p-4">
+          <div className="max-h-full w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-gray-100 bg-white px-4 py-3 sm:px-6">
               <h3 className="text-base font-bold text-gray-900">Complete your payment</h3>
               <button
                 type="button"
                 onClick={closeCheckout}
                 aria-label="Close payment and release my slot"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100"
+                className="flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-100"
               >
-                ✕
+                <span aria-hidden="true">✕</span> Close
               </button>
             </div>
+            <div className="p-4 sm:p-6">
             <EmbeddedCheckoutProvider
               stripe={stripePromise}
               options={{ clientSecret: checkout.clientSecret }}
             >
               <EmbeddedCheckout />
             </EmbeddedCheckoutProvider>
+            </div>
           </div>
         </div>
       )}
