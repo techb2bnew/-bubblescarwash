@@ -176,37 +176,34 @@ export async function getStaffPermissionsFor(userId: string): Promise<Record<Mod
   return result;
 }
 
-export async function setStaffPermission(
+/**
+ * Saves a staff member's whole permissions grid in one go. Every module row
+ * is written in full, and any action a module doesn't offer (e.g. "create"
+ * on Analytics) is forced off server-side, so a hand-crafted request can't
+ * grant something the page never shows.
+ */
+export async function saveStaffPermissions(
   userId: string,
-  module: ModuleKey,
-  patch: { can_view?: boolean; can_create?: boolean; can_edit?: boolean; can_delete?: boolean },
+  permissions: Record<ModuleKey, { can_view: boolean; can_create: boolean; can_edit: boolean; can_delete: boolean }>,
 ) {
   await requireAdmin();
   const supabase = await createClient();
 
-  // Upsert with a partial payload would reset every column not named in
-  // `patch` back to its table default (false) — PostgREST's ON CONFLICT DO
-  // UPDATE only carries the columns actually sent. Read the current row
-  // first and always write the full merged row instead.
-  const { data: existing } = await supabase
-    .from("staff_permissions")
-    .select("can_view, can_create, can_edit, can_delete")
-    .eq("admin_user_id", userId)
-    .eq("module", module)
-    .maybeSingle();
-
-  const { error } = await supabase.from("staff_permissions").upsert(
-    {
+  const rows = MODULES.map((m) => {
+    const p = permissions[m.key];
+    return {
       admin_user_id: userId,
-      module,
-      can_view: existing?.can_view ?? false,
-      can_create: existing?.can_create ?? false,
-      can_edit: existing?.can_edit ?? false,
-      can_delete: existing?.can_delete ?? false,
-      ...patch,
-    },
-    { onConflict: "admin_user_id,module" },
-  );
+      module: m.key,
+      can_view: Boolean(p?.can_view),
+      can_create: m.actions.includes("create") && Boolean(p?.can_create),
+      can_edit: m.actions.includes("edit") && Boolean(p?.can_edit),
+      can_delete: m.actions.includes("delete") && Boolean(p?.can_delete),
+    };
+  });
+
+  const { error } = await supabase
+    .from("staff_permissions")
+    .upsert(rows, { onConflict: "admin_user_id,module" });
   if (error) throw new Error(error.message);
   revalidatePath(`/admin/staff/${userId}`);
 }
