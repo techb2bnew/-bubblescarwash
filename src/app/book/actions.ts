@@ -250,6 +250,7 @@ export interface PlateLookupResult {
   maskedName: string;
   vehicleType: string;
   carNumber: string;
+  serviceId: string | null;
 }
 
 /**
@@ -272,8 +273,18 @@ export async function lookupCarByPlateMasked(
     .maybeSingle();
   if (error || !data) return null;
 
-  const row = data as { masked_name: string; vehicle_type: string; car_number: string };
-  return { maskedName: row.masked_name, vehicleType: row.vehicle_type, carNumber: row.car_number };
+  const row = data as {
+    masked_name: string;
+    vehicle_type: string;
+    car_number: string;
+    service_id?: string | null;
+  };
+  return {
+    maskedName: row.masked_name,
+    vehicleType: row.vehicle_type,
+    carNumber: row.car_number,
+    serviceId: row.service_id ?? null,
+  };
 }
 
 export async function countBookingsByEmail(email: string): Promise<number> {

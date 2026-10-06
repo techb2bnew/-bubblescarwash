@@ -741,18 +741,28 @@ export default function BookingFlow({
     markReturningPopupSeen();
   }
 
-  // Confirming a masked plate match only ever fills vehicle type + car
-  // number — never name/phone/email, since that match was found by plate
-  // alone (see lookupCarByPlateMasked for why).
+  // Confirming a masked plate match fills the booking details (vehicle,
+  // last service, rego) — never name/phone/email, since that match was found
+  // by plate alone (see lookupCarByPlateMasked for why).
   function applyPlateMatch(match: PlateLookupResult) {
-    if (vehicleTypes.some((v) => v.slug === match.vehicleType)) {
-      setVehicle(match.vehicleType as VehicleType);
+    const vehicleOk = vehicleTypes.some((v) => v.slug === match.vehicleType);
+    const lastService = match.serviceId
+      ? services.find((s) => s.id === match.serviceId && s.vehicle_type === match.vehicleType)
+      : undefined;
+    if (vehicleOk) setVehicle(match.vehicleType as VehicleType);
+    if (vehicleOk && lastService) {
+      if (lastService.category_id) setCategory(lastService.category_id);
+      setSelectedService(lastService);
+    } else {
       setSelectedService(null);
     }
+    setReturningFilled(Boolean(vehicleOk && lastService));
+    setEditingSelection(false);
     setCarNumber(match.carNumber);
     setShowReturningPopup(false);
     setPopupPlateMatch(null);
     markReturningPopupSeen();
+    if (vehicleOk && lastService) scrollToSection(slotSectionRef);
   }
 
   async function handleCheckReturningCustomer() {
@@ -2025,8 +2035,9 @@ export default function BookingFlow({
                     )}
                   </p>
                   <p className="mt-2 text-xs text-gray-500">
-                    For privacy, only your vehicle type will be filled in — you&apos;ll still enter
-                    your name, phone and email yourself.
+                    We&apos;ll fill in your vehicle and last service. For privacy, you&apos;ll still
+                    enter your name, phone and email yourself — or look up by phone number to have
+                    those filled in too.
                   </p>
                 </div>
               </div>
