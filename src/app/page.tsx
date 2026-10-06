@@ -552,8 +552,8 @@ export default async function Home() {
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-12 px-4 pb-14 pt-14 sm:px-8 lg:grid-cols-2 lg:items-stretch lg:gap-8">
           <div className="relative flex w-full flex-col pb-8 sm:pb-0">
             <BeforeAfterSlider
-              beforeSrc="/real-photos/before-dirty-car.png"
-              afterSrc="/real-photos/after-clean-car.png"
+              beforeSrc="/real-photos/before-dirty-car.jpg"
+              afterSrc="/real-photos/after-clean-car.jpg"
               beforeAlt="Dirty car before a wash"
               afterAlt="Same car freshly washed and clean"
             />
@@ -653,7 +653,7 @@ export default async function Home() {
       <section className="relative isolate overflow-hidden">
         <div className="relative h-80 w-full sm:h-[28rem]">
           <Image
-            src="/real-photos/foam-wash-banner.png"
+            src="/real-photos/foam-wash-banner.jpg"
             alt="Foam-covered car being hand washed with a pressure sprayer"
             fill
             sizes="100vw"
@@ -750,7 +750,7 @@ export default async function Home() {
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 items-center gap-8 px-4 sm:px-8 lg:grid-cols-2">
           <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl">
             <Image
-              src="/real-photos/wash-bay-cafe.png"
+              src="/real-photos/wash-bay-cafe.jpg"
               alt="Detailer pressure-washing a car outside the Bubbles cafe"
               fill
               sizes="(max-width: 1024px) 100vw, 720px"
@@ -840,7 +840,7 @@ export default async function Home() {
       <section className="relative isolate overflow-hidden">
         <div className="absolute inset-0 -z-10">
           <Image
-            src="/real-photos/muddy-suv-wash.png"
+            src="/real-photos/muddy-suv-wash.jpg"
             alt="Muddy SUV being pressure-washed clean"
             fill
             sizes="100vw"
@@ -877,7 +877,7 @@ export default async function Home() {
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 items-center gap-8 px-4 sm:px-8 lg:grid-cols-2">
           <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl shadow-xl">
             <Image
-              src="/real-photos/detail-collage-2.png"
+              src="/real-photos/detail-collage-2.jpg"
               alt="Headlight and interior detailing, ready to take a booking"
               fill
               sizes="(max-width: 1024px) 100vw, 768px"

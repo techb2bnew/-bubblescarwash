@@ -20,7 +20,7 @@ export default function HeroSlider() {
     <section className="relative isolate overflow-hidden">
       <div className="absolute inset-0 -z-10">
         <Image
-          src="/real-photos/foam-red-car.png"
+          src="/real-photos/foam-red-car.jpg"
           alt="High-pressure rinse spraying down a car windscreen"
           fill
           sizes="100vw"

@@ -106,7 +106,7 @@ export default function AboutPage() {
             <div className="pointer-events-none absolute -top-10 left-6 h-40 w-40 rounded-full bg-brand-100/70" />
             <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[2.5rem] shadow-xl shadow-gray-900/10">
               <Image
-                src="/real-photos/wash-bay-cafe.png"
+                src="/real-photos/wash-bay-cafe.jpg"
                 alt="A car being hand-washed in the bay with the cafe seating visible behind it"
                 fill
                 sizes="(max-width: 1024px) 100vw, 480px"
