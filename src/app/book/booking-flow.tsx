@@ -41,6 +41,7 @@ import {
   getBookedTimes,
   getDateHours,
   lookupCarByPlateMasked,
+  lookupCarVerified,
   lookupReturningCustomerCars,
   previewCustomerDiscount,
   previewDiscount,
@@ -405,6 +406,9 @@ export default function BookingFlow({
   const [popupPhone, setPopupPhone] = useState("");
   const [popupCarNumber, setPopupCarNumber] = useState("");
   const [popupChecking, setPopupChecking] = useState(false);
+  const [popupLast4, setPopupLast4] = useState("");
+  const [popupVerifyError, setPopupVerifyError] = useState<string | null>(null);
+  const [popupVerifying, setPopupVerifying] = useState(false);
   const [popupNotFound, setPopupNotFound] = useState(false);
   const [popupCarChoices, setPopupCarChoices] = useState<ReturningCustomerCar[]>([]);
   const [popupPlateMatch, setPopupPlateMatch] = useState<PlateLookupResult | null>(null);
@@ -765,11 +769,38 @@ export default function BookingFlow({
     if (vehicleOk && lastService) scrollToSection(slotSectionRef);
   }
 
+  async function handleVerifyPlate() {
+    if (!popupPlateMatch) return;
+    setPopupVerifying(true);
+    setPopupVerifyError(null);
+    try {
+      const result = await lookupCarVerified(popupPlateMatch.carNumber, popupLast4);
+      if (result.status === "ok") {
+        setPopupLast4("");
+        applyReturningCustomer(result.car);
+        return;
+      }
+      setPopupVerifyError(
+        result.status === "locked"
+          ? "Too many attempts. Please try again later, or look up using your phone number."
+          : result.status === "invalid"
+            ? "Enter exactly 4 digits."
+            : "Those digits don't match this booking.",
+      );
+    } catch {
+      setPopupVerifyError("Something went wrong. Please try again.");
+    } finally {
+      setPopupVerifying(false);
+    }
+  }
+
   async function handleCheckReturningCustomer() {
     setPopupChecking(true);
     setPopupNotFound(false);
     setPopupCarChoices([]);
     setPopupPlateMatch(null);
+    setPopupLast4("");
+    setPopupVerifyError(null);
     try {
       if (!popupPhone.trim()) {
         // No phone typed — fall back to a plate-alone lookup, which only
@@ -2035,10 +2066,31 @@ export default function BookingFlow({
                     )}
                   </p>
                   <p className="mt-2 text-xs text-gray-500">
-                    We&apos;ll fill in your vehicle and last service. For privacy, you&apos;ll still
-                    enter your name, phone and email yourself — or look up by phone number to have
-                    those filled in too.
+                    To fill in your name, phone, email and last service, confirm the{" "}
+                    <strong>last 4 digits of the phone number</strong> on that booking.
                   </p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-gray-600">
+                    Last 4 digits of your phone number
+                  </label>
+                  <input
+                    value={popupLast4}
+                    onChange={(e) => {
+                      setPopupLast4(e.target.value.replace(/\D/g, "").slice(0, 4));
+                      setPopupVerifyError(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && popupLast4.length === 4) handleVerifyPlate();
+                    }}
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="e.g. 5678"
+                    className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm tracking-widest transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                  />
+                  {popupVerifyError && (
+                    <p className="mt-1.5 text-xs font-semibold text-amber-700">{popupVerifyError}</p>
+                  )}
                 </div>
               </div>
             ) : (
@@ -2116,16 +2168,27 @@ export default function BookingFlow({
               {popupPlateMatch ? (
                 <>
                   <button
-                    onClick={() => setPopupPlateMatch(null)}
-                    className="rounded-full border-2 border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
+                    onClick={() => {
+                      setPopupPlateMatch(null);
+                      setPopupLast4("");
+                      setPopupVerifyError(null);
+                    }}
+                    className="rounded-full border-2 border-gray-200 px-3 py-2 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
                   >
                     Not me
                   </button>
                   <button
                     onClick={() => applyPlateMatch(popupPlateMatch)}
-                    className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:shadow-md"
+                    className="rounded-full border-2 border-gray-200 px-3 py-2 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
                   >
-                    Yes, that&apos;s me
+                    Vehicle only
+                  </button>
+                  <button
+                    onClick={handleVerifyPlate}
+                    disabled={popupVerifying || popupLast4.length !== 4}
+                    className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {popupVerifying ? "Checking…" : "Fill my details"}
                   </button>
                 </>
               ) : (

@@ -246,6 +246,54 @@ export async function lookupReturningCustomerCars(
     .sort((a, b) => (a.lastBookedAt < b.lastBookedAt ? 1 : -1));
 }
 
+export type VerifiedPlateResult =
+  | { status: "ok"; car: ReturningCustomerCar }
+  | { status: "invalid" | "mismatch" | "locked" };
+
+/**
+ * Rego + last 4 digits of the booking's phone => full autofill. The digits
+ * are the verification: a plate alone is readable off the car, the phone's
+ * last 4 are not. Rate limiting (per plate and global) lives in the SQL
+ * function — see migration 0057 — so this can't be used to brute-force the
+ * 10,000 combinations. Nothing but `ok` carries any customer data.
+ */
+export async function lookupCarVerified(
+  carNumber: string,
+  last4: string,
+): Promise<VerifiedPlateResult> {
+  if (!carNumber.trim() || !/^\d{4}$/.test(last4.trim())) return { status: "invalid" };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .rpc("lookup_car_verified", { p_car_number: carNumber, p_last4: last4.trim() })
+    .maybeSingle();
+  if (error || !data) return { status: "mismatch" };
+
+  const row = data as {
+    status: string;
+    customer_name: string | null;
+    customer_phone: string | null;
+    customer_email: string | null;
+    vehicle_type: string | null;
+    car_number: string | null;
+    service_id: string | null;
+  };
+  if (row.status === "locked") return { status: "locked" };
+  if (row.status === "invalid") return { status: "invalid" };
+  if (row.status !== "ok") return { status: "mismatch" };
+  return {
+    status: "ok",
+    car: {
+      name: row.customer_name ?? "",
+      phone: row.customer_phone ?? "",
+      email: row.customer_email ?? "",
+      vehicleType: row.vehicle_type ?? "",
+      carNumber: row.car_number ?? "",
+      serviceId: row.service_id ?? null,
+      lastBookedAt: "",
+    },
+  };
+}
+
 export interface PlateLookupResult {
   maskedName: string;
   vehicleType: string;
