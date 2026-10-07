@@ -462,8 +462,8 @@ export default function BookingFlow({
   const [hydrated, setHydrated] = useState(false);
   const restoredRef = useRef(false);
 
-  // On a phone, Next/Previous keeps the old scroll offset, which lands past
-  // the shorter next step (on the footer). Bring the top of the form back
+  // Next/Previous keeps the old scroll offset, which can land past the
+  // shorter next step (on the footer). Bring the top of the form back
   // into view whenever the step changes. Skipped on the first render and when
   // a saved draft restores the step.
   const prevStepRef = useRef<Step | null>(null);
@@ -475,7 +475,7 @@ export default function BookingFlow({
     }
     if (prevStepRef.current === step) return;
     prevStepRef.current = step;
-    if (isPhone()) scrollToSection(rootRef);
+    scrollToSection(rootRef);
   }, [step, hydrated]);
   useEffect(() => {
     if (restoredRef.current) return;
@@ -992,9 +992,7 @@ export default function BookingFlow({
     }
   }
 
-  const desktopStepLabels = ["Vehicle & Service", "Add-ons", "Your Details"];
-
-  // Phone only: four stops, like the client's reference: Vehicle, Service, Add-ons, Payment.
+  // Four stops, like the client's reference: Vehicle, Service, Add-ons, Payment.
   // Vehicle and Service swap their number for what was picked.
   const activeStop = step === 1 ? (vehicleChosen ? 2 : 1) : step === 2 ? 3 : 4;
   const vehicleName = vehicleTypes.find((v) => v.slug === vehicle)?.name ?? vehicle;
@@ -1030,7 +1028,7 @@ export default function BookingFlow({
   return (
     <div ref={rootRef} className="mx-auto max-w-5xl">
       <ol
-        className="sticky top-0 z-[45] -mx-5 -mt-5 mb-8 flex items-start rounded-t-3xl border-b border-gray-100 bg-white/95 px-3 py-2 shadow-sm backdrop-blur sm:-mx-8 sm:-mt-8 sm:px-5 md:hidden"
+        className="sticky top-0 z-[45] -mx-5 -mt-5 mb-8 flex items-start rounded-t-3xl border-b border-gray-100 bg-white/95 px-3 py-2 shadow-sm backdrop-blur sm:-mx-8 sm:-mt-8 sm:px-5 md:mb-10 md:justify-center md:py-3"
         aria-label="Booking steps"
       >
         {stops.map((st, i) => {
@@ -1038,7 +1036,7 @@ export default function BookingFlow({
           const reachable = stopReachable(st.n);
           return (
             <Fragment key={st.n}>
-              <li className="flex w-16 flex-none flex-col items-center sm:w-24">
+              <li className="flex w-16 flex-none flex-col items-center sm:w-24 md:w-32">
                 <button
                   type="button"
                   disabled={!reachable}
@@ -1047,7 +1045,7 @@ export default function BookingFlow({
                   aria-current={isActive ? "step" : undefined}
                 >
                   <span
-                    className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold shadow-sm transition-colors ${
+                    className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold shadow-sm transition-colors md:h-10 md:w-10 md:text-base ${
                       st.done
                         ? "bg-brand-600 text-white"
                         : isActive
@@ -1057,7 +1055,7 @@ export default function BookingFlow({
                   >
                     {st.done ? (
                       st.n === 1 ? (
-                        <span className="[&>svg]:h-5 [&>svg]:w-5">
+                        <span className="[&>svg]:h-5 [&>svg]:w-5 md:[&>svg]:h-6 md:[&>svg]:w-6">
                           {getVehicleTypeIcon(vehicleName)}
                         </span>
                       ) : (
@@ -1070,21 +1068,21 @@ export default function BookingFlow({
                     )}
                   </span>
                   <span
-                    className={`w-full truncate text-center text-[10px] font-semibold leading-tight ${
+                    className={`w-full truncate text-center text-[10px] font-semibold leading-tight md:text-xs ${
                       st.done || isActive ? "text-brand-700" : "text-gray-400"
                     }`}
                   >
                     {st.done && st.n <= 2 ? st.value : st.label}
                   </span>
                   {st.done && st.sub && (
-                    <span className="text-[10px] font-bold leading-none text-gray-900">{st.sub}</span>
+                    <span className="text-[10px] font-bold leading-none text-gray-900 md:text-xs">{st.sub}</span>
                   )}
                 </button>
               </li>
               {i < stops.length - 1 && (
                 <li
                   aria-hidden="true"
-                  className={`mt-4 h-0.5 min-w-1 flex-1 rounded-full transition-colors ${
+                  className={`mt-4 h-0.5 min-w-1 flex-1 rounded-full transition-colors md:mt-5 md:max-w-20 ${
                     activeStop > st.n ? "bg-brand-600" : "bg-gray-200"
                   }`}
                 />
@@ -1093,46 +1091,6 @@ export default function BookingFlow({
           );
         })}
       </ol>
-
-      <div className="mb-10 hidden items-center justify-center md:flex">
-        {[1, 2, 3].map((n) => (
-          <div key={n} className="flex items-center">
-            <div className="flex flex-col items-center gap-2">
-              <div
-                className={`flex h-11 w-11 items-center justify-center rounded-full text-base font-bold shadow-sm transition-colors ${
-                  step > n
-                    ? "bg-brand-600 text-white"
-                    : step === n
-                      ? "bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-brand-600/30 ring-4 ring-brand-100"
-                      : "bg-gray-100 text-gray-400"
-                }`}
-              >
-                {step > n ? (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 6 9 17l-5-5" />
-                  </svg>
-                ) : (
-                  n
-                )}
-              </div>
-              <span
-                className={`text-[11px] font-semibold sm:text-xs ${
-                  step >= n ? "text-brand-700" : "text-gray-400"
-                }`}
-              >
-                {desktopStepLabels[n - 1]}
-              </span>
-            </div>
-            {n < 3 && (
-              <div
-                className={`mx-3 mb-6 h-1 w-14 rounded-full transition-colors sm:w-24 ${
-                  step > n ? "bg-brand-600" : "bg-gray-200"
-                }`}
-              />
-            )}
-          </div>
-        ))}
-      </div>
 
       {step === 1 && (
         <div>
@@ -1188,7 +1146,7 @@ export default function BookingFlow({
 
           <div className={returningFilled && selectedService && !editingSelection ? "hidden" : undefined}>
           {vehicleTypes.length > 0 && (
-            <div ref={vehicleSectionRef} className="mb-7 max-md:scroll-mt-28">
+            <div ref={vehicleSectionRef} className="mb-7 scroll-mt-28">
               <p className="mb-4 text-sm font-semibold text-gray-700">What are you driving?</p>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {vehicleTypes.map((v) => {
@@ -1241,7 +1199,7 @@ export default function BookingFlow({
             </div>
           )}
 
-          <div ref={serviceSectionRef} className="max-md:scroll-mt-28">
+          <div ref={serviceSectionRef} className="scroll-mt-28">
           <p className="mb-2.5 text-sm font-semibold text-gray-700">Select Service</p>
           {vehicleServices.length === 0 ? (
             <p className="text-sm text-gray-400">
@@ -1318,7 +1276,7 @@ export default function BookingFlow({
           </div>
           </div>
 
-          <div ref={slotSectionRef} className="mt-9 max-md:scroll-mt-28 border-t border-gray-100 pt-7">
+          <div ref={slotSectionRef} className="mt-9 scroll-mt-28 border-t border-gray-100 pt-7">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-600">
               Pick A Slot
             </p>
@@ -1386,7 +1344,7 @@ export default function BookingFlow({
                 </div>
               </div>
 
-              <div ref={timesSectionRef} className="rounded-2xl border border-gray-200 p-5 shadow-sm max-md:scroll-mt-28 md:w-80 md:flex-none">
+              <div ref={timesSectionRef} className="rounded-2xl border border-gray-200 p-5 shadow-sm scroll-mt-28 md:w-80 md:flex-none">
                 {selectedDate ? (
                   <>
                     <div className="mb-3 flex items-center justify-between">
