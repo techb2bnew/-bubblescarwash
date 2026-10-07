@@ -764,6 +764,23 @@ export default function BookingFlow({
     if (vehicleOk && lastService) scrollToSection(slotSectionRef);
   }
 
+  // "Create new": drop the autofilled customer and booking choices and start
+  // a fresh booking. The date and time already picked are left alone.
+  function startNewBooking() {
+    setReturningFilled(false);
+    setEditingSelection(false);
+    setName("");
+    setPhone("");
+    setEmail("");
+    setCarNumber("");
+    setSelectedService(null);
+    setVehicle(vehicleTypes[0]?.slug ?? "");
+    setVehicleChosen(false);
+    setCategory(categories[0]?.id ?? "");
+    setCustomerDiscount(null);
+    scrollToSection(vehicleSectionRef);
+  }
+
   // "A different car": keep who the customer is, but leave the vehicle,
   // service and rego for them to pick fresh.
   function applyReturningCustomerNewCar(match: ReturningCustomerCar) {
@@ -1106,7 +1123,7 @@ export default function BookingFlow({
 
           {returningFilled && selectedService && !editingSelection && (
             <div className="mb-7 rounded-2xl border border-brand-200 bg-brand-50/60 p-4 sm:p-5">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <p className="text-xs font-bold uppercase tracking-wide text-brand-700">
                     Welcome back{name ? `, ${name.split(" ")[0]}` : ""}
@@ -1115,13 +1132,22 @@ export default function BookingFlow({
                     We&apos;ve filled in your last booking — just pick a date and time.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setEditingSelection(true)}
-                  className="flex-none rounded-full border-2 border-brand-600 px-4 py-1.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-600 hover:text-white"
-                >
-                  Edit
-                </button>
+                <div className="flex flex-none flex-wrap items-center gap-2 sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={startNewBooking}
+                    className="rounded-full border-2 border-gray-300 bg-white px-4 py-1.5 text-sm font-semibold text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
+                  >
+                    Create new
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingSelection(true)}
+                    className="rounded-full border-2 border-brand-600 px-4 py-1.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-600 hover:text-white"
+                  >
+                    Edit
+                  </button>
+                </div>
               </div>
               <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
                 <div>
