@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import {
   loadBookingDraft,
@@ -319,6 +319,8 @@ export default function BookingFlow({
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [vehicle, setVehicle] = useState<VehicleType>(vehicleTypes[0]?.slug ?? "");
+  // The vehicle is preselected, so the stepper needs to know whether the customer actually picked one.
+  const [vehicleChosen, setVehicleChosen] = useState(false);
   const [category, setCategory] = useState<string>(categories[0]?.id ?? "");
   const [selectedService, setSelectedService] = useState<Service | null>(null);
 
@@ -367,12 +369,17 @@ export default function BookingFlow({
   const [error, setError] = useState<string | null>(null);
   const [limitConfirmCount, setLimitConfirmCount] = useState<number | null>(null);
 
+  const vehicleSectionRef = useRef<HTMLDivElement>(null);
   const serviceSectionRef = useRef<HTMLDivElement>(null);
   const slotSectionRef = useRef<HTMLDivElement>(null);
   const scrollToSection = (ref: RefObject<HTMLDivElement | null>) => {
-    requestAnimationFrame(() => {
-      ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    // A short delay so a section that only mounts after a step change exists
+    // by the time we scroll to it.
+    window.setTimeout(() => {
+      requestAnimationFrame(() => {
+        ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }, 60);
   };
 
   const [giftCardInput, setGiftCardInput] = useState("");
@@ -469,6 +476,7 @@ export default function BookingFlow({
       }
       setStep((draft.step >= 1 && draft.step <= 3 ? draft.step : 1) as Step);
       setVehicle(draft.vehicle || vehicleTypes[0]?.slug || "");
+      setVehicleChosen(draft.vehicleChosen ?? (Boolean(draft.serviceId) || draft.step > 1));
       setCategory(draft.category || categories[0]?.id || "");
       if (draft.serviceId) {
         setSelectedService(services.find((s) => s.id === draft.serviceId) ?? null);
@@ -525,6 +533,7 @@ export default function BookingFlow({
     saveBookingDraft({
       step,
       vehicle,
+      vehicleChosen,
       category,
       serviceId: selectedService?.id ?? null,
       extraIds: selectedExtraIds,
@@ -552,6 +561,7 @@ export default function BookingFlow({
     email,
     carNumber,
     paymentMethod,
+    vehicleChosen,
     appliedGiftCard,
     appliedDiscount,
   ]);
@@ -576,6 +586,7 @@ export default function BookingFlow({
   function resetForm() {
     setStep(1);
     setVehicle(vehicleTypes[0]?.slug ?? "");
+    setVehicleChosen(false);
     setCategory(categories[0]?.id ?? "");
     setSelectedService(null);
     setReturningFilled(false);
@@ -712,7 +723,10 @@ export default function BookingFlow({
     const lastService = match.serviceId
       ? services.find((s) => s.id === match.serviceId && s.vehicle_type === match.vehicleType)
       : undefined;
-    if (vehicleOk) setVehicle(match.vehicleType as VehicleType);
+    if (vehicleOk) {
+      setVehicle(match.vehicleType as VehicleType);
+      setVehicleChosen(true);
+    }
     if (vehicleOk && lastService) {
       if (lastService.category_id) setCategory(lastService.category_id);
       setSelectedService(lastService);
@@ -754,7 +768,10 @@ export default function BookingFlow({
     const lastService = match.serviceId
       ? services.find((s) => s.id === match.serviceId && s.vehicle_type === match.vehicleType)
       : undefined;
-    if (vehicleOk) setVehicle(match.vehicleType as VehicleType);
+    if (vehicleOk) {
+      setVehicle(match.vehicleType as VehicleType);
+      setVehicleChosen(true);
+    }
     if (vehicleOk && lastService) {
       if (lastService.category_id) setCategory(lastService.category_id);
       setSelectedService(lastService);
@@ -955,11 +972,109 @@ export default function BookingFlow({
     }
   }
 
-  const stepLabels = ["Vehicle & Service", "Add-ons", "Your Details"];
+  const desktopStepLabels = ["Vehicle & Service", "Add-ons", "Your Details"];
+
+  // Phone only: four stops, like the client's reference: Vehicle, Service, Add-ons, Payment.
+  // Vehicle and Service swap their number for what was picked.
+  const activeStop = step === 1 ? (vehicleChosen ? 2 : 1) : step === 2 ? 3 : 4;
+  const vehicleName = vehicleTypes.find((v) => v.slug === vehicle)?.name ?? vehicle;
+  const stops = [
+    { n: 1, label: "Vehicle", done: vehicleChosen, value: vehicleName, sub: null as string | null },
+    {
+      n: 2,
+      label: "Service",
+      done: Boolean(selectedService),
+      value: selectedService ? normalizeTitleCase(selectedService.name) : "",
+      sub: selectedService ? `$${selectedService.price.toFixed(2)}` : null,
+    },
+    { n: 3, label: "Add-ons", done: step > 2, value: "Add-ons", sub: null },
+    { n: 4, label: "Payment", done: false, value: "Payment", sub: null },
+  ];
+
+  // Tapping a stop jumps to its section. Going back is always allowed; going
+  // forward is not (the Next buttons still validate each step).
+  function goToStop(n: number) {
+    if (n === 1 || n === 2) {
+      if (n === 2 && !vehicleChosen) return;
+      setStep(1);
+      setEditingSelection(true);
+      scrollToSection(n === 1 ? vehicleSectionRef : serviceSectionRef);
+    } else if (n === 3 && step >= 2) {
+      setStep(2);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  const stopReachable = (n: number) => (n === 1 ? true : n === 2 ? vehicleChosen : n === 3 ? step >= 2 : step >= 3);
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="mb-10 flex items-center justify-center">
+      <ol
+        className="sticky top-0 z-[45] -mx-5 -mt-5 mb-8 flex items-start rounded-t-3xl border-b border-gray-100 bg-white/95 px-3 py-2 shadow-sm backdrop-blur sm:-mx-8 sm:-mt-8 sm:px-5 md:hidden"
+        aria-label="Booking steps"
+      >
+        {stops.map((st, i) => {
+          const isActive = activeStop === st.n;
+          const reachable = stopReachable(st.n);
+          return (
+            <Fragment key={st.n}>
+              <li className="flex w-16 flex-none flex-col items-center sm:w-24">
+                <button
+                  type="button"
+                  disabled={!reachable}
+                  onClick={() => goToStop(st.n)}
+                  className="flex w-full flex-col items-center gap-1 disabled:cursor-default"
+                  aria-current={isActive ? "step" : undefined}
+                >
+                  <span
+                    className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold shadow-sm transition-colors ${
+                      st.done
+                        ? "bg-brand-600 text-white"
+                        : isActive
+                          ? "bg-gradient-to-r from-brand-500 to-brand-600 text-white ring-4 ring-brand-100"
+                          : "bg-gray-100 text-gray-400"
+                    }`}
+                  >
+                    {st.done ? (
+                      st.n === 1 ? (
+                        <span className="[&>svg]:h-5 [&>svg]:w-5">
+                          {getVehicleTypeIcon(vehicleName)}
+                        </span>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M20 6 9 17l-5-5" />
+                        </svg>
+                      )
+                    ) : (
+                      st.n
+                    )}
+                  </span>
+                  <span
+                    className={`w-full truncate text-center text-[10px] font-semibold leading-tight ${
+                      st.done || isActive ? "text-brand-700" : "text-gray-400"
+                    }`}
+                  >
+                    {st.done && st.n <= 2 ? st.value : st.label}
+                  </span>
+                  {st.done && st.sub && (
+                    <span className="text-[10px] font-bold leading-none text-gray-900">{st.sub}</span>
+                  )}
+                </button>
+              </li>
+              {i < stops.length - 1 && (
+                <li
+                  aria-hidden="true"
+                  className={`mt-4 h-0.5 min-w-1 flex-1 rounded-full transition-colors ${
+                    activeStop > st.n ? "bg-brand-600" : "bg-gray-200"
+                  }`}
+                />
+              )}
+            </Fragment>
+          );
+        })}
+      </ol>
+
+      <div className="mb-10 hidden items-center justify-center md:flex">
         {[1, 2, 3].map((n) => (
           <div key={n} className="flex items-center">
             <div className="flex flex-col items-center gap-2">
@@ -985,7 +1100,7 @@ export default function BookingFlow({
                   step >= n ? "text-brand-700" : "text-gray-400"
                 }`}
               >
-                {stepLabels[n - 1]}
+                {desktopStepLabels[n - 1]}
               </span>
             </div>
             {n < 3 && (
@@ -1053,7 +1168,7 @@ export default function BookingFlow({
 
           <div className={returningFilled && selectedService && !editingSelection ? "hidden" : undefined}>
           {vehicleTypes.length > 0 && (
-            <div className="mb-7">
+            <div ref={vehicleSectionRef} className="mb-7 max-md:scroll-mt-28">
               <p className="mb-4 text-sm font-semibold text-gray-700">What are you driving?</p>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {vehicleTypes.map((v) => {
@@ -1063,6 +1178,7 @@ export default function BookingFlow({
                       key={v.id}
                       onClick={() => {
                         setVehicle(v.slug);
+                        setVehicleChosen(true);
                         setSelectedService(null);
                         scrollToSection(serviceSectionRef);
                       }}
@@ -1105,7 +1221,7 @@ export default function BookingFlow({
             </div>
           )}
 
-          <div ref={serviceSectionRef}>
+          <div ref={serviceSectionRef} className="max-md:scroll-mt-28">
           <p className="mb-2.5 text-sm font-semibold text-gray-700">Select Service</p>
           {vehicleServices.length === 0 ? (
             <p className="text-sm text-gray-400">
@@ -1129,6 +1245,7 @@ export default function BookingFlow({
                     type="button"
                     onClick={() => {
                       setSelectedService(s);
+                      setVehicleChosen(true);
                       scrollToSection(slotSectionRef);
                     }}
                     className={`relative flex flex-col rounded-2xl border-2 p-5 text-left shadow-sm transition hover:-translate-y-0.5 ${
@@ -1181,7 +1298,7 @@ export default function BookingFlow({
           </div>
           </div>
 
-          <div ref={slotSectionRef} className="mt-9 border-t border-gray-100 pt-7">
+          <div ref={slotSectionRef} className="mt-9 max-md:scroll-mt-28 border-t border-gray-100 pt-7">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-600">
               Pick A Slot
             </p>

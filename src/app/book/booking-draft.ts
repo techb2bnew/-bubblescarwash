@@ -19,6 +19,8 @@ const MAX_AGE_MS = 6 * 60 * 60 * 1000;
 export interface BookingDraft {
   step: number;
   vehicle: string;
+  /** Whether the customer actually picked a vehicle (it is preselected by default). Older drafts omit it. */
+  vehicleChosen?: boolean;
   category: string;
   serviceId: string | null;
   extraIds: string[];

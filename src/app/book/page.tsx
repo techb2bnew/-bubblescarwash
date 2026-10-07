@@ -42,7 +42,7 @@ export default async function BookPage() {
     <div className="flex min-h-screen flex-col bg-white text-gray-900">
       <SiteHeader />
 
-      <main className="relative flex-1 overflow-hidden bg-gray-50 px-4 py-12 sm:py-16">
+      <main className="relative flex-1 overflow-clip bg-gray-50 px-4 py-12 sm:py-16">
         <div className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-brand-200/40 blur-3xl" />
         <div className="relative mx-auto max-w-5xl rounded-3xl bg-white p-5 shadow-2xl shadow-gray-900/10 ring-1 ring-gray-100 sm:p-8">
           <BookingFlow
