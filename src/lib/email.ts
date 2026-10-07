@@ -163,6 +163,26 @@ function introText(text: string): string {
   return `<p style="margin:0 0 20px;color:#4b5563;font-size:14px;line-height:1.6;">${text}</p>`;
 }
 
+/**
+ * The same disclaimer the customer ticks on the booking form, repeated in the
+ * mails they keep so they have it in writing. Customer-facing mails only.
+ */
+function disclaimerHtml(): string {
+  const p = "margin:0 0 8px;color:#6b7280;font-size:12px;line-height:1.6;";
+  const li = "margin:0 0 4px;color:#6b7280;font-size:12px;line-height:1.6;";
+  return `
+    <div style="margin:24px 0 0;padding:16px 18px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;">
+      <p style="margin:0 0 8px;color:#111827;font-size:13px;font-weight:700;">Disclaimer</p>
+      <p style="${p}">In order to limit the risk of loss or damage to your personal property please ensure:</p>
+      <ul style="margin:0 0 8px;padding-left:18px;">
+        <li style="${li}">Your vehicle's windows and sunroof (if applicable) are closed.</li>
+        <li style="${li}">Any personal items are removed from your vehicle.</li>
+        <li style="${li}">If your vehicle has automatic door locks or any aftermarket alterations or modifications, that you have completed and returned a care instruction form to the operator prior to the provision of any services. Forms are available from the operator.</li>
+      </ul>
+      <p style="margin:0;color:#6b7280;font-size:12px;line-height:1.6;">If you request the provision of car washing and related services (collectively, services) from the operator of this Bubbles Car Wash and Cafe business (operator) and the operator agrees to provide those services, you and the operator agree that, subject to any rights you have at law that cannot be waived, neither the operator nor Bubbles Car Wash and Cafe Pty Ltd (ACN 138 032 210) is liable and you will not bring any action or claim against either of them, in respect of any loss or damage suffered or incurred by you in connection with the provision of services by the operator. Without limiting the above, this includes any loss or damage to your vehicle or other personal property.</p>
+    </div>`;
+}
+
 export interface BookingEmailDetails {
   bookingId: string;
   customerName: string;
@@ -360,6 +380,7 @@ export async function sendBookingCreatedEmails(
       ${introText(`Hi ${details.customerName}, your booking at <strong>${details.businessName}</strong> has been confirmed.`)}
       ${buildBookingDetailsHtml(details)}
       <p style="margin:20px 0 0;color:#9ca3af;font-size:12px;">Payment is collected at the time of service.</p>
+      ${disclaimerHtml()}
     `,
     cta: bookAgainCta(details),
   });
@@ -407,6 +428,7 @@ export async function sendBookingRescheduledEmails(
     bodyHtml: `
       ${introText(`Hi ${details.customerName}, your booking at <strong>${details.businessName}</strong> has been rescheduled to the new date and time below.`)}
       ${buildBookingDetailsHtml(details)}
+      ${disclaimerHtml()}
     `,
     cta: bookAgainCta(details),
   });
