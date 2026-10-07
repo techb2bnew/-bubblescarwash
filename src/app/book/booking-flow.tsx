@@ -369,6 +369,8 @@ export default function BookingFlow({
   const [error, setError] = useState<string | null>(null);
   const [limitConfirmCount, setLimitConfirmCount] = useState<number | null>(null);
 
+  const rootRef = useRef<HTMLDivElement>(null);
+  const timesSectionRef = useRef<HTMLDivElement>(null);
   const vehicleSectionRef = useRef<HTMLDivElement>(null);
   const serviceSectionRef = useRef<HTMLDivElement>(null);
   const slotSectionRef = useRef<HTMLDivElement>(null);
@@ -381,6 +383,7 @@ export default function BookingFlow({
       });
     }, 60);
   };
+  const isPhone = () => window.matchMedia("(max-width: 767px)").matches;
 
   const [giftCardInput, setGiftCardInput] = useState("");
   const [appliedGiftCard, setAppliedGiftCard] = useState<{
@@ -458,6 +461,22 @@ export default function BookingFlow({
   // very draft this effect is about to read.
   const [hydrated, setHydrated] = useState(false);
   const restoredRef = useRef(false);
+
+  // On a phone, Next/Previous keeps the old scroll offset, which lands past
+  // the shorter next step (on the footer). Bring the top of the form back
+  // into view whenever the step changes. Skipped on the first render and when
+  // a saved draft restores the step.
+  const prevStepRef = useRef<Step | null>(null);
+  useEffect(() => {
+    if (!hydrated) return;
+    if (prevStepRef.current === null) {
+      prevStepRef.current = step;
+      return;
+    }
+    if (prevStepRef.current === step) return;
+    prevStepRef.current = step;
+    if (isPhone()) scrollToSection(rootRef);
+  }, [step, hydrated]);
   useEffect(() => {
     if (restoredRef.current) return;
     restoredRef.current = true;
@@ -861,6 +880,7 @@ export default function BookingFlow({
   }
 
   function handleSelectDate(dateKey: string) {
+    if (isPhone()) scrollToSection(timesSectionRef);
     setSelectedDate(dateKey);
     setSelectedTime(null);
     setTimesError(null);
@@ -1008,7 +1028,7 @@ export default function BookingFlow({
   const stopReachable = (n: number) => (n === 1 ? true : n === 2 ? vehicleChosen : n === 3 ? step >= 2 : step >= 3);
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div ref={rootRef} className="mx-auto max-w-5xl">
       <ol
         className="sticky top-0 z-[45] -mx-5 -mt-5 mb-8 flex items-start rounded-t-3xl border-b border-gray-100 bg-white/95 px-3 py-2 shadow-sm backdrop-blur sm:-mx-8 sm:-mt-8 sm:px-5 md:hidden"
         aria-label="Booking steps"
@@ -1366,7 +1386,7 @@ export default function BookingFlow({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-gray-200 p-5 shadow-sm md:w-80 md:flex-none">
+              <div ref={timesSectionRef} className="rounded-2xl border border-gray-200 p-5 shadow-sm max-md:scroll-mt-28 md:w-80 md:flex-none">
                 {selectedDate ? (
                   <>
                     <div className="mb-3 flex items-center justify-between">
