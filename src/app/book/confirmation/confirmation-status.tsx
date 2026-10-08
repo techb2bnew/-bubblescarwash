@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatTimeLabel } from "@/lib/date-utils";
 import { getBookingPaymentStatus, type BookingPaymentStatus } from "../actions";
+import { arrivedViaHistory, markJustConfirmed } from "../after-booking";
 import { clearBookingDraft } from "../booking-draft";
 
 const POLL_INTERVAL_MS = 2000;
@@ -18,6 +19,22 @@ export default function ConfirmationStatus({
 }) {
   const [result, setResult] = useState<BookingPaymentStatus | null>(initial);
   const [pollsLeft, setPollsLeft] = useState(MAX_POLLS);
+
+  // Coming back to this page with the Back button means the booking is long
+  // done — go home instead of showing an old confirmation. Otherwise leave a
+  // flag so Back from here (or from the next /book) also lands on home.
+  useEffect(() => {
+    if (arrivedViaHistory()) {
+      window.location.replace("/");
+      return;
+    }
+    markJustConfirmed();
+    function handlePageShow(e: PageTransitionEvent) {
+      if (e.persisted) window.location.replace("/");
+    }
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
 
   useEffect(() => {
     if (!result || result.paymentStatus !== "pending" || pollsLeft <= 0) return;

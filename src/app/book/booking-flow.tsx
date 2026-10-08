@@ -30,6 +30,7 @@ import {
 import type { PaymentMode } from "@/lib/payment-mode";
 import { normalizeTitleCase } from "@/lib/format";
 import { loadStripe } from "@stripe/stripe-js";
+import { arrivedViaHistory, clearJustConfirmed, hasJustConfirmed } from "./after-booking";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import {
   cancelUnpaidBooking,
@@ -522,6 +523,13 @@ export default function BookingFlow({
   useEffect(() => {
     if (restoredRef.current) return;
     restoredRef.current = true;
+    if (hasJustConfirmed()) {
+      if (arrivedViaHistory()) {
+        window.location.replace("/");
+        return;
+      }
+      clearJustConfirmed();
+    }
     const draft = loadBookingDraft();
 
     Promise.resolve().then(() => {
@@ -638,7 +646,9 @@ export default function BookingFlow({
   // a completed booking never reappears half-filled.
   useEffect(() => {
     function handlePageShow(e: PageTransitionEvent) {
-      if (e.persisted) window.location.reload();
+      if (!e.persisted) return;
+      if (hasJustConfirmed()) window.location.replace("/");
+      else window.location.reload();
     }
     window.addEventListener("pageshow", handlePageShow);
     return () => window.removeEventListener("pageshow", handlePageShow);
@@ -1221,27 +1231,28 @@ export default function BookingFlow({
                     Welcome back{name ? `, ${name.split(" ")[0]}` : ""}
                   </p>
                   <p className="mt-1 text-sm text-gray-600">
-                    We&apos;ve filled in your last booking — just pick a date and time.
+                    We&apos;ve filled in your details from your last visit.
                   </p>
                 </div>
-                <div className="flex flex-none flex-wrap items-center gap-2 sm:justify-end">
-                  <button
-                    type="button"
-                    onClick={startNewBooking}
-                    className="rounded-full border-2 border-gray-300 bg-white px-4 py-1.5 text-sm font-semibold text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
-                  >
-                    Create new
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditingSelection(true)}
-                    className="rounded-full border-2 border-brand-600 px-4 py-1.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-600 hover:text-white"
-                  >
-                    Edit
-                  </button>
-                </div>
               </div>
-              <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+              <div className="mt-3 flex flex-wrap items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setEditingSelection(true)}
+                  className="rounded-full border-2 border-brand-600 px-4 py-1.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-600 hover:text-white"
+                >
+                  Change details
+                </button>
+                <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">or</span>
+                <button
+                  type="button"
+                  onClick={() => scrollToSection(slotSectionRef)}
+                  className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:shadow-md"
+                >
+                  Pick date/time
+                </button>
+              </div>
+              <dl className="mt-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
                 <div>
                   <dt className="text-xs text-gray-500">Vehicle</dt>
                   <dd className="font-semibold text-gray-900">
@@ -1259,6 +1270,13 @@ export default function BookingFlow({
                   <dd className="font-semibold text-gray-900">{carNumber || "—"}</dd>
                 </div>
               </dl>
+              <button
+                type="button"
+                onClick={startNewBooking}
+                className="mt-3 text-xs font-semibold text-gray-500 underline underline-offset-2 transition hover:text-brand-700"
+              >
+                Not you? Start a new booking
+              </button>
             </div>
           )}
 
