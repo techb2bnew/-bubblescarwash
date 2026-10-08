@@ -9,14 +9,6 @@ import { siteNavLinks } from "./site-nav-links";
 export default function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
-  // Book Now points at /book, so on /book itself the link would do nothing
-  // and look broken — scroll back to the top of the form instead.
-  const handleBookNow = (e: React.MouseEvent) => {
-    if (pathname !== "/book") return;
-    e.preventDefault();
-    setMenuOpen(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 
@@ -140,7 +132,6 @@ export default function SiteHeader() {
               })}
             <Link
               href="/book"
-              onClick={handleBookNow}
               className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
               Book Now
@@ -165,7 +156,6 @@ export default function SiteHeader() {
             </a>
             <Link
               href="/book"
-              onClick={handleBookNow}
               className="flex items-center rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:shadow-md md:hidden"
             >
               Book Now
