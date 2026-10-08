@@ -345,6 +345,10 @@ export default function BookingFlow({
   const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const selectedDateRef = useRef<string | null>(null);
+  useEffect(() => {
+    selectedDateRef.current = selectedDate;
+  }, [selectedDate]);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [bookedTimes, setBookedTimes] = useState<BookedTime[]>([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
@@ -578,8 +582,8 @@ export default function BookingFlow({
           .then(([times, hours]) => {
             setBookedTimes(times);
             setBusinessHours(hours);
-            noteIfFull(draftDate, hours, times);
-            if (draft.time) {
+            const full = noteIfFull(draftDate, hours, times);
+            if (draft.time && !full) {
               setSelectedTime(draft.time);
               setSlotCollapsed(true);
             }
@@ -1027,7 +1031,7 @@ export default function BookingFlow({
     dateKey: string,
     hours: { openingTime: string; closingTime: string },
     booked: BookedTime[],
-  ) {
+  ): boolean {
     const open = filterPastSlots(
       generateTimeSlots(hours.openingTime, hours.closingTime, settings.slot_interval_minutes),
       dateKey,
@@ -1035,11 +1039,19 @@ export default function BookingFlow({
       new Date(),
       SAME_DAY_BOOKING_BUFFER_MINUTES,
     ).filter((t) => !booked.some((bt) => bt.time === t));
+    // A date found to be full can't stay selected (or keep a picked time).
+    if (open.length === 0 && selectedDateRef.current === dateKey) {
+      setSelectedDate(null);
+      setSelectedTime(null);
+      setSlotCollapsed(false);
+      setBookedTimes([]);
+    }
     setFullDates((prev) => {
       const has = prev.includes(dateKey);
       if (open.length === 0) return has ? prev : [...prev, dateKey];
       return has ? prev.filter((d) => d !== dateKey) : prev;
     });
+    return open.length === 0;
   }
 
   // Today is the one date that can run out of time on its own, so check it up
