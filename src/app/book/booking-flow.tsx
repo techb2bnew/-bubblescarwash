@@ -354,6 +354,10 @@ export default function BookingFlow({
     closingTime: string;
   } | null>(null);
 
+  // Dates found to have no bookable time left (after closing, inside the
+  // same-day buffer, or fully booked) — struck through like blocked days.
+  const [fullDates, setFullDates] = useState<string[]>([]);
+
   const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
 
   const [name, setName] = useState("");
@@ -574,6 +578,7 @@ export default function BookingFlow({
           .then(([times, hours]) => {
             setBookedTimes(times);
             setBusinessHours(hours);
+            noteIfFull(draftDate, hours, times);
             if (draft.time) {
               setSelectedTime(draft.time);
               setSlotCollapsed(true);
@@ -966,6 +971,7 @@ export default function BookingFlow({
       .then(([times, hours]) => {
         setBookedTimes(times);
         setBusinessHours(hours);
+        noteIfFull(dateKey, hours, times);
       })
       .catch((err) => {
         setBookedTimes([]);
@@ -1016,6 +1022,41 @@ export default function BookingFlow({
     }
     setError(message);
   }
+
+  function noteIfFull(
+    dateKey: string,
+    hours: { openingTime: string; closingTime: string },
+    booked: BookedTime[],
+  ) {
+    const open = filterPastSlots(
+      generateTimeSlots(hours.openingTime, hours.closingTime, settings.slot_interval_minutes),
+      dateKey,
+      businessTimezone,
+      new Date(),
+      SAME_DAY_BOOKING_BUFFER_MINUTES,
+    ).filter((t) => !booked.some((bt) => bt.time === t));
+    setFullDates((prev) => {
+      const has = prev.includes(dateKey);
+      if (open.length === 0) return has ? prev : [...prev, dateKey];
+      return has ? prev.filter((d) => d !== dateKey) : prev;
+    });
+  }
+
+  // Today is the one date that can run out of time on its own, so check it up
+  // front instead of waiting for someone to tap it.
+  const todayKey = toDateKey(today);
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([getBookedTimes(todayKey), getDateHours(todayKey)])
+      .then(([times, hours]) => {
+        if (!cancelled) noteIfFull(todayKey, hours, times);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayKey]);
 
   const timeSlots = useMemo(() => {
     const slots = generateTimeSlots(
@@ -1481,9 +1522,10 @@ export default function BookingFlow({
                     const inMonth = isSameMonth(date, cursor.year, cursor.month);
                     const isPast = date < today;
                     const isBlocked = blockedByDate.has(key);
-                    const disabled = isPast || isBlocked || !inMonth;
+                    const isFull = fullDates.includes(key);
+                    const disabled = isPast || isBlocked || isFull || !inMonth;
 
-                    const isUnavailable = isPast || isBlocked;
+                    const isUnavailable = isPast || isBlocked || isFull;
 
                     return (
                       <button
