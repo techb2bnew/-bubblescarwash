@@ -52,6 +52,25 @@ import {
 
 const BOOKING_LIMIT = 5;
 
+/** Digits only; "+61 4xx" style numbers from older bookings become 04xx. */
+function normalizePhone(raw: string): string {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("61") && digits.length === 11) digits = `0${digits.slice(2)}`;
+  return digits.slice(0, 10);
+}
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+function formatLongDate(key: string): string {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-AU", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
   : null;
@@ -346,6 +365,13 @@ export default function BookingFlow({
   const [cardCvv, setCardCvv] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
+  // Once a date and time are picked the calendar folds into a one-line summary.
+  const [slotCollapsed, setSlotCollapsed] = useState(false);
+  const [slotNotice, setSlotNotice] = useState<string | null>(null);
+  // Times the server has just refused as fully booked ("date|time"), hidden from the list even if its availability data is stale.
+  const [takenSlots, setTakenSlots] = useState<string[]>([]);
+  const [phoneTouched, setPhoneTouched] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
   const [checkout, setCheckout] = useState<{ clientSecret: string; bookingId: string } | null>(
     null,
   );
@@ -480,7 +506,18 @@ export default function BookingFlow({
     }
     if (prevStepRef.current === step) return;
     prevStepRef.current = step;
+    setError(null);
     scrollToSection(rootRef);
+    if (step === 1 && selectedDate) {
+      refreshSlots(selectedDate).then((times) => {
+        if (times && selectedTime && times.some((bt) => bt.time === selectedTime)) {
+          setSelectedTime(null);
+          setSlotCollapsed(false);
+          setSlotNotice("That time was just taken. Please pick another time.");
+        }
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, hydrated]);
   useEffect(() => {
     if (restoredRef.current) return;
@@ -531,6 +568,7 @@ export default function BookingFlow({
             setBusinessHours(hours);
             if (draft.time) {
               setSelectedTime(draft.time);
+              setSlotCollapsed(true);
             }
           })
           .catch((err) => {
@@ -615,6 +653,8 @@ export default function BookingFlow({
     setSelectedService(null);
     setReturningFilled(false);
     setEditingSelection(false);
+    setSlotCollapsed(false);
+    setSlotNotice(null);
     setSelectedDate(null);
     setSelectedTime(null);
     setBookedTimes([]);
@@ -647,6 +687,8 @@ export default function BookingFlow({
     );
   }
 
+  const phoneValid = phone.length === 10;
+  const emailValid = EMAIL_PATTERN.test(email.trim());
   const selectedExtras = extras.filter((e) => selectedExtraIds.includes(e.id));
   const extrasTotal = selectedExtras.reduce((sum, e) => sum + e.price, 0);
   const basePrice = selectedService?.price ?? 0;
@@ -760,7 +802,7 @@ export default function BookingFlow({
     setReturningFilled(Boolean(vehicleOk && lastService));
     setEditingSelection(false);
     setName(match.name);
-    setPhone(match.phone);
+    setPhone(normalizePhone(match.phone));
     setEmail(match.email);
     setCarNumber(match.carNumber);
     setShowReturningPopup(false);
@@ -790,7 +832,7 @@ export default function BookingFlow({
   // service and rego for them to pick fresh.
   function applyReturningCustomerNewCar(match: ReturningCustomerCar) {
     setName(match.name);
-    setPhone(match.phone);
+    setPhone(normalizePhone(match.phone));
     setEmail(match.email);
     setCarNumber("");
     setSelectedService(null);
@@ -905,6 +947,9 @@ export default function BookingFlow({
     if (isPhone()) scrollToSection(timesSectionRef);
     setSelectedDate(dateKey);
     setSelectedTime(null);
+    setSlotCollapsed(false);
+    setSlotNotice(null);
+    setError(null);
     setTimesError(null);
     setLoadingTimes(true);
     Promise.all([getBookedTimes(dateKey), getDateHours(dateKey)])
@@ -925,8 +970,41 @@ export default function BookingFlow({
 
   function handleSelectTime(time: string) {
     setSelectedTime(time);
-    // The time is the last choice on step 1 — bring the Next button into view.
+    setSlotNotice(null);
+    setError(null);
+    // Date and time are both chosen: fold the calendar away, then bring the
+    // Next button (the last thing on step 1) into view.
+    setSlotCollapsed(true);
     scrollToSection(nextButtonRef, "center");
+  }
+
+  /** Re-reads which times are taken, so a list that went stale (someone else booked) catches up. */
+  async function refreshSlots(dateKey: string) {
+    try {
+      const times = await getBookedTimes(dateKey);
+      setBookedTimes(times);
+      return times;
+    } catch {
+      return null;
+    }
+  }
+
+  // A submit that fails because the slot was just taken sends the customer
+  // back to step 1 with that time cleared, instead of leaving a stale error
+  // on a screen they can't act on.
+  function failSubmit(message: string) {
+    setSubmitting(false);
+    if (/fully booked|time slot/i.test(message) && selectedDate) {
+      if (selectedTime) setTakenSlots((prev) => [...prev, `${selectedDate}|${selectedTime}`]);
+      setSlotNotice("That time was just taken. Please pick another time.");
+      setSelectedTime(null);
+      setSlotCollapsed(false);
+      setError(null);
+      setStep(1);
+      refreshSlots(selectedDate);
+      return;
+    }
+    setError(message);
   }
 
   const timeSlots = useMemo(() => {
@@ -991,8 +1069,7 @@ export default function BookingFlow({
           return;
         }
         if (result.error || !result.url) {
-          setError(result.error ?? "Something went wrong");
-          setSubmitting(false);
+          failSubmit(result.error ?? "Something went wrong");
           return;
         }
         window.location.href = result.url;
@@ -1000,8 +1077,7 @@ export default function BookingFlow({
       } else {
         const result = await createBookingSimple(bookingInput);
         if (result.error || !result.bookingId) {
-          setError(result.error ?? "Something went wrong");
-          setSubmitting(false);
+          failSubmit(result.error ?? "Something went wrong");
           return;
         }
         // No Stripe hop for this path, so the form's own state can just be
@@ -1011,8 +1087,7 @@ export default function BookingFlow({
         router.push(`/book/confirmation?booking_id=${result.bookingId}`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-      setSubmitting(false);
+      failSubmit(err instanceof Error ? err.message : "Something went wrong");
     }
   }
 
@@ -1021,16 +1096,24 @@ export default function BookingFlow({
   const activeStop = step === 1 ? (vehicleChosen ? 2 : 1) : step === 2 ? 3 : 4;
   const vehicleName = vehicleTypes.find((v) => v.slug === vehicle)?.name ?? vehicle;
   const stops = [
-    { n: 1, label: "Vehicle", done: vehicleChosen, value: vehicleName, sub: null as string | null },
+    { n: 1, label: "Vehicle", done: vehicleChosen, showValue: vehicleChosen, value: vehicleName, sub: null as string | null },
     {
       n: 2,
       label: "Service",
       done: Boolean(selectedService),
+      showValue: Boolean(selectedService),
       value: selectedService ? normalizeTitleCase(selectedService.name) : "",
       sub: selectedService ? `$${selectedService.price.toFixed(2)}` : null,
     },
-    { n: 3, label: "Add-ons", done: step > 2, value: "Add-ons", sub: null },
-    { n: 4, label: "Payment", done: false, value: "Payment", sub: null },
+    {
+      n: 3,
+      label: "Add-ons",
+      done: step > 2 || selectedExtras.length > 0,
+      showValue: selectedExtras.length > 0,
+      value: `${selectedExtras.length} add-on${selectedExtras.length === 1 ? "" : "s"}`,
+      sub: selectedExtras.length > 0 ? `+$${extrasTotal.toFixed(2)}` : null,
+    },
+    { n: 4, label: "Payment", done: false, showValue: false, value: "Payment", sub: null },
   ];
 
   // Tapping a stop jumps to its section. Going back is always allowed; going
@@ -1058,6 +1141,8 @@ export default function BookingFlow({
         {stops.map((st, i) => {
           const isActive = activeStop === st.n;
           const reachable = stopReachable(st.n);
+          // The add-ons stop keeps its "active" look while you are on it, even once something is picked.
+          const circleDone = st.done && !(st.n === 3 && isActive);
           return (
             <Fragment key={st.n}>
               <li className="flex w-16 flex-none flex-col items-center sm:w-24 md:w-32">
@@ -1070,14 +1155,14 @@ export default function BookingFlow({
                 >
                   <span
                     className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold shadow-sm transition-colors md:h-10 md:w-10 md:text-base ${
-                      st.done
+                      circleDone
                         ? "bg-brand-600 text-white"
                         : isActive
                           ? "bg-gradient-to-r from-brand-500 to-brand-600 text-white ring-4 ring-brand-100"
                           : "bg-gray-100 text-gray-400"
                     }`}
                   >
-                    {st.done ? (
+                    {circleDone ? (
                       st.n === 1 ? (
                         <span className="[&>svg]:h-5 [&>svg]:w-5 md:[&>svg]:h-6 md:[&>svg]:w-6">
                           {getVehicleTypeIcon(vehicleName)}
@@ -1093,12 +1178,12 @@ export default function BookingFlow({
                   </span>
                   <span
                     className={`w-full truncate text-center text-[10px] font-semibold leading-tight md:text-xs ${
-                      st.done || isActive ? "text-brand-700" : "text-gray-400"
+                      st.showValue || isActive ? "text-brand-700" : "text-gray-400"
                     }`}
                   >
-                    {st.done && st.n <= 2 ? st.value : st.label}
+                    {st.showValue ? st.value : st.label}
                   </span>
-                  {st.done && st.sub && (
+                  {st.showValue && st.sub && (
                     <span className="text-[10px] font-bold leading-none text-gray-900 md:text-xs">{st.sub}</span>
                   )}
                 </button>
@@ -1317,6 +1402,36 @@ export default function BookingFlow({
               Choose Your Date &amp; <span className="wave-word">Time</span>
             </h2>
 
+            {slotNotice && (
+              <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                {slotNotice}
+              </p>
+            )}
+
+            {slotCollapsed && selectedDate && selectedTime ? (
+              <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand-200 bg-brand-50/60 p-4 sm:p-5">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-brand-600 text-white">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-wide text-brand-700">Your slot</p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {formatLongDate(selectedDate)} at {formatTimeLabel(selectedTime)}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSlotCollapsed(false)}
+                  className="flex-none rounded-full border-2 border-brand-600 px-4 py-1.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-600 hover:text-white"
+                >
+                  Change
+                </button>
+              </div>
+            ) : (
             <div className="flex flex-col gap-6 md:flex-row md:items-start">
               <div className="rounded-2xl border border-gray-200 p-5 shadow-sm md:flex-1">
                 <div className="mb-4 flex items-center justify-between">
@@ -1409,7 +1524,9 @@ export default function BookingFlow({
                       // only the actually available ones.
                       (() => {
                         const availableSlots = timeSlots.filter(
-                          (t) => !bookedTimes.some((bt) => bt.time === t),
+                          (t) =>
+                            !bookedTimes.some((bt) => bt.time === t) &&
+                            !takenSlots.includes(`${selectedDate}|${t}`),
                         );
                         if (availableSlots.length === 0) {
                           return (
@@ -1487,6 +1604,7 @@ export default function BookingFlow({
                 )}
               </div>
             </div>
+            )}
           </div>
 
           <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
@@ -1858,16 +1976,32 @@ export default function BookingFlow({
                 </span>
                 <input
                   required
-                  placeholder="0412 345 678"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  maxLength={10}
+                  placeholder="0412345678"
                   value={phone}
                   onChange={(e) => {
-                    setPhone(e.target.value);
+                    setPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
                     setCustomerDiscount(null);
                   }}
-                  onBlur={handleCheckCustomerDiscount}
-                  className="w-full rounded-xl border border-gray-300 py-2.5 pl-10 pr-3.5 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                  onBlur={() => {
+                    setPhoneTouched(true);
+                    handleCheckCustomerDiscount();
+                  }}
+                  className={`w-full rounded-xl border py-2.5 pl-10 pr-3.5 text-sm transition focus:outline-none focus:ring-2 ${
+                    phoneTouched && phone && !phoneValid
+                      ? "border-red-400 focus:border-red-500 focus:ring-red-100"
+                      : "border-gray-300 focus:border-brand-500 focus:ring-brand-100"
+                  }`}
                 />
               </div>
+              {phoneTouched && phone && !phoneValid && (
+                <p className="mt-1.5 text-xs font-semibold text-red-600">
+                  Phone number must be 10 digits ({phone.length}/10).
+                </p>
+              )}
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1.5 block text-sm font-semibold text-gray-700">
@@ -1889,10 +2023,22 @@ export default function BookingFlow({
                     setEmail(e.target.value);
                     setCustomerDiscount(null);
                   }}
-                  onBlur={handleCheckCustomerDiscount}
-                  className="w-full rounded-xl border border-gray-300 py-2.5 pl-10 pr-3.5 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                  onBlur={() => {
+                    setEmailTouched(true);
+                    handleCheckCustomerDiscount();
+                  }}
+                  className={`w-full rounded-xl border py-2.5 pl-10 pr-3.5 text-sm transition focus:outline-none focus:ring-2 ${
+                    emailTouched && email && !emailValid
+                      ? "border-red-400 focus:border-red-500 focus:ring-red-100"
+                      : "border-gray-300 focus:border-brand-500 focus:ring-brand-100"
+                  }`}
                 />
               </div>
+              {emailTouched && email && !emailValid && (
+                <p className="mt-1.5 text-xs font-semibold text-red-600">
+                  Enter a valid email address, like name@example.com.
+                </p>
+              )}
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1.5 block text-sm font-semibold text-gray-700">
@@ -2088,27 +2234,31 @@ export default function BookingFlow({
 
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
-          <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-7 flex flex-wrap items-center gap-3">
             <button
               onClick={() => setStep(2)}
               className="rounded-full border-2 border-gray-200 px-6 py-3 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
             >
               Previous
             </button>
-            <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {!submitting &&
                 (!name ? (
                   <p className="text-sm text-red-600">Please enter your full name above.</p>
                 ) : !phone ? (
                   <p className="text-sm text-red-600">Please enter your phone number above.</p>
+                ) : !phoneValid ? (
+                  <p className="text-sm text-red-600">Phone number must be 10 digits.</p>
                 ) : !email ? (
                   <p className="text-sm text-red-600">Please enter your email above.</p>
+                ) : !emailValid ? (
+                  <p className="text-sm text-red-600">Please enter a valid email address.</p>
                 ) : !disclaimerAccepted ? (
                   <p className="text-sm text-red-600">Please accept the disclaimer above.</p>
                 ) : null)}
               <button
                 ref={confirmButtonRef}
-                disabled={!name || !phone || !email || !disclaimerAccepted || submitting}
+                disabled={!name || !phoneValid || !emailValid || !disclaimerAccepted || submitting}
                 onClick={handleConfirm}
                 className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-8 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:-translate-y-0.5 hover:shadow-md disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
               >

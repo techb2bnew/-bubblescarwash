@@ -358,6 +358,12 @@ export interface CreateBookingInput {
   discount_code?: string;
 }
 
+const PHONE_ERROR = "Please enter a valid 10-digit phone number.";
+
+function isValidPhone(phone: string | undefined): boolean {
+  return /^\d{10}$/.test((phone ?? "").trim());
+}
+
 export interface CreateCheckoutSessionResult {
   url?: string;
   /** Set instead of `url` when Stripe Checkout should render inline (embedded). */
@@ -384,6 +390,7 @@ export interface CreateCheckoutSessionResult {
 export async function createCheckoutSession(
   input: CreateBookingInput,
 ): Promise<CreateCheckoutSessionResult> {
+  if (!isValidPhone(input.customer_phone)) return { error: PHONE_ERROR };
   const stripe = getStripeClient();
   if (!stripe) {
     return {
@@ -528,6 +535,7 @@ export interface CreateBookingSimpleResult {
 export async function createBookingSimple(
   input: CreateBookingInput,
 ): Promise<CreateBookingSimpleResult> {
+  if (!isValidPhone(input.customer_phone)) return { error: PHONE_ERROR };
   try {
     assertBookingIsNotTooSoon(input.booking_date, input.booking_time);
     const supabase = await createClient();
