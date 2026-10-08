@@ -1243,7 +1243,6 @@ export default function BookingFlow({
                 >
                   Change details
                 </button>
-                <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">or</span>
                 <button
                   type="button"
                   onClick={() => scrollToSection(slotSectionRef)}
