@@ -370,16 +370,21 @@ export default function BookingFlow({
   const [limitConfirmCount, setLimitConfirmCount] = useState<number | null>(null);
 
   const rootRef = useRef<HTMLDivElement>(null);
+  const nextButtonRef = useRef<HTMLButtonElement>(null);
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
   const timesSectionRef = useRef<HTMLDivElement>(null);
   const vehicleSectionRef = useRef<HTMLDivElement>(null);
   const serviceSectionRef = useRef<HTMLDivElement>(null);
   const slotSectionRef = useRef<HTMLDivElement>(null);
-  const scrollToSection = (ref: RefObject<HTMLDivElement | null>) => {
+  const scrollToSection = (
+    ref: RefObject<HTMLElement | null>,
+    block: ScrollLogicalPosition = "start",
+  ) => {
     // A short delay so a section that only mounts after a step change exists
     // by the time we scroll to it.
     window.setTimeout(() => {
       requestAnimationFrame(() => {
-        ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        ref.current?.scrollIntoView({ behavior: "smooth", block });
       });
     }, 60);
   };
@@ -920,6 +925,8 @@ export default function BookingFlow({
 
   function handleSelectTime(time: string) {
     setSelectedTime(time);
+    // The time is the last choice on step 1 — bring the Next button into view.
+    scrollToSection(nextButtonRef, "center");
   }
 
   const timeSlots = useMemo(() => {
@@ -1493,6 +1500,7 @@ export default function BookingFlow({
               <p className="text-sm text-red-600">{timesError}</p>
             ) : null}
             <button
+              ref={nextButtonRef}
               disabled={
                 !selectedService || !selectedDate || !selectedTime || Boolean(timesError)
               }
@@ -2067,7 +2075,11 @@ export default function BookingFlow({
               <input
                 type="checkbox"
                 checked={disclaimerAccepted}
-                onChange={(e) => setDisclaimerAccepted(e.target.checked)}
+                onChange={(e) => {
+                  setDisclaimerAccepted(e.target.checked);
+                  // Ticking the disclaimer is the last thing on this step — go to the button.
+                  if (e.target.checked) scrollToSection(confirmButtonRef, "center");
+                }}
                 className="mt-0.5 h-4 w-4 flex-none rounded border-gray-300 text-brand-600 focus:ring-brand-500"
               />
               I have read and agree to the disclaimer above.
@@ -2095,6 +2107,7 @@ export default function BookingFlow({
                   <p className="text-sm text-red-600">Please accept the disclaimer above.</p>
                 ) : null)}
               <button
+                ref={confirmButtonRef}
                 disabled={!name || !phone || !email || !disclaimerAccepted || submitting}
                 onClick={handleConfirm}
                 className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-8 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:-translate-y-0.5 hover:shadow-md disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
