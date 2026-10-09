@@ -41,6 +41,14 @@ const photos: {
     row: 1,
   },
   {
+    src: "/real-photos/gallery-cafe-counter.jpg",
+    alt: "The Bubbles cafe counter with the cake display and coffee machine",
+    caption: "Fresh coffee & cakes at our cafe",
+    col: 2,
+    row: 2,
+    position: "35% center",
+  },
+  {
     src: "/real-photos/headlight-polish.jpg",
     alt: "Hand wiping down a headlight and fender",
     caption: "Every panel wiped by hand",
