@@ -66,8 +66,11 @@ async function getWashPackages() {
   const tiers = [...tiersByName.values()]
     .map((t) => ({
       ...t,
+      // Cheapest vehicle first (sedan, wagon, 7 seater, XL); the vehicle order breaks ties.
       prices: t.prices.sort(
-        (a, b) => (vehicleOrder.get(a.vehicleTypeSlug) ?? 0) - (vehicleOrder.get(b.vehicleTypeSlug) ?? 0),
+        (a, b) =>
+          a.price - b.price ||
+          (vehicleOrder.get(a.vehicleTypeSlug) ?? 0) - (vehicleOrder.get(b.vehicleTypeSlug) ?? 0),
       ),
     }))
     .sort((a, b) => (a.prices[0]?.price ?? 0) - (b.prices[0]?.price ?? 0));
