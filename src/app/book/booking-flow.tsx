@@ -1885,7 +1885,7 @@ export default function BookingFlow({
                 <div className="flex items-start gap-2">
                   <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-white text-brand-600 shadow-sm">
                     <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-                      <path d="M12 3v18M8 7.5c0-1.4 1.6-2.5 4-2.5s4 1 4 2.5-1.8 2.2-4 2.5c-2.2.3-4 1-4 2.5s1.6 2.5 4 2.5 4-1.1 4-2.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      <path d="M12 3v18M16 8c0-1.7-1.8-3-4-3s-4 1.1-4 3 1.8 2.5 4 3 4 1.2 4 3.2-1.8 3-4 3-4-1.3-4-3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </span>
                   <span className="text-xs text-gray-600 sm:text-right">
