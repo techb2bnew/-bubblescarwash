@@ -228,7 +228,6 @@ function buildBookingDetailsHtml(details: BookingEmailDetails): string {
     ["Service", details.serviceName],
     ["Date", formatDate(details.bookingDate)],
     ["Time", `${formatTimeLabel(details.bookingTime)} (${tzLabel})`],
-    ["Duration", `${details.durationMinutes} minutes`],
     ["Price", formatPrice(details.price)],
     ["Customer", details.customerName],
     ["Phone", details.customerPhone],
