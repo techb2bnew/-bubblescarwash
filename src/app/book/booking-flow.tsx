@@ -1781,16 +1781,16 @@ export default function BookingFlow({
             </span>
           </div>
 
-          <div className="mt-7 flex justify-between">
+          <div className="mt-7 flex gap-3 sm:justify-between">
             <button
               onClick={() => setStep(1)}
-              className="rounded-full border-2 border-gray-200 px-6 py-3 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
+              className="flex-1 rounded-full border-2 border-gray-200 px-6 py-3 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50 sm:flex-none"
             >
               Previous
             </button>
             <button
               onClick={() => setStep(3)}
-              className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-8 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:-translate-y-0.5 hover:shadow-md"
+              className="flex-1 rounded-full border-2 border-transparent sm:border-0 bg-gradient-to-r from-brand-500 to-brand-600 px-8 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:-translate-y-0.5 hover:shadow-md sm:flex-none"
             >
               Next
             </button>
@@ -2305,14 +2305,14 @@ export default function BookingFlow({
 
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
-          <div className="mt-7 flex flex-wrap items-center gap-3">
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <button
               onClick={() => setStep(2)}
               className="rounded-full border-2 border-gray-200 px-6 py-3 text-sm font-semibold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50"
             >
               Previous
             </button>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               {!submitting &&
                 (!name ? (
                   <p className="text-sm text-red-600">Please enter your full name above.</p>
@@ -2331,7 +2331,7 @@ export default function BookingFlow({
                 ref={confirmButtonRef}
                 disabled={!name || !phoneValid || !emailValid || !disclaimerAccepted || submitting}
                 onClick={handleConfirm}
-                className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-8 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:-translate-y-0.5 hover:shadow-md disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
+                className="rounded-full border-2 border-transparent sm:border-0 bg-gradient-to-r from-brand-500 to-brand-600 px-8 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:-translate-y-0.5 hover:shadow-md disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
               >
                 {submitting
                   ? paymentMode === "stripe" && totalPrice > 0
