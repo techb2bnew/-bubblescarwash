@@ -28,7 +28,7 @@ import {
   WEEKDAY_NAMES,
 } from "@/lib/date-utils";
 import type { PaymentMode } from "@/lib/payment-mode";
-import { normalizeTitleCase } from "@/lib/format";
+import { mostPopularIndex, normalizeTitleCase } from "@/lib/format";
 import { loadStripe } from "@stripe/stripe-js";
 import { arrivedViaHistory, clearJustConfirmed, hasJustConfirmed } from "./after-booking";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
@@ -1401,7 +1401,7 @@ export default function BookingFlow({
             >
               {vehicleServices.map((s, si) => {
                 const active = selectedService?.id === s.id;
-                const popular = vehicleServices.length > 1 && si === Math.floor((vehicleServices.length - 1) / 2);
+                const popular = si === mostPopularIndex(vehicleServices.map((v) => v.name));
                 const activeInclusions = (s.inclusions ?? [])
                   .filter((i) => i.active)
                   .sort((a, b) => a.sort_order - b.sort_order);
@@ -2275,6 +2275,23 @@ export default function BookingFlow({
                   the operator prior to the provision of any services. Forms are available from
                   the operator.
                 </li>
+              </ul>
+              <p className="mt-2 font-semibold text-gray-800">
+                Condition — heavily soiled and X Large vehicles: surcharge from $40.
+              </p>
+              <p className="mt-1 font-semibold text-gray-700">Exterior</p>
+              <ul className="list-disc space-y-1 pl-4">
+                <li>Heavy bugs</li>
+                <li>Tar</li>
+                <li>Built up dirt</li>
+                <li>Excessive brake dust</li>
+              </ul>
+              <p className="mt-1.5 font-semibold text-gray-700">Interior</p>
+              <ul className="list-disc space-y-1 pl-4">
+                <li>Built up dirt</li>
+                <li>Grime</li>
+                <li>Pet hair</li>
+                <li>Sand</li>
               </ul>
               <p className="mt-2">
                 If you request the provision of car washing and related services (collectively,

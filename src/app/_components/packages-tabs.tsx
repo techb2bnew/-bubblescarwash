@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { ServiceCategoryRow, VehicleTypeRow } from "@/lib/types";
-import { normalizeTitleCase } from "@/lib/format";
+import { mostPopularIndex, normalizeTitleCase } from "@/lib/format";
 import { getCategoryIcon } from "./category-icon";
 
 type Tier = {
@@ -61,7 +61,7 @@ export default function PackagesTabs({
 
       <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {activeTiers.map((tier, idx) => {
-          const featured = activeTiers.length > 1 && idx === Math.floor((activeTiers.length - 1) / 2);
+          const featured = idx === mostPopularIndex(activeTiers.map((t) => t.name));
           return (
             <div
               key={tier.name}

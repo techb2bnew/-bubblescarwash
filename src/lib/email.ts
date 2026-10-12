@@ -179,6 +179,21 @@ function disclaimerHtml(): string {
         <li style="${li}">Any personal items are removed from your vehicle.</li>
         <li style="${li}">If your vehicle has automatic door locks or any aftermarket alterations or modifications, that you have completed and returned a care instruction form to the operator prior to the provision of any services. Forms are available from the operator.</li>
       </ul>
+      <p style="${p}font-weight:700;color:#374151;">Condition — heavily soiled and X Large vehicles: surcharge from $40.</p>
+      <p style="${p}margin:0 0 4px;font-weight:700;">Exterior</p>
+      <ul style="margin:0 0 8px;padding-left:18px;">
+        <li style="${li}">Heavy bugs</li>
+        <li style="${li}">Tar</li>
+        <li style="${li}">Built up dirt</li>
+        <li style="${li}">Excessive brake dust</li>
+      </ul>
+      <p style="${p}margin:0 0 4px;font-weight:700;">Interior</p>
+      <ul style="margin:0 0 8px;padding-left:18px;">
+        <li style="${li}">Built up dirt</li>
+        <li style="${li}">Grime</li>
+        <li style="${li}">Pet hair</li>
+        <li style="${li}">Sand</li>
+      </ul>
       <p style="margin:0;color:#6b7280;font-size:12px;line-height:1.6;">If you request the provision of car washing and related services (collectively, services) from the operator of this Bubbles Car Wash and Cafe business (operator) and the operator agrees to provide those services, you and the operator agree that, subject to any rights you have at law that cannot be waived, neither the operator nor Bubbles Car Wash and Cafe Pty Ltd (ACN 138 032 210) is liable and you will not bring any action or claim against either of them, in respect of any loss or damage suffered or incurred by you in connection with the provision of services by the operator. Without limiting the above, this includes any loss or damage to your vehicle or other personal property.</p>
     </div>`;
 }

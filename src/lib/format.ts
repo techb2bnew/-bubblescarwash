@@ -11,3 +11,13 @@ export function normalizeTitleCase(name: string): string {
     .toLowerCase()
     .replace(/(^|\s)([a-z])/g, (_, boundary, letter) => boundary + letter.toUpperCase());
 }
+
+/**
+ * Which package carries the "Most Popular" badge: Superior Wash when it is in
+ * the list, otherwise the middle one as before.
+ */
+export function mostPopularIndex(names: string[]): number {
+  if (names.length < 2) return -1;
+  const superior = names.findIndex((n) => n.trim().toLowerCase() === "superior wash");
+  return superior >= 0 ? superior : Math.floor((names.length - 1) / 2);
+}
