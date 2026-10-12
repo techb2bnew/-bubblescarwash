@@ -15,7 +15,10 @@ const nextConfig: NextConfig = {
     ],
   },
   // googleapis is large; keep it external so Vercel serverless bundles stay within limits.
-  serverExternalPackages: ["googleapis"],
+  // On self-hosted (standalone) builds it must be bundled instead: Turbopack
+  // externalizes it behind a hashed symlink that breaks once the build is
+  // moved to another machine.
+  serverExternalPackages: process.env.VERCEL ? ["googleapis"] : [],
   // Produces .next/standalone/server.js — a single entry file that cPanel's
   // Node.js App Manager (Passenger) can launch directly. Vercel's own build
   // pipeline does NOT expect standalone output (it broke the build looking
