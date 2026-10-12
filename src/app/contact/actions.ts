@@ -3,7 +3,9 @@
 import { sendContactEnquiryEmail } from "@/lib/email";
 import { getSiteOrigin } from "@/lib/site-origin";
 
-const RECIPIENT_EMAIL = "rishavbase2brand@gmail.com";
+// Same inbox(es) that get the booking alerts; ADMIN_EMAIL may hold several
+// comma-separated addresses.
+const RECIPIENT_EMAIL = process.env.ADMIN_EMAIL || "info@bubblescarwashcafe.com.au";
 
 export async function submitContactEnquiry(formData: {
   name: string;
