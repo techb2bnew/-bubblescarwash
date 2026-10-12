@@ -29,7 +29,7 @@ begin
     'authenticated',
     'authenticated',
     'admin@carwash.com',
-    crypt('Admin@123', gen_salt('bf')),
+    extensions.crypt('Admin@123', extensions.gen_salt('bf')),
     now(), now(),
     '{"provider":"email","providers":["email"]}',
     '{}',

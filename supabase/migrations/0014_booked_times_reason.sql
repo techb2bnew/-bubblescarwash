@@ -2,6 +2,7 @@
 -- unavailable time so the public booking calendar can show it on hover.
 -- Real customer bookings still report a null reason (no customer PII leaks).
 
+drop function if exists get_booked_times(date);
 create or replace function get_booked_times(target_date date)
 returns table (booking_time time, reason text)
 language sql
