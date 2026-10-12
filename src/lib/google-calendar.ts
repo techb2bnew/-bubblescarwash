@@ -26,8 +26,18 @@ function getCalendarClient() {
   };
 }
 
+const DEFAULT_TIMEZONE = "Australia/Sydney";
+
 export function getBusinessTimezone(): string {
-  return process.env.BUSINESS_TIMEZONE ?? "Australia/Sydney";
+  const zone = process.env.BUSINESS_TIMEZONE?.trim();
+  if (!zone) return DEFAULT_TIMEZONE;
+  try {
+    new Intl.DateTimeFormat("en-CA", { timeZone: zone });
+    return zone;
+  } catch {
+    console.error(`[timezone] Invalid BUSINESS_TIMEZONE "${zone}", using ${DEFAULT_TIMEZONE}`);
+    return DEFAULT_TIMEZONE;
+  }
 }
 
 /** Public embed URL for the admin calendar page (read-only view). */
