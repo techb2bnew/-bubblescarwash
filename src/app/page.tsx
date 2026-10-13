@@ -318,7 +318,7 @@ const statBand = [
     ),
   },
   {
-    value: "12k+",
+    value: "120k+",
     label: "Cars Washed",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
