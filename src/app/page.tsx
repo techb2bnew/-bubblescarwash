@@ -291,7 +291,7 @@ const howItWorks = [
 const galleryPhotos = [
   { src: "/real-photos/hand-wax.jpg", alt: "Detailer hand-waxing a car panel" },
   { src: "/real-photos/detail-collage.jpg", alt: "Headlight restoration and dashboard detailing" },
-  { src: "/real-photos/tunnel-wash.jpg", alt: "Car going through the automatic wash tunnel" },
+  { src: "/real-photos/gallery-ferrari-cafe.jpg", alt: "Freshly washed red Ferrari outside the Bubbles cafe" },
   { src: "/real-photos/cafe-coffee.jpg", alt: "Barista pouring latte art into a coffee cup" },
   { src: "/real-photos/headlight-polish.jpg", alt: "Hand wiping down a headlight and fender" },
 ];
