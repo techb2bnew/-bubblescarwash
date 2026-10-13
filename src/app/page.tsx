@@ -476,7 +476,7 @@ const careItems = [
   },
   {
     title: "Microfiber-only touch",
-    body: "Soft mitts and towels on every panel — no scratches, no swirl marks.",
+    body: "Soft sponges and towels on every panel — no scratches, no swirl marks.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
         <path
