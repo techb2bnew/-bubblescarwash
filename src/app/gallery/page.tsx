@@ -53,14 +53,7 @@ const photos: {
     alt: "Hand wiping down a headlight and fender",
     caption: "Every panel wiped by hand",
     col: 2,
-    row: 1,
-  },
-  {
-    src: "/real-photos/tunnel-wash.jpg",
-    alt: "Car passing through the automatic wash tunnel",
-    caption: "Through the wash tunnel",
-    col: 2,
-    row: 1,
+    row: 2,
   },
 ];
 

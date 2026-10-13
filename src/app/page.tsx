@@ -291,7 +291,7 @@ const howItWorks = [
 const galleryPhotos = [
   { src: "/real-photos/hand-wax.jpg", alt: "Detailer hand-waxing a car panel" },
   { src: "/real-photos/detail-collage.jpg", alt: "Headlight restoration and dashboard detailing" },
-  { src: "/real-photos/tunnel-wash.jpg", alt: "Car going through the automatic wash tunnel" },
+  { src: "/real-photos/gallery-ferrari-cafe.jpg", alt: "Freshly washed red Ferrari outside the Bubbles cafe" },
   { src: "/real-photos/cafe-coffee.jpg", alt: "Barista pouring latte art into a coffee cup" },
   { src: "/real-photos/headlight-polish.jpg", alt: "Hand wiping down a headlight and fender" },
 ];
@@ -318,7 +318,7 @@ const statBand = [
     ),
   },
   {
-    value: "12k+",
+    value: "120k+",
     label: "Cars Washed",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
@@ -476,7 +476,7 @@ const careItems = [
   },
   {
     title: "Microfiber-only touch",
-    body: "Soft mitts and towels on every panel — no scratches, no swirl marks.",
+    body: "Soft sponges and towels on every panel — no scratches, no swirl marks.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
         <path
