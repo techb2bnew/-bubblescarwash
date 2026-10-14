@@ -43,6 +43,7 @@ import {
   lookupCarVerified,
   lookupReturningCustomerCars,
   previewCustomerDiscount,
+  getOnlineDiscount,
   previewDiscount,
   previewGiftCard,
   type BookedTime,
@@ -443,6 +444,13 @@ export default function BookingFlow({
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [checkingDiscount, setCheckingDiscount] = useState(false);
   const [customerDiscount, setCustomerDiscount] = useState<CustomerDiscountPreview | null>(null);
+  // "Book online & save 10%" — applied to every online booking by default.
+  const [onlineDiscount, setOnlineDiscount] = useState<CustomerDiscountPreview | null>(null);
+  useEffect(() => {
+    getOnlineDiscount()
+      .then(setOnlineDiscount)
+      .catch(() => {});
+  }, []);
 
   // "Returning customer?" popup shown on a fresh visit (no draft to resume)
   // — phone number identifies past bookings so we can autofill instead of
@@ -713,7 +721,7 @@ export default function BookingFlow({
   const basePrice = selectedService?.price ?? 0;
   // A customer-targeted discount (auto-matched by email/phone) takes
   // priority over a typed coupon code, same precedence create_booking uses.
-  const activeDiscount = customerDiscount ?? appliedDiscount;
+  const activeDiscount = customerDiscount ?? appliedDiscount ?? onlineDiscount;
   const discountAmount = activeDiscount
     ? activeDiscount.discountType === "percent"
       ? Math.round(basePrice * activeDiscount.value) / 100
@@ -1853,7 +1861,15 @@ export default function BookingFlow({
                   )}
                   {activeDiscount && (
                     <div className="mt-1 flex justify-between gap-4 text-xs text-green-700">
-                      <span>Discount ({customerDiscount ? customerDiscount.name : appliedDiscount?.code})</span>
+                      <span>
+                        Discount (
+                        {customerDiscount
+                          ? customerDiscount.name
+                          : appliedDiscount
+                            ? appliedDiscount.code
+                            : "Book online & save"}
+                        )
+                      </span>
                       <span>-${discountAmount.toFixed(2)}</span>
                     </div>
                   )}
@@ -1900,6 +1916,18 @@ export default function BookingFlow({
           {customerDiscount && (
             <div className="mb-4 flex items-center gap-2 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
               🎉 You qualify for <strong>{customerDiscount.name}</strong> — applied automatically, no code needed.
+            </div>
+          )}
+
+          {!customerDiscount && !appliedDiscount && onlineDiscount && (
+            <div className="mb-4 flex items-center gap-2 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+              🎉 Book online &amp; save{" "}
+              <strong>
+                {onlineDiscount.discountType === "percent"
+                  ? `${onlineDiscount.value}%`
+                  : `$${onlineDiscount.value}`}
+              </strong>{" "}
+              — already applied to your total.
             </div>
           )}
 
