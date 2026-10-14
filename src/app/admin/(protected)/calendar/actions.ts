@@ -503,7 +503,7 @@ async function insertOverrideBooking(
  * Either way, payment_status stays 'unpaid' and calendar sync + emails fire
  * immediately since there's no payment gate to wait on.
  */
-export async function createBookingAdminPayLater(
+async function payLaterImpl(
   input: AdminBookingInput,
 ): Promise<{ bookingId: string }> {
   await requirePermission("calendar", "create");
@@ -554,7 +554,7 @@ export async function createBookingAdminPayLater(
  * identical — the booking sits unpaid until the webhook marks it paid,
  * which is what fires the calendar sync and emails.
  */
-export async function createBookingAdminCheckout(
+async function checkoutImpl(
   input: AdminBookingInput,
 ): Promise<{ url: string }> {
   await requirePermission("calendar", "create");
@@ -635,6 +635,31 @@ export async function createBookingAdminCheckout(
     throw err instanceof Error
       ? err
       : new Error("Something went wrong starting payment. Please try again.");
+  }
+}
+
+/**
+ * Returns `{ error }` instead of throwing: Next.js redacts a thrown Server
+ * Action message in production ("Minified React error #441"), which hid
+ * ordinary validation errors like "This time slot is fully booked" from admins.
+ */
+export async function createBookingAdminPayLater(
+  input: AdminBookingInput,
+): Promise<{ bookingId: string } | { error: string }> {
+  try {
+    return await payLaterImpl(input);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Something went wrong" };
+  }
+}
+
+export async function createBookingAdminCheckout(
+  input: AdminBookingInput,
+): Promise<{ url: string } | { error: string }> {
+  try {
+    return await checkoutImpl(input);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Something went wrong" };
   }
 }
 

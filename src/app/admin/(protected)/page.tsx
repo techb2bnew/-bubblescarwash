@@ -81,7 +81,8 @@ export default async function AdminDashboardPage() {
     supabase
       .from("bookings")
       .select("booking_date, price")
-      .neq("status", "cancelled"),
+      .neq("status", "cancelled")
+      .or("payment_status.eq.paid,and(payment_status.eq.unpaid,status.eq.completed)"),
     supabase
       .from("bookings")
       .select("booking_date, services(name)")

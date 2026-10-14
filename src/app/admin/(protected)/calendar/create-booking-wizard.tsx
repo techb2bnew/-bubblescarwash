@@ -317,7 +317,7 @@ export default function CreateBookingWizard({
     setSubmitting("payLater");
     setError(null);
     try {
-      await createBookingAdminPayLater({
+      const result = await createBookingAdminPayLater({
         service_id: serviceId,
         vehicle_type: vehicleSlug,
         booking_date: bookingDate,
@@ -329,6 +329,10 @@ export default function CreateBookingWizard({
         extra_ids: selectedExtraIds,
         overrideAvailability,
       });
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
       onBooked(time);
       resetWizard();
       clearWizardDraft();
@@ -344,7 +348,7 @@ export default function CreateBookingWizard({
     setSubmitting("stripe");
     setError(null);
     try {
-      const { url } = await createBookingAdminCheckout({
+      const result = await createBookingAdminCheckout({
         service_id: serviceId,
         vehicle_type: vehicleSlug,
         booking_date: bookingDate,
@@ -356,7 +360,12 @@ export default function CreateBookingWizard({
         extra_ids: selectedExtraIds,
         overrideAvailability,
       });
-      window.location.href = url;
+      if ("error" in result) {
+        setError(result.error);
+        setSubmitting(null);
+        return;
+      }
+      window.location.href = result.url;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setSubmitting(null);
