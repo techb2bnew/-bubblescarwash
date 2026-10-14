@@ -1921,13 +1921,13 @@ export default function BookingFlow({
 
           {!customerDiscount && !appliedDiscount && onlineDiscount && (
             <div className="mb-4 flex items-center gap-2 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-              🎉 Book online &amp; save{" "}
+              🎉 Save{" "}
               <strong>
                 {onlineDiscount.discountType === "percent"
                   ? `${onlineDiscount.value}%`
                   : `$${onlineDiscount.value}`}
               </strong>{" "}
-              — already applied to your total.
+              — Automatically Applied at Checkout
             </div>
           )}
 
