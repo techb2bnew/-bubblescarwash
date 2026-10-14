@@ -166,6 +166,28 @@ export async function previewDiscount(code: string): Promise<DiscountPreview> {
   return { valid: true, discountType: row.discount_type, value: row.value, name: row.name };
 }
 
+// The public coupon behind the "Book online & save 10%" offer. Every online
+// booking gets it unless the customer typed a code of their own or already has
+// a customer-specific discount. It is an ordinary discount in admin → Discounts,
+// so switching it off there ends the offer everywhere.
+const ONLINE_DISCOUNT_CODE = "ONLINE10";
+
+/** The default online-booking discount, or null when it is switched off. */
+export async function getOnlineDiscount(): Promise<CustomerDiscountPreview | null> {
+  const preview = await previewDiscount(ONLINE_DISCOUNT_CODE);
+  if (!preview.valid || !preview.discountType || preview.value == null) return null;
+  return {
+    discountType: preview.discountType,
+    value: preview.value,
+    name: preview.name ?? "Online booking discount",
+  };
+}
+
+async function discountCodeFor(typedCode: string | undefined): Promise<string | null> {
+  if (typedCode) return typedCode;
+  return (await getOnlineDiscount()) ? ONLINE_DISCOUNT_CODE : null;
+}
+
 export interface CustomerDiscountPreview {
   discountType: "percent" | "fixed";
   value: number;
@@ -413,7 +435,7 @@ export async function createCheckoutSession(
       p_customer_email: input.customer_email,
       p_extra_ids: input.extra_ids ?? [],
       p_gift_card_code: input.gift_card_code || null,
-      p_discount_code: input.discount_code || null,
+      p_discount_code: await discountCodeFor(input.discount_code),
       p_car_number: input.car_number || null,
     });
     if (error) throw new Error(error.message);
@@ -549,7 +571,7 @@ export async function createBookingSimple(
       p_customer_email: input.customer_email,
       p_extra_ids: input.extra_ids ?? [],
       p_gift_card_code: input.gift_card_code || null,
-      p_discount_code: input.discount_code || null,
+      p_discount_code: await discountCodeFor(input.discount_code),
       p_car_number: input.car_number || null,
     });
     if (error) throw new Error(error.message);

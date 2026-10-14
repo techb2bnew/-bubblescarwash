@@ -14,6 +14,24 @@ export default function SiteHeader() {
 
   return (
     <header>
+      {/* Running announcement line — the "Book online & save 10%" offer, on every page. */}
+      <div
+        role="note"
+        aria-label="Book online and save 10%"
+        className="overflow-hidden bg-gradient-to-r from-brand-500 to-brand-600 py-2 text-gray-950"
+      >
+        <div className="marquee-track flex w-max items-center gap-6 whitespace-nowrap" aria-hidden="true">
+          {Array.from({ length: 16 }, (_, i) => (
+            <span key={i} className="flex items-center gap-6">
+              <span className="text-xs font-extrabold uppercase tracking-widest sm:text-sm">
+                Book online &amp; save 10%
+              </span>
+              <span className="h-1.5 w-1.5 flex-none rounded-full bg-gray-950/70" />
+            </span>
+          ))}
+        </div>
+      </div>
+
       {/* Compact mobile-only bar — address, hours, phone always visible (client feedback: these should be a constant bar on mobile, not hidden). Icons match the desktop utility bar below. */}
       <div style={{ backgroundColor: "#0b1220" }} className="text-gray-400 sm:hidden">
         <div className="flex flex-col gap-1 px-4 py-2 text-xs">
