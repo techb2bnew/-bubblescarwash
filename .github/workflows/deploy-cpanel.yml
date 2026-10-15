@@ -45,19 +45,27 @@ jobs:
           chmod 600 ~/.ssh/id_deploy
           ssh-keyscan -p "${{ secrets.CPANEL_SSH_PORT }}" "${{ secrets.CPANEL_HOST }}" >> ~/.ssh/known_hosts
 
-      # node_modules is a CloudLinux-managed symlink on the server and must never
-      # be replaced; tmp/ holds Passenger's restart trigger.
-      - name: Upload to cPanel
-        run: |
-          rsync -az --delete \
-            --exclude 'node_modules' --exclude 'tmp' --exclude '.htaccess' \
-            --exclude 'stderr.log' --exclude '*.log' --exclude '.env*' \
-            -e "ssh -i ~/.ssh/id_deploy -p ${{ secrets.CPANEL_SSH_PORT }}" \
-            .next/standalone/ \
-            "${{ secrets.CPANEL_USER }}@${{ secrets.CPANEL_HOST }}:${{ secrets.CPANEL_APP_PATH }}/"
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
 
-      - name: Restart app
+      # The hosting account has shell access disabled, so rsync/ssh commands
+      # can't run — SFTP still works, so files go up over SFTP instead.
+      # node_modules is a CloudLinux-managed symlink on the server and must never
+      # be replaced; tmp/ holds the app restart trigger.
+      - name: Upload to cPanel over SFTP
         run: |
-          ssh -i ~/.ssh/id_deploy -p "${{ secrets.CPANEL_SSH_PORT }}" \
-            "${{ secrets.CPANEL_USER }}@${{ secrets.CPANEL_HOST }}" \
-            "mkdir -p ${{ secrets.CPANEL_APP_PATH }}/tmp && touch ${{ secrets.CPANEL_APP_PATH }}/tmp/restart.txt"
+          date -u +%s > restart.txt
+          lftp -e "
+            set sftp:connect-program 'ssh -a -x -i $HOME/.ssh/id_deploy -p ${{ secrets.CPANEL_SSH_PORT }}';
+            set sftp:auto-confirm yes;
+            set net:max-retries 3;
+            set net:timeout 30;
+            open -u ${{ secrets.CPANEL_USER }},x sftp://${{ secrets.CPANEL_HOST }};
+            mirror -R --delete --parallel=4 --no-perms \
+              --exclude-glob node_modules --exclude-glob tmp --exclude-glob .htaccess \
+              --exclude-glob '*.log' --exclude-glob '.env*' \
+              .next/standalone ${{ secrets.CPANEL_APP_PATH }};
+            mkdir -p ${{ secrets.CPANEL_APP_PATH }}/tmp;
+            put restart.txt -o ${{ secrets.CPANEL_APP_PATH }}/tmp/restart.txt;
+            bye
+          "
