@@ -1,0 +1,63 @@
+name: Deploy to cPanel
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cpanel
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # NEXT_PUBLIC_* values are inlined into the bundle at build time, so they
+      # must exist here. Server-only secrets (Stripe secret, service-role key,
+      # SMTP, Google) stay in the cPanel Node.js App environment variables.
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+
+      - name: Assemble standalone bundle
+        run: |
+          cp -r public .next/standalone/public
+          mkdir -p .next/standalone/.next
+          cp -r .next/static .next/standalone/.next/static
+          rm -f .next/standalone/.env*
+
+      - name: Add SSH key
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.CPANEL_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "${{ secrets.CPANEL_SSH_PORT }}" "${{ secrets.CPANEL_HOST }}" >> ~/.ssh/known_hosts
+
+      # node_modules is a CloudLinux-managed symlink on the server and must never
+      # be replaced; tmp/ holds Passenger's restart trigger.
+      - name: Upload to cPanel
+        run: |
+          rsync -az --delete \
+            --exclude 'node_modules' --exclude 'tmp' --exclude '.htaccess' \
+            --exclude 'stderr.log' --exclude '*.log' --exclude '.env*' \
+            -e "ssh -i ~/.ssh/id_deploy -p ${{ secrets.CPANEL_SSH_PORT }}" \
+            .next/standalone/ \
+            "${{ secrets.CPANEL_USER }}@${{ secrets.CPANEL_HOST }}:${{ secrets.CPANEL_APP_PATH }}/"
+
+      - name: Restart app
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "${{ secrets.CPANEL_SSH_PORT }}" \
+            "${{ secrets.CPANEL_USER }}@${{ secrets.CPANEL_HOST }}" \
+            "mkdir -p ${{ secrets.CPANEL_APP_PATH }}/tmp && touch ${{ secrets.CPANEL_APP_PATH }}/tmp/restart.txt"
