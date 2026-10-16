@@ -218,6 +218,15 @@ export default function PaymentsTable({ records }: { records: PaymentRecord[] })
                         </>
                       )}
                     </div>
+                  ) : r.receiptUrl ? (
+                    <a
+                      href={r.receiptUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      Receipt
+                    </a>
                   ) : (
                     "—"
                   )}

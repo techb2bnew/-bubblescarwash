@@ -144,7 +144,7 @@ async function saveGoogleEventId(
 
 /**
  * Keeps Google Calendar in line with booking status, whatever the payment
- * state: every confirmed/completed booking gets an event, and a cancelled
+ * state: every confirmed/completed/rescheduled booking gets an event, and a cancelled
  * booking loses any event it still has. Safe to run on every page load —
  * it only touches bookings that are out of sync. No emails are sent here.
  */
@@ -158,7 +158,7 @@ export async function syncBookingsToGoogle(): Promise<void> {
       supabase
         .from("bookings")
         .select(select)
-        .in("status", ["confirmed", "completed"])
+        .in("status", ["confirmed", "completed", "rescheduled"])
         .or("google_event_id.is.null,google_event_id.eq.")
         .order("booking_date", { ascending: true })
         .limit(100),
