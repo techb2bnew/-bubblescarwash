@@ -543,9 +543,9 @@ export async function sendBookingPaymentPendingEmail(
     `,
     cta: {
       heading: "Still want this slot?",
-      subtext: "Head back to our website and complete your payment to confirm your booking.",
+      subtext: "Tap below to go straight back to your payment — your slot and details are saved.",
       buttonText: "Complete Your Booking",
-      href: `${getPublicSiteUrl()}/book`,
+      href: `${getPublicSiteUrl()}/book/resume/${details.bookingId}`,
     },
   });
 
