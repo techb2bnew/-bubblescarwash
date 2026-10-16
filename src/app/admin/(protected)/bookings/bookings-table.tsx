@@ -9,7 +9,7 @@ import AddOnsBadge from "./add-ons-badge";
 import ExtrasBadge from "./extras-badge";
 import PaymentStatusBadge from "./payment-status-badge";
 import RescheduleModal from "./reschedule-modal";
-import { FilterSelect, TableToolbar } from "../_components/table-toolbar";
+import { FilterCheckboxes, FilterSelect, TableToolbar } from "../_components/table-toolbar";
 import { SortHeader } from "../_components/sort-header";
 import { Pagination } from "../_components/pagination";
 
@@ -24,7 +24,6 @@ const STATUS_OPTIONS = [
 ];
 
 const PAYMENT_STATUS_OPTIONS = [
-  { value: "all", label: "All Payments" },
   { value: "paid", label: "Paid" },
   { value: "unpaid", label: "Unpaid" },
   { value: "pending", label: "Pending" },
@@ -54,7 +53,7 @@ export default function BookingsTable({
   const [view, setView] = useState<"list" | "calendar">("list");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
-  const [paymentStatus, setPaymentStatus] = useState("all");
+  const [paymentStatuses, setPaymentStatuses] = useState<string[]>([]);
   const [type, setType] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -117,8 +116,8 @@ export default function BookingsTable({
       );
     }
     if (status !== "all") result = result.filter((b) => b.status === status);
-    if (paymentStatus !== "all") {
-      result = result.filter((b) => b.payment_status === paymentStatus);
+    if (paymentStatuses.length > 0) {
+      result = result.filter((b) => paymentStatuses.includes(b.payment_status));
     }
     if (type !== "all") result = result.filter((b) => b.booking_type === type);
     if (dateFrom) result = result.filter((b) => b.booking_date >= dateFrom);
@@ -147,7 +146,7 @@ export default function BookingsTable({
       });
     }
     return result;
-  }, [bookings, search, status, paymentStatus, type, dateFrom, dateTo, sortKey, sortDir]);
+  }, [bookings, search, status, paymentStatuses, type, dateFrom, dateTo, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const clampedPage = Math.min(page, totalPages);
@@ -159,7 +158,7 @@ export default function BookingsTable({
   const hasActiveFilters =
     search.trim() !== "" ||
     status !== "all" ||
-    paymentStatus !== "all" ||
+    paymentStatuses.length > 0 ||
     type !== "all" ||
     dateFrom !== "" ||
     dateTo !== "";
@@ -167,7 +166,7 @@ export default function BookingsTable({
   function clearFilters() {
     setSearch("");
     setStatus("all");
-    setPaymentStatus("all");
+    setPaymentStatuses([]);
     setType("all");
     setDateFrom("");
     setDateTo("");
@@ -231,11 +230,11 @@ export default function BookingsTable({
           }}
           options={STATUS_OPTIONS}
         />
-        <FilterSelect
-          label="Payment Status"
-          value={paymentStatus}
+        <FilterCheckboxes
+          label="Payments"
+          selected={paymentStatuses}
           onChange={(v) => {
-            setPaymentStatus(v);
+            setPaymentStatuses(v);
             setPage(1);
           }}
           options={PAYMENT_STATUS_OPTIONS}

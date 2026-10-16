@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+
 export function TableToolbar({
   search,
   onSearchChange,
@@ -77,5 +79,119 @@ export function FilterSelect({
         </option>
       ))}
     </select>
+  );
+}
+
+/**
+ * Multi-select filter: a button that opens a small panel of checkboxes.
+ * An empty selection means "no filter" (everything shows).
+ */
+export function FilterCheckboxes({
+  label,
+  options,
+  selected,
+  onChange,
+}: {
+  label: string;
+  options: { value: string; label: string }[];
+  selected: string[];
+  onChange: (selected: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  function toggle(value: string) {
+    onChange(
+      selected.includes(value)
+        ? selected.filter((v) => v !== value)
+        : [...selected, value],
+    );
+  }
+
+  const summary =
+    selected.length === 0
+      ? `All ${label}`
+      : selected.length === 1
+        ? (options.find((o) => o.value === selected[0])?.label ?? label)
+        : `${label} (${selected.length})`;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label={label}
+        className={`flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-sm ${
+          selected.length > 0
+            ? "border-brand-600 bg-brand-50 text-brand-700"
+            : "border-gray-300 text-gray-700"
+        }`}
+      >
+        <span>{summary}</span>
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`transition-transform ${open ? "rotate-180" : ""}`}
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          role="group"
+          aria-label={label}
+          className="absolute left-0 z-30 mt-1 w-44 rounded-md border border-gray-200 bg-white p-1.5 shadow-lg"
+        >
+          {options.map((o) => (
+            <label
+              key={o.value}
+              className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              <input
+                type="checkbox"
+                checked={selected.includes(o.value)}
+                onChange={() => toggle(o.value)}
+                className="h-4 w-4 rounded border-gray-300 accent-brand-600"
+              />
+              {o.label}
+            </label>
+          ))}
+          {selected.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="mt-1 w-full rounded px-2 py-1.5 text-left text-xs font-medium text-brand-600 hover:bg-gray-50"
+            >
+              Clear selection
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
