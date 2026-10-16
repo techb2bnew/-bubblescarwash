@@ -5,6 +5,10 @@ import { syncBlockedSlotsToGoogle } from "@/lib/blocked-slot-sync";
 import { syncBookingsToGoogle } from "@/lib/booking-sync";
 import { getBusinessTimezone, getGoogleCalendarEmbedUrl } from "@/lib/google-calendar";
 import { getPaymentMode } from "@/lib/payment-mode";
+import {
+  reconcilePendingPayments,
+  sendPendingPaymentReminders,
+} from "@/lib/stripe-payments";
 import { flattenServiceTemplates, type ServiceTemplateRow } from "@/lib/pricing";
 import type {
   BlockedDate,
@@ -19,6 +23,9 @@ import CalendarView from "./calendar-view";
 export const dynamic = "force-dynamic";
 
 export default async function AdminCalendarPage() {
+  // Settle missed Stripe webhooks first so a just-confirmed payment is also synced.
+  await reconcilePendingPayments();
+  await sendPendingPaymentReminders();
   await Promise.all([
     syncBlockedDatesToGoogle(),
     syncBlockedSlotsToGoogle(),

@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import {
   createCalendarEvent,
@@ -10,6 +11,7 @@ import {
   sendBookingCancelledEmails,
   sendBookingCreatedEmails,
   sendBookingPaymentFailedEmails,
+  sendBookingPaymentPendingEmail,
   sendBookingRescheduledEmails,
   type BookingEmailDetails,
 } from "@/lib/email";
@@ -162,18 +164,17 @@ async function claimConfirmationEmail(bookingId: string): Promise<boolean> {
   return data === true;
 }
 
-/** Pending-payment bookings wait this long before emailing, so an abandoned checkout (which expires and cancels after ~32 min) never gets one. */
-const PENDING_PAYMENT_EMAIL_DELAY_MS = 35 * 60 * 1000;
-
 /**
  * Keeps Google Calendar in line with booking status, whatever the payment
  * state: every confirmed/completed/rescheduled booking gets an event, and a cancelled
  * booking loses any event it still has. Safe to run on every page load —
  * it only touches bookings that are out of sync. No emails are sent here.
  */
-export async function syncBookingsToGoogle(): Promise<void> {
+export async function syncBookingsToGoogle(
+  client?: SupabaseClient,
+): Promise<void> {
   try {
-    const supabase = await createClient();
+    const supabase = client ?? (await createClient());
     const select =
       "id, service_id, customer_name, customer_phone, customer_email, car_number, booking_date, booking_time, price, google_event_id, services(name, duration_minutes)";
 
@@ -208,19 +209,19 @@ export async function syncBookingsToGoogle(): Promise<void> {
       if (result?.eventId) await saveGoogleEventId(row.id, result.eventId);
     }
 
-    // Confirmation emails for active bookings that haven't had one — whatever
-    // the payment state. Past bookings are skipped; so are pending-payment
-    // ones younger than the grace period (see PENDING_PAYMENT_EMAIL_DELAY_MS).
+    // Confirmation emails for active bookings that haven't had one. A booking
+    // whose payment is still "pending" is deliberately left out: it gets the
+    // "still pending — please confirm the payment" reminder instead (see
+    // sendPendingPaymentReminders). Past bookings are skipped.
     const adminEmail = getAdminEmail(business.email);
     if (!adminEmail) return;
-    const cutoff = new Date(Date.now() - PENDING_PAYMENT_EMAIL_DELAY_MS).toISOString();
     const { data: unemailed } = await supabase
       .from("bookings")
       .select(select)
       .in("status", ["confirmed", "completed", "rescheduled"])
       .is("confirmation_email_sent_at", null)
       .gte("booking_date", todayKeyInTimezone(getBusinessTimezone()))
-      .or(`payment_status.in.(paid,unpaid),created_at.lte.${cutoff}`)
+      .in("payment_status", ["paid", "unpaid"])
       .order("booking_date", { ascending: true })
       .limit(20);
 
@@ -333,6 +334,65 @@ export interface PaymentFailedBooking {
 }
 
 /** Called by the Stripe webhook after it cancels a booking whose payment failed. */
+export interface PendingPaymentBooking {
+  id: string;
+  service_id: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string;
+  car_number: string | null;
+  booking_date: string;
+  booking_time: string;
+  price: number | null;
+  created_at: string;
+  services: { name: string; duration_minutes: number } | null;
+}
+
+/** Emails the customer that their booking is still awaiting payment. Returns true if one was sent. */
+export async function onBookingPaymentPending(
+  row: PendingPaymentBooking,
+  holdUntil: Date,
+): Promise<boolean> {
+  try {
+    const business = await fetchBusinessSettings();
+    if (!business) return false;
+    if (!(await claimPendingPaymentReminder(row.id))) return false;
+
+    const holdUntilLabel = new Intl.DateTimeFormat("en-AU", {
+      timeStyle: "short",
+      timeZone: getBusinessTimezone(),
+    }).format(holdUntil);
+
+    const details = buildEmailDetails(
+      {
+        ...row,
+        google_event_id: null,
+      },
+      business,
+      null,
+    );
+    await sendBookingPaymentPendingEmail(details, holdUntilLabel);
+    return true;
+  } catch (err) {
+    console.error("[booking-sync] onBookingPaymentPending failed:", err);
+    return false;
+  }
+}
+
+async function claimPendingPaymentReminder(bookingId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("claim_pending_payment_reminder", {
+    p_booking_id: bookingId,
+  });
+  if (error) {
+    // Unlike the confirmation email, a reminder isn't worth risking a repeat
+    // for — skip it if we can't be sure it hasn't gone out.
+    console.error("[booking-sync] claim_pending_payment_reminder failed:", error);
+    return false;
+  }
+  return data === true;
+}
+
 export async function onBookingPaymentFailed(
   row: PaymentFailedBooking,
 ): Promise<void> {

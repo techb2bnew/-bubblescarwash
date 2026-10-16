@@ -23,6 +23,14 @@ const STATUS_OPTIONS = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
+const PAYMENT_STATUS_OPTIONS = [
+  { value: "all", label: "All Payments" },
+  { value: "paid", label: "Paid" },
+  { value: "unpaid", label: "Unpaid" },
+  { value: "pending", label: "Pending" },
+  { value: "failed", label: "Failed" },
+];
+
 const TYPE_OPTIONS = [
   { value: "all", label: "All Types" },
   { value: "online", label: "Online" },
@@ -46,6 +54,7 @@ export default function BookingsTable({
   const [view, setView] = useState<"list" | "calendar">("list");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+  const [paymentStatus, setPaymentStatus] = useState("all");
   const [type, setType] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -108,6 +117,9 @@ export default function BookingsTable({
       );
     }
     if (status !== "all") result = result.filter((b) => b.status === status);
+    if (paymentStatus !== "all") {
+      result = result.filter((b) => b.payment_status === paymentStatus);
+    }
     if (type !== "all") result = result.filter((b) => b.booking_type === type);
     if (dateFrom) result = result.filter((b) => b.booking_date >= dateFrom);
     if (dateTo) result = result.filter((b) => b.booking_date <= dateTo);
@@ -135,7 +147,7 @@ export default function BookingsTable({
       });
     }
     return result;
-  }, [bookings, search, status, type, dateFrom, dateTo, sortKey, sortDir]);
+  }, [bookings, search, status, paymentStatus, type, dateFrom, dateTo, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const clampedPage = Math.min(page, totalPages);
@@ -147,6 +159,7 @@ export default function BookingsTable({
   const hasActiveFilters =
     search.trim() !== "" ||
     status !== "all" ||
+    paymentStatus !== "all" ||
     type !== "all" ||
     dateFrom !== "" ||
     dateTo !== "";
@@ -154,6 +167,7 @@ export default function BookingsTable({
   function clearFilters() {
     setSearch("");
     setStatus("all");
+    setPaymentStatus("all");
     setType("all");
     setDateFrom("");
     setDateTo("");
@@ -216,6 +230,15 @@ export default function BookingsTable({
             setPage(1);
           }}
           options={STATUS_OPTIONS}
+        />
+        <FilterSelect
+          label="Payment Status"
+          value={paymentStatus}
+          onChange={(v) => {
+            setPaymentStatus(v);
+            setPage(1);
+          }}
+          options={PAYMENT_STATUS_OPTIONS}
         />
         <FilterSelect
           label="Type"
@@ -341,12 +364,16 @@ export default function BookingsTable({
                     paymentStatus={b.payment_status}
                     bookingType={b.booking_type}
                   />
-                  {b.card_brand && b.card_last4 && (
+                  {(b.card_brand && b.card_last4) || b.receipt_url ? (
                     <div className="mt-1 text-xs text-gray-400">
-                      <span className="capitalize">{b.card_brand}</span> •••• {b.card_last4}
+                      {b.card_brand && b.card_last4 && (
+                        <>
+                          <span className="capitalize">{b.card_brand}</span> •••• {b.card_last4}
+                        </>
+                      )}
                       {b.receipt_url && (
                         <>
-                          {" · "}
+                          {b.card_brand && b.card_last4 && " · "}
                           <a
                             href={b.receipt_url}
                             target="_blank"
@@ -358,7 +385,7 @@ export default function BookingsTable({
                         </>
                       )}
                     </div>
-                  )}
+                  ) : null}
                 </td>
                 <td className="px-4 py-3">
                   <StatusDropdown

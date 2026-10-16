@@ -644,5 +644,19 @@ export async function getBookingPaymentStatus(
 /** Best-effort release of the slot when the customer cancels out of Stripe. */
 export async function cancelUnpaidBooking(bookingId: string): Promise<void> {
   const supabase = await createClient();
-  await supabase.rpc("cancel_unpaid_booking", { p_booking_id: bookingId });
+  const { data: sessionId } = await supabase.rpc("cancel_unpaid_booking", {
+    p_booking_id: bookingId,
+  });
+
+  // Close the Stripe session too, so the customer can't still pay into a
+  // booking we've just released. Stripe rejects expiring a session that is
+  // already complete/expired — that just means there's nothing left to close.
+  const stripe = getStripeClient();
+  if (stripe && typeof sessionId === "string" && sessionId) {
+    try {
+      await stripe.checkout.sessions.expire(sessionId);
+    } catch {
+      // already completed or expired
+    }
+  }
 }

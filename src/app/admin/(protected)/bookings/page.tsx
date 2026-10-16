@@ -3,12 +3,18 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdminRole, getStaffPermissions, hasPermission } from "@/lib/admin-role";
 import { getGoogleCalendarEmbedUrl } from "@/lib/google-calendar";
 import { syncBookingsToGoogle } from "@/lib/booking-sync";
+import {
+  reconcilePendingPayments,
+  sendPendingPaymentReminders,
+} from "@/lib/stripe-payments";
 import type { BlockedDate, Booking, BusinessSettings } from "@/lib/types";
 import BookingsTable from "./bookings-table";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminBookingsPage() {
+  await reconcilePendingPayments();
+  await sendPendingPaymentReminders();
   await syncBookingsToGoogle();
   const supabase = await createClient();
   const [{ data: bookings }, { data: blockedDates }, { data: settings }, role, permissions] = await Promise.all([

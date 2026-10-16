@@ -525,6 +525,37 @@ export async function sendBookingPaymentFailedEmails(
   ]);
 }
 
+export async function sendBookingPaymentPendingEmail(
+  details: BookingEmailDetails,
+  holdUntilLabel: string,
+): Promise<void> {
+  const customerHtml = renderEmailLayout({
+    businessName: details.businessName,
+    businessAddress: details.businessAddress,
+    businessPhone: details.businessPhone,
+    eyebrow: "Payment Pending",
+    title: "Your Slot Booking Is Still Pending",
+    bodyHtml: `
+      ${introText(`Hi ${details.customerName}, your slot booking at <strong>${details.businessName}</strong> is still pending. We haven't received your payment yet &mdash; <strong>please confirm the payment</strong> to secure your slot.`)}
+      ${buildBookingDetailsHtml(details, { withCalendar: false })}
+      <p style="margin:20px 0 0;color:#374151;font-size:14px;line-height:1.6;">We're holding this time for you until <strong>${holdUntilLabel}</strong>. If the payment isn't completed by then, the slot is released automatically and your booking will be cancelled.</p>
+      <p style="margin:12px 0 0;color:#6b7280;font-size:13px;line-height:1.6;">Already paid? You can ignore this email &mdash; your confirmation will arrive shortly. If you have any trouble paying, just reply to this email or give us a call.</p>
+    `,
+    cta: {
+      heading: "Still want this slot?",
+      subtext: "Head back to our website and complete your payment to confirm your booking.",
+      buttonText: "Complete Your Booking",
+      href: `${getPublicSiteUrl()}/book`,
+    },
+  });
+
+  await sendEmail(
+    details.customerEmail,
+    `Action needed: your slot booking is still pending — ${details.businessName}`,
+    customerHtml,
+  );
+}
+
 export async function sendBookingCancelledEmails(
   details: BookingEmailDetails,
   adminEmail: string,
