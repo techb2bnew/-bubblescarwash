@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   onBookingCreated,
+  onBookingPaymentExpired,
   onBookingPaymentFailed,
   onBookingPaymentPending,
   type PaymentFailedBooking,
@@ -167,16 +168,23 @@ export async function handleFailed(
   }
   if (rpc !== "mark_booking_payment_failed") return;
 
-  // A session that simply expired with no payment attempt is an abandoned
-  // checkout — release the slot quietly. Email only when a payment was
-  // actually tried and didn't go through (a PaymentIntent exists), or Stripe
-  // reported a delayed-payment failure.
+  // The DB only returns the booking when it really moved pending -> failed,
+  // so each customer is emailed at most once (a customer who pressed Close was
+  // already cancelled and gets nothing here).
+  const row = (data as PaymentFailedBooking[] | null)?.[0];
+  if (!row) return;
+
+  // A payment was tried and didn't go through (a PaymentIntent exists, or
+  // Stripe reported a delayed-payment failure): "payment unsuccessful" notice,
+  // with the refund note. Otherwise the checkout was simply left unpaid until
+  // it expired: the final "your booking is cancelled" notice.
   const paymentWasAttempted =
     eventType === "checkout.session.async_payment_failed" ||
     Boolean(getPaymentIntentId(session));
-  const row = (data as PaymentFailedBooking[] | null)?.[0];
-  if (row && paymentWasAttempted) {
+  if (paymentWasAttempted) {
     await onBookingPaymentFailed(row);
+  } else {
+    await onBookingPaymentExpired(row);
   }
 }
 

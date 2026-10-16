@@ -480,6 +480,32 @@ export async function sendBookingRescheduledEmails(
   ]);
 }
 
+/** Final notice for a checkout that sat unpaid until it expired. Customer only. */
+export async function sendBookingExpiredEmail(
+  details: BookingEmailDetails,
+): Promise<void> {
+  const customerHtml = renderEmailLayout({
+    businessName: details.businessName,
+    businessAddress: details.businessAddress,
+    businessPhone: details.businessPhone,
+    eyebrow: "Booking Cancelled",
+    title: "Your Booking Has Been Cancelled",
+    bodyHtml: `
+      ${introText(`Hi ${details.customerName}, we didn't receive your payment within the time we hold a slot, so your booking at <strong>${details.businessName}</strong> has been <strong>cancelled</strong> and the time released.`)}
+      ${buildBookingDetailsHtml(details, { withCalendar: false })}
+      <p style="margin:20px 0 0;color:#374151;font-size:14px;line-height:1.6;">You can no longer complete the payment for this booking, and you haven't been charged.</p>
+      <p style="margin:12px 0 0;color:#6b7280;font-size:13px;line-height:1.6;">Still want a wash? You're welcome to book a new time below. If you had trouble paying, just reply to this email or give us a call.</p>
+    `,
+    cta: bookAgainCta(details),
+  });
+
+  await sendEmail(
+    details.customerEmail,
+    `Your booking has been cancelled — ${details.businessName}`,
+    customerHtml,
+  );
+}
+
 export async function sendBookingPaymentFailedEmails(
   details: BookingEmailDetails,
   adminEmail: string,

@@ -9,6 +9,7 @@ import {
 import { todayKeyInTimezone } from "@/lib/date-utils";
 import {
   sendBookingCancelledEmails,
+  sendBookingExpiredEmail,
   sendBookingCreatedEmails,
   sendBookingPaymentFailedEmails,
   sendBookingPaymentPendingEmail,
@@ -391,6 +392,50 @@ async function claimPendingPaymentReminder(bookingId: string): Promise<boolean> 
     return false;
   }
   return data === true;
+}
+
+function emailDetailsForFailedRow(
+  row: PaymentFailedBooking,
+  business: { name: string; address: string | null; phone: string | null },
+): BookingEmailDetails {
+  return buildEmailDetails(
+    {
+      id: row.booking_id,
+      service_id: row.service_id,
+      customer_name: row.customer_name,
+      customer_phone: row.customer_phone,
+      customer_email: row.customer_email,
+      car_number: row.car_number,
+      booking_date: row.booking_date,
+      booking_time: row.booking_time,
+      price: row.price,
+      google_event_id: null,
+      services: {
+        name: row.service_name ?? "Car Wash",
+        duration_minutes: row.duration_minutes ?? 30,
+      },
+    },
+    business,
+    null,
+  );
+}
+
+/**
+ * Final notice for a booking whose checkout sat unpaid until it expired
+ * ("your booking is cancelled — you can no longer complete the payment").
+ * Customer only; runs once because the DB only returns the booking on the
+ * pending -> failed transition.
+ */
+export async function onBookingPaymentExpired(
+  row: PaymentFailedBooking,
+): Promise<void> {
+  try {
+    const business = await fetchBusinessSettings();
+    if (!business) return;
+    await sendBookingExpiredEmail(emailDetailsForFailedRow(row, business));
+  } catch (err) {
+    console.error("[booking-sync] onBookingPaymentExpired failed:", err);
+  }
 }
 
 export async function onBookingPaymentFailed(
