@@ -2,11 +2,14 @@ import { createClient } from "@/lib/supabase/server";
 import {
   createCalendarEvent,
   deleteCalendarEvent,
+  getBusinessTimezone,
   updateCalendarEvent,
 } from "@/lib/google-calendar";
+import { todayKeyInTimezone } from "@/lib/date-utils";
 import {
   sendBookingCancelledEmails,
   sendBookingCreatedEmails,
+  sendBookingPaymentFailedEmails,
   sendBookingRescheduledEmails,
   type BookingEmailDetails,
 } from "@/lib/email";
@@ -143,6 +146,26 @@ async function saveGoogleEventId(
 }
 
 /**
+ * True for exactly one caller per booking, so the confirmation email goes out
+ * once even if the webhook and the catch-up sync race. If the claim itself
+ * fails we send anyway — a duplicate beats a lost confirmation.
+ */
+async function claimConfirmationEmail(bookingId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("claim_booking_confirmation_email", {
+    p_booking_id: bookingId,
+  });
+  if (error) {
+    console.error("[booking-sync] claim_booking_confirmation_email failed:", error);
+    return true;
+  }
+  return data === true;
+}
+
+/** Pending-payment bookings wait this long before emailing, so an abandoned checkout (which expires and cancels after ~32 min) never gets one. */
+const PENDING_PAYMENT_EMAIL_DELAY_MS = 35 * 60 * 1000;
+
+/**
  * Keeps Google Calendar in line with booking status, whatever the payment
  * state: every confirmed/completed/rescheduled booking gets an event, and a cancelled
  * booking loses any event it still has. Safe to run on every page load —
@@ -183,6 +206,30 @@ export async function syncBookingsToGoogle(): Promise<void> {
         buildCalendarInput(row, business.name),
       );
       if (result?.eventId) await saveGoogleEventId(row.id, result.eventId);
+    }
+
+    // Confirmation emails for active bookings that haven't had one — whatever
+    // the payment state. Past bookings are skipped; so are pending-payment
+    // ones younger than the grace period (see PENDING_PAYMENT_EMAIL_DELAY_MS).
+    const adminEmail = getAdminEmail(business.email);
+    if (!adminEmail) return;
+    const cutoff = new Date(Date.now() - PENDING_PAYMENT_EMAIL_DELAY_MS).toISOString();
+    const { data: unemailed } = await supabase
+      .from("bookings")
+      .select(select)
+      .in("status", ["confirmed", "completed", "rescheduled"])
+      .is("confirmation_email_sent_at", null)
+      .gte("booking_date", todayKeyInTimezone(getBusinessTimezone()))
+      .or(`payment_status.in.(paid,unpaid),created_at.lte.${cutoff}`)
+      .order("booking_date", { ascending: true })
+      .limit(20);
+
+    for (const row of (unemailed ?? []) as unknown as BookingWithService[]) {
+      if (!(await claimConfirmationEmail(row.id))) continue;
+      await sendBookingCreatedEmails(
+        buildEmailDetails(row, business, null),
+        adminEmail,
+      );
     }
   } catch (err) {
     console.error("[booking-sync] syncBookingsToGoogle failed:", err);
@@ -225,7 +272,7 @@ export async function onBookingCreated(
     }
 
     const adminEmail = getAdminEmail(business.email);
-    if (adminEmail) {
+    if (adminEmail && (await claimConfirmationEmail(input.bookingId))) {
       const emailDetails = buildEmailDetails(booking, business, calendarLink);
       await sendBookingCreatedEmails(emailDetails, adminEmail);
     }
@@ -268,6 +315,56 @@ export async function onBookingRescheduled(bookingId: string): Promise<void> {
     }
   } catch (err) {
     console.error("[booking-sync] onBookingRescheduled failed:", err);
+  }
+}
+
+export interface PaymentFailedBooking {
+  booking_id: string;
+  service_id: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string;
+  car_number: string | null;
+  booking_date: string;
+  booking_time: string;
+  price: number | null;
+  service_name: string | null;
+  duration_minutes: number | null;
+}
+
+/** Called by the Stripe webhook after it cancels a booking whose payment failed. */
+export async function onBookingPaymentFailed(
+  row: PaymentFailedBooking,
+): Promise<void> {
+  try {
+    const business = await fetchBusinessSettings();
+    if (!business) return;
+    const adminEmail = getAdminEmail(business.email);
+    if (!adminEmail) return;
+
+    const details = buildEmailDetails(
+      {
+        id: row.booking_id,
+        service_id: row.service_id,
+        customer_name: row.customer_name,
+        customer_phone: row.customer_phone,
+        customer_email: row.customer_email,
+        car_number: row.car_number,
+        booking_date: row.booking_date,
+        booking_time: row.booking_time,
+        price: row.price,
+        google_event_id: null,
+        services: {
+          name: row.service_name ?? "Car Wash",
+          duration_minutes: row.duration_minutes ?? 30,
+        },
+      },
+      business,
+      null,
+    );
+    await sendBookingPaymentFailedEmails(details, adminEmail);
+  } catch (err) {
+    console.error("[booking-sync] onBookingPaymentFailed failed:", err);
   }
 }
 

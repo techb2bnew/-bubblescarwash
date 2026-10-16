@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { onBookingCreated } from "@/lib/booking-sync";
+import {
+  onBookingCreated,
+  onBookingPaymentFailed,
+  type PaymentFailedBooking,
+} from "@/lib/booking-sync";
 import { onGiftCardPurchased } from "@/lib/gift-card-sync";
 import { createClient } from "@/lib/supabase/server";
 import { getStripeClient } from "@/lib/stripe";
@@ -145,17 +149,34 @@ async function handlePaid(session: Stripe.Checkout.Session, stripe: Stripe) {
   return handleBookingPaid(session, stripe);
 }
 
-async function handleFailed(session: Stripe.Checkout.Session) {
+async function handleFailed(
+  session: Stripe.Checkout.Session,
+  eventType: string,
+) {
   const supabase = await createClient();
   const rpc =
     session.metadata?.type === "gift_card"
       ? "mark_gift_card_payment_failed"
       : "mark_booking_payment_failed";
-  const { error } = await supabase.rpc(rpc, {
+  const { data, error } = await supabase.rpc(rpc, {
     p_stripe_checkout_session_id: session.id,
   });
   if (error) {
     console.error(`[stripe-webhook] ${rpc} failed:`, error);
+    return;
+  }
+  if (rpc !== "mark_booking_payment_failed") return;
+
+  // A session that simply expired with no payment attempt is an abandoned
+  // checkout — release the slot quietly. Email only when a payment was
+  // actually tried and didn't go through (a PaymentIntent exists), or Stripe
+  // reported a delayed-payment failure.
+  const paymentWasAttempted =
+    eventType === "checkout.session.async_payment_failed" ||
+    Boolean(getPaymentIntentId(session));
+  const row = (data as PaymentFailedBooking[] | null)?.[0];
+  if (row && paymentWasAttempted) {
+    await onBookingPaymentFailed(row);
   }
 }
 
@@ -189,7 +210,7 @@ export async function POST(request: Request) {
         break;
       case "checkout.session.expired":
       case "checkout.session.async_payment_failed":
-        await handleFailed(event.data.object);
+        await handleFailed(event.data.object, event.type);
         break;
       default:
         break;

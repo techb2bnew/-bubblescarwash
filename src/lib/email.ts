@@ -237,7 +237,10 @@ function detailRow(label: string, value: string): string {
   </tr>`;
 }
 
-function buildBookingDetailsHtml(details: BookingEmailDetails): string {
+function buildBookingDetailsHtml(
+  details: BookingEmailDetails,
+  { withCalendar = true }: { withCalendar?: boolean } = {},
+): string {
   const tzLabel = formatTimezoneLabel();
   const rows = [
     ["Service", details.serviceName],
@@ -278,7 +281,7 @@ function buildBookingDetailsHtml(details: BookingEmailDetails): string {
 
   return `
     <table style="width:100%;border-collapse:collapse;">${tableRows}</table>
-    ${calendarSection}
+    ${withCalendar ? calendarSection : ""}
   `;
 }
 
@@ -477,6 +480,51 @@ export async function sendBookingRescheduledEmails(
   ]);
 }
 
+export async function sendBookingPaymentFailedEmails(
+  details: BookingEmailDetails,
+  adminEmail: string,
+): Promise<void> {
+  const customerHtml = renderEmailLayout({
+    businessName: details.businessName,
+    businessAddress: details.businessAddress,
+    businessPhone: details.businessPhone,
+    eyebrow: "Payment Unsuccessful",
+    title: "Your Booking Could Not Be Completed",
+    bodyHtml: `
+      ${introText(`Hi ${details.customerName}, your payment for the booking below was not completed, so your booking at <strong>${details.businessName}</strong> has failed and has been cancelled.`)}
+      ${buildBookingDetailsHtml(details, { withCalendar: false })}
+      <p style="margin:20px 0 0;color:#374151;font-size:14px;line-height:1.6;">If any amount was deducted from your account, it will be refunded to your original payment method. Refunds can take a few business days to appear, depending on your bank.</p>
+      <p style="margin:12px 0 0;color:#6b7280;font-size:13px;line-height:1.6;">You're welcome to book again below. If you have any questions, just reply to this email or give us a call.</p>
+    `,
+    cta: bookAgainCta(details),
+  });
+
+  const adminHtml = renderEmailLayout({
+    businessName: details.businessName,
+    businessAddress: details.businessAddress,
+    businessPhone: details.businessPhone,
+    eyebrow: "Payment Failed",
+    title: "A Booking Payment Failed",
+    bodyHtml: `
+      ${introText("A customer's payment did not go through. The booking was cancelled and the time slot is available again — details below.")}
+      ${buildBookingDetailsHtml(details, { withCalendar: false })}
+    `,
+  });
+
+  await Promise.all([
+    sendEmail(
+      details.customerEmail,
+      `Payment Unsuccessful — ${details.businessName}`,
+      customerHtml,
+    ),
+    sendEmail(
+      adminEmail,
+      `Payment Failed: ${details.customerName} — ${formatDate(details.bookingDate)}`,
+      adminHtml,
+    ),
+  ]);
+}
+
 export async function sendBookingCancelledEmails(
   details: BookingEmailDetails,
   adminEmail: string,
@@ -489,7 +537,7 @@ export async function sendBookingCancelledEmails(
     title: "Your Booking Was Cancelled",
     bodyHtml: `
       ${introText(`Hi ${details.customerName}, your booking at <strong>${details.businessName}</strong> has been cancelled.`)}
-      ${buildBookingDetailsHtml(details)}
+      ${buildBookingDetailsHtml(details, { withCalendar: false })}
     `,
     cta: bookAgainCta(details),
   });
@@ -502,7 +550,7 @@ export async function sendBookingCancelledEmails(
     title: "A Booking Was Cancelled",
     bodyHtml: `
       ${introText("A booking has been cancelled — details below.")}
-      ${buildBookingDetailsHtml(details)}
+      ${buildBookingDetailsHtml(details, { withCalendar: false })}
     `,
   });
 
