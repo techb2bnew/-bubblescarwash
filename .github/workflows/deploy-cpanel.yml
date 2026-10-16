@@ -35,9 +35,12 @@ jobs:
 
       - name: Assemble standalone bundle
         run: |
-          cp -r public .next/standalone/public
-          mkdir -p .next/standalone/.next
-          cp -r .next/static .next/standalone/.next/static
+          # Next already creates .next/standalone/public (without dot-folders such
+          # as .well-known), so copy the CONTENTS in — copying the folder itself
+          # would nest it as public/public and the Apple Pay file would 404.
+          mkdir -p .next/standalone/public .next/standalone/.next/static
+          cp -r public/. .next/standalone/public/
+          cp -r .next/static/. .next/standalone/.next/static/
           rm -f .next/standalone/.env*
 
       - name: Add SSH key
