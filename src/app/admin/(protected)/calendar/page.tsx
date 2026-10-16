@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdminRole, getStaffPermissions, hasPermission } from "@/lib/admin-role";
 import { syncBlockedDatesToGoogle } from "@/lib/blocked-date-sync";
 import { syncBlockedSlotsToGoogle } from "@/lib/blocked-slot-sync";
+import { syncBookingsToGoogle } from "@/lib/booking-sync";
 import { getBusinessTimezone, getGoogleCalendarEmbedUrl } from "@/lib/google-calendar";
 import { getPaymentMode } from "@/lib/payment-mode";
 import { flattenServiceTemplates, type ServiceTemplateRow } from "@/lib/pricing";
@@ -21,6 +22,7 @@ export default async function AdminCalendarPage() {
   await Promise.all([
     syncBlockedDatesToGoogle(),
     syncBlockedSlotsToGoogle(),
+    syncBookingsToGoogle(),
   ]);
 
   const supabase = await createClient();

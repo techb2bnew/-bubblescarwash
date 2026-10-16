@@ -142,6 +142,53 @@ async function saveGoogleEventId(
   }
 }
 
+/**
+ * Keeps Google Calendar in line with booking status, whatever the payment
+ * state: every confirmed/completed booking gets an event, and a cancelled
+ * booking loses any event it still has. Safe to run on every page load —
+ * it only touches bookings that are out of sync. No emails are sent here.
+ */
+export async function syncBookingsToGoogle(): Promise<void> {
+  try {
+    const supabase = await createClient();
+    const select =
+      "id, service_id, customer_name, customer_phone, customer_email, car_number, booking_date, booking_time, price, google_event_id, services(name, duration_minutes)";
+
+    const [{ data: missing }, { data: stale }, business] = await Promise.all([
+      supabase
+        .from("bookings")
+        .select(select)
+        .in("status", ["confirmed", "completed"])
+        .or("google_event_id.is.null,google_event_id.eq.")
+        .order("booking_date", { ascending: true })
+        .limit(100),
+      supabase
+        .from("bookings")
+        .select("id, google_event_id")
+        .eq("status", "cancelled")
+        .not("google_event_id", "is", null)
+        .neq("google_event_id", "")
+        .limit(100),
+      fetchBusinessSettings(),
+    ]);
+
+    for (const row of stale ?? []) {
+      await deleteCalendarEvent(row.google_event_id as string);
+      await saveGoogleEventId(row.id as string, "");
+    }
+
+    if (!business) return;
+    for (const row of (missing ?? []) as unknown as BookingWithService[]) {
+      const result = await createCalendarEvent(
+        buildCalendarInput(row, business.name),
+      );
+      if (result?.eventId) await saveGoogleEventId(row.id, result.eventId);
+    }
+  } catch (err) {
+    console.error("[booking-sync] syncBookingsToGoogle failed:", err);
+  }
+}
+
 /** Called after a new booking is created (public or admin). */
 export async function onBookingCreated(
   input: BookingNotificationInput,
