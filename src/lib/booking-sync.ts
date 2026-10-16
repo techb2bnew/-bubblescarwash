@@ -13,6 +13,7 @@ import {
   sendBookingRescheduledEmails,
   type BookingEmailDetails,
 } from "@/lib/email";
+import type { PaymentReceiptInfo } from "@/lib/receipt-pdf";
 
 export interface BookingNotificationInput {
   bookingId: string;
@@ -24,6 +25,36 @@ export interface BookingNotificationInput {
   bookingDate: string;
   bookingTime: string;
   price?: number | null;
+  /** Set when the booking has just been paid, so the email carries a receipt. */
+  payment?: PaymentReceiptInfo | null;
+}
+
+/** Receipt details for the confirmation email + PDF. */
+export function buildPaymentInfo(p: {
+  amount: number | null;
+  cardBrand: string | null;
+  cardLast4: string | null;
+  receiptUrl: string | null;
+  paymentIntentId: string | null;
+  paidAt: Date | null;
+}): PaymentReceiptInfo {
+  const brand = p.cardBrand
+    ? p.cardBrand.charAt(0).toUpperCase() + p.cardBrand.slice(1)
+    : null;
+  return {
+    amount: p.amount,
+    currency: process.env.STRIPE_CURRENCY ?? "aud",
+    methodLabel: brand && p.cardLast4 ? `${brand} •••• ${p.cardLast4}` : null,
+    paidAtLabel: p.paidAt
+      ? new Intl.DateTimeFormat("en-AU", {
+          dateStyle: "long",
+          timeStyle: "short",
+          timeZone: getBusinessTimezone(),
+        }).format(p.paidAt)
+      : null,
+    reference: p.paymentIntentId,
+    receiptUrl: p.receiptUrl,
+  };
 }
 
 interface BookingWithService {
@@ -36,6 +67,11 @@ interface BookingWithService {
   booking_date: string;
   booking_time: string;
   price: number | null;
+  payment_status?: string | null;
+  receipt_url?: string | null;
+  card_brand?: string | null;
+  card_last4?: string | null;
+  stripe_payment_intent_id?: string | null;
   google_event_id: string | null;
   services: {
     name: string;
@@ -89,7 +125,21 @@ function buildEmailDetails(
     phone: string | null;
   },
   calendarLink: string | null,
+  payment?: PaymentReceiptInfo | null,
 ): BookingEmailDetails {
+  // Bookings already paid in Stripe carry their receipt details from the DB.
+  const paidPayment =
+    payment ??
+    (booking.payment_status === "paid"
+      ? buildPaymentInfo({
+          amount: booking.price,
+          cardBrand: booking.card_brand ?? null,
+          cardLast4: booking.card_last4 ?? null,
+          receiptUrl: booking.receipt_url ?? null,
+          paymentIntentId: booking.stripe_payment_intent_id ?? null,
+          paidAt: null,
+        })
+      : null);
   return {
     bookingId: booking.id,
     customerName: booking.customer_name,
@@ -105,6 +155,7 @@ function buildEmailDetails(
     businessAddress: business.address,
     businessPhone: business.phone,
     calendarLink,
+    payment: paidPayment,
   };
 }
 
@@ -175,7 +226,7 @@ export async function syncBookingsToGoogle(): Promise<void> {
   try {
     const supabase = await createClient();
     const select =
-      "id, service_id, customer_name, customer_phone, customer_email, car_number, booking_date, booking_time, price, google_event_id, services(name, duration_minutes)";
+      "id, service_id, customer_name, customer_phone, customer_email, car_number, booking_date, booking_time, price, payment_status, receipt_url, card_brand, card_last4, stripe_payment_intent_id, google_event_id, services(name, duration_minutes)";
 
     const [{ data: missing }, { data: stale }, business] = await Promise.all([
       supabase
@@ -273,7 +324,12 @@ export async function onBookingCreated(
 
     const adminEmail = getAdminEmail(business.email);
     if (adminEmail && (await claimConfirmationEmail(input.bookingId))) {
-      const emailDetails = buildEmailDetails(booking, business, calendarLink);
+      const emailDetails = buildEmailDetails(
+        booking,
+        business,
+        calendarLink,
+        input.payment,
+      );
       await sendBookingCreatedEmails(emailDetails, adminEmail);
     }
   } catch (err) {

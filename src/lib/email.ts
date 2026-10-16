@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import nodemailer, { type Transporter } from "nodemailer";
 import { formatTimeLabel } from "@/lib/date-utils";
+import { buildReceiptPdf, type PaymentReceiptInfo } from "@/lib/receipt-pdf";
 import {
   buildBookingIcs,
   buildGoogleCalendarAddLink,
@@ -213,6 +214,8 @@ export interface BookingEmailDetails {
   businessAddress: string | null;
   businessPhone: string | null;
   calendarLink: string | null;
+  /** Present once the booking is paid; adds a PDF receipt to the confirmation email. */
+  payment?: PaymentReceiptInfo | null;
 }
 
 function formatDate(date: string): string {
@@ -317,6 +320,7 @@ async function sendEmail(
   attachCalendar = false,
   details?: BookingEmailDetails,
   inlineImages: InlineImageAttachment[] = [],
+  extraAttachments: { filename: string; content: string; contentType: string }[] = [],
 ): Promise<boolean> {
   const transport = getSmtpTransport();
   const from = getFromAddress();
@@ -359,6 +363,9 @@ async function sendEmail(
       const ics = buildIcsAttachment(details);
       attachments.push({ filename: ics.filename, content: ics.content, encoding: "base64", contentType: ics.contentType });
     }
+    for (const extra of extraAttachments) {
+      attachments.push({ ...extra, encoding: "base64" });
+    }
 
     await transport.sendMail({
       from,
@@ -383,10 +390,47 @@ function bookAgainCta(details: BookingEmailDetails): EmailCta {
   };
 }
 
+async function buildReceiptAttachment(details: BookingEmailDetails) {
+  if (!details.payment) return [];
+  try {
+    const pdf = await buildReceiptPdf({
+      businessName: details.businessName,
+      businessAddress: details.businessAddress,
+      businessPhone: details.businessPhone,
+      customerName: details.customerName,
+      customerEmail: details.customerEmail,
+      serviceName: details.serviceName,
+      bookingDate: formatDate(details.bookingDate),
+      bookingTimeLabel: `${formatTimeLabel(details.bookingTime)} (${formatTimezoneLabel()})`,
+      bookingId: details.bookingId,
+      payment: details.payment,
+    });
+    return [
+      {
+        filename: `receipt-${details.bookingId.slice(0, 8)}.pdf`,
+        content: pdf.toString("base64"),
+        contentType: "application/pdf",
+      },
+    ];
+  } catch (err) {
+    // The confirmation matters more than the attachment — send without it.
+    console.error("[email] receipt PDF failed:", err);
+    return [];
+  }
+}
+
 export async function sendBookingCreatedEmails(
   details: BookingEmailDetails,
   adminEmail: string,
 ): Promise<void> {
+  const paymentNote = details.payment
+    ? `<p style="margin:20px 0 0;color:#374151;font-size:14px;line-height:1.6;">Payment received &mdash; thank you. Your receipt is attached to this email as a PDF${
+        details.payment.receiptUrl
+          ? `, and you can also <a href="${details.payment.receiptUrl}" style="color:${BRAND_ACCENT};font-weight:600;text-decoration:none;">view your Stripe receipt online</a>`
+          : ""
+      }.</p>`
+    : `<p style="margin:20px 0 0;color:#9ca3af;font-size:12px;">Payment is collected at the time of service.</p>`;
+
   const customerHtml = renderEmailLayout({
     businessName: details.businessName,
     businessAddress: details.businessAddress,
@@ -396,11 +440,12 @@ export async function sendBookingCreatedEmails(
     bodyHtml: `
       ${introText(`Hi ${details.customerName}, your booking at <strong>${details.businessName}</strong> has been confirmed.`)}
       ${buildBookingDetailsHtml(details)}
-      <p style="margin:20px 0 0;color:#9ca3af;font-size:12px;">Payment is collected at the time of service.</p>
+      ${paymentNote}
       ${disclaimerHtml()}
     `,
     cta: bookAgainCta(details),
   });
+  const receiptAttachments = await buildReceiptAttachment(details);
 
   const adminHtml = renderEmailLayout({
     businessName: details.businessName,
@@ -421,6 +466,8 @@ export async function sendBookingCreatedEmails(
       customerHtml,
       true,
       details,
+      [],
+      receiptAttachments,
     ),
     sendEmail(
       adminEmail,

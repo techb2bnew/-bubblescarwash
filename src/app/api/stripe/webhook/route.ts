@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import {
+  buildPaymentInfo,
   onBookingCreated,
   onBookingPaymentFailed,
   type PaymentFailedBooking,
@@ -105,6 +106,14 @@ async function handleBookingPaid(session: Stripe.Checkout.Session, stripe: Strip
     bookingDate: row.booking_date,
     bookingTime: row.booking_time,
     price: row.price,
+    payment: buildPaymentInfo({
+      amount: session.amount_total != null ? session.amount_total / 100 : row.price,
+      cardBrand,
+      cardLast4,
+      receiptUrl,
+      paymentIntentId,
+      paidAt: new Date(),
+    }),
   });
 }
 
