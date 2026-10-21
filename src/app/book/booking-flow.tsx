@@ -35,6 +35,7 @@ import StripeCheckoutFrame from "./stripe-checkout-frame";
 import {
   cancelUnpaidBooking,
   countBookingsByEmail,
+  getIncompleteBooking,
   createBookingSimple,
   createCheckoutSession,
   getBookedTimes,
@@ -47,6 +48,7 @@ import {
   previewDiscount,
   previewGiftCard,
   type BookedTime,
+  type IncompleteBooking,
   type CustomerDiscountPreview,
   type PlateLookupResult,
   type ReturningCustomerCar,
@@ -404,6 +406,9 @@ export default function BookingFlow({
   }, [checkout]);
   const [error, setError] = useState<string | null>(null);
   const [limitConfirmCount, setLimitConfirmCount] = useState<number | null>(null);
+  const [incompleteNotice, setIncompleteNotice] = useState<IncompleteBooking | null>(null);
+  // Once the customer has seen the "previous booking" notice, don't show it again.
+  const incompleteSeenRef = useRef(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const nextButtonRef = useRef<HTMLButtonElement>(null);
@@ -1096,6 +1101,67 @@ export default function BookingFlow({
   }
 
   async function handleConfirm() {
+    if (!selectedService || !selectedDate || !selectedTime) return;
+    setSubmitting(true);
+    setError(null);
+    if (!incompleteSeenRef.current) {
+      try {
+        // Came back after leaving an earlier booking unpaid: tell them first.
+        const previous = await getIncompleteBooking(email, phone);
+        if (previous) {
+          incompleteSeenRef.current = true;
+          setIncompleteNotice(previous);
+          setSubmitting(false);
+          return;
+        }
+      } catch {
+        // the notice is a courtesy; carry on
+      }
+    }
+    await continueConfirm();
+  }
+
+  /** Can the earlier, unpaid slot still be offered (future, and not what's already picked)? */
+  function previousSlotUsable(prev: IncompleteBooking): boolean {
+    if (prev.date === selectedDate && prev.time === selectedTime) return false;
+    if (prev.date < todayKey) return false;
+    return (
+      filterPastSlots([prev.time], prev.date, businessTimezone, new Date(), SAME_DAY_BOOKING_BUFFER_MINUTES)
+        .length > 0
+    );
+  }
+
+  /** Swap the current date and time for the earlier booking's, then let them review and pay. */
+  function usePreviousSlot(prev: IncompleteBooking) {
+    setIncompleteNotice(null);
+    const [y, m] = prev.date.split("-").map(Number);
+    setCursor({ year: y, month: m - 1 });
+    setSelectedDate(prev.date);
+    setSelectedTime(null);
+    setSlotNotice(null);
+    setError(null);
+    setTimesError(null);
+    setLoadingTimes(true);
+    Promise.all([getBookedTimes(prev.date), getDateHours(prev.date)])
+      .then(([times, hours]) => {
+        setBookedTimes(times);
+        setBusinessHours(hours);
+        const full = noteIfFull(prev.date, hours, times);
+        if (!full) {
+          setSelectedTime(prev.time);
+          setSlotCollapsed(true);
+        } else {
+          setSlotCollapsed(false);
+        }
+      })
+      .catch(() => {
+        setBookedTimes([]);
+        setSlotCollapsed(false);
+      })
+      .finally(() => setLoadingTimes(false));
+  }
+
+  async function continueConfirm() {
     if (!selectedService || !selectedDate || !selectedTime) return;
     setSubmitting(true);
     setError(null);
@@ -2634,6 +2700,64 @@ export default function BookingFlow({
               stripePromise={stripePromise}
               clientSecret={checkout.clientSecret}
             />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {incompleteNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-base font-bold text-gray-900">
+              Your previous booking is not completed
+            </h3>
+            <p className="mt-2 text-sm text-gray-600">
+              You started a booking earlier but the payment was not completed, so that slot
+              was not confirmed.
+            </p>
+            <dl className="mt-3 space-y-1 rounded-xl bg-gray-50 p-3 text-sm">
+              {incompleteNotice.serviceName && (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-gray-500">Previous</dt>
+                  <dd className="text-right font-medium text-gray-900">{incompleteNotice.serviceName}</dd>
+                </div>
+              )}
+              <div className="flex justify-between gap-3">
+                <dt className="text-gray-500">Date &amp; time</dt>
+                <dd className="text-right font-medium text-gray-900">
+                  {formatLongDate(incompleteNotice.date)} at {formatTimeLabel(incompleteNotice.time)}
+                </dd>
+              </div>
+              {selectedDate && selectedTime && (
+                <div className="flex justify-between gap-3 border-t border-gray-200 pt-1">
+                  <dt className="text-gray-500">Now selected</dt>
+                  <dd className="text-right font-medium text-gray-900">
+                    {formatLongDate(selectedDate)} at {formatTimeLabel(selectedTime)}
+                  </dd>
+                </div>
+              )}
+            </dl>
+            <p className="mt-3 text-sm text-gray-600">
+              Would you like to use the previous date and time, or continue with your new selection?
+            </p>
+            <div className="mt-5 flex flex-col gap-2.5 sm:flex-row sm:justify-end">
+              {previousSlotUsable(incompleteNotice) && (
+                <button
+                  onClick={() => usePreviousSlot(incompleteNotice)}
+                  className="rounded-full border-2 border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50"
+                >
+                  Use previous date &amp; time
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setIncompleteNotice(null);
+                  continueConfirm();
+                }}
+                className="rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:shadow-md"
+              >
+                Continue with new selection
+              </button>
             </div>
           </div>
         </div>

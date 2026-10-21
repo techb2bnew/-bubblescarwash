@@ -8,6 +8,7 @@ import {
   formatTimezoneLabel,
 } from "@/lib/ics";
 import { getGiftCardDesign } from "@/lib/gift-card-designs";
+import { formatInvoiceMoney, getInvoiceBusiness, type TaxInvoice } from "@/lib/tax-invoice";
 
 const LOGO_CONTENT_ID = "bubbles-logo";
 const GIFT_CARD_DESIGN_CONTENT_ID = "gift-card-design";
@@ -317,6 +318,7 @@ async function sendEmail(
   attachCalendar = false,
   details?: BookingEmailDetails,
   inlineImages: InlineImageAttachment[] = [],
+  extraAttachments: { filename: string; content: string; contentType: string }[] = [],
 ): Promise<boolean> {
   const transport = getSmtpTransport();
   const from = getFromAddress();
@@ -354,6 +356,9 @@ async function sendEmail(
         cid: img.contentId,
         contentType: img.contentType,
       });
+    }
+    for (const extra of extraAttachments) {
+      attachments.push({ ...extra, encoding: "base64" });
     }
     if (attachCalendar && details) {
       const ics = buildIcsAttachment(details);
@@ -430,6 +435,121 @@ export async function sendBookingCreatedEmails(
       details,
     ),
   ]);
+}
+
+/**
+ * Tax invoice for a booking that has just been paid: the invoice in the email
+ * body, a PDF copy attached, and a link to the Stripe payment receipt.
+ */
+export async function sendTaxInvoiceEmail(inv: TaxInvoice, pdf: Buffer): Promise<boolean> {
+  const biz = getInvoiceBusiness();
+  const tableRows = [
+    ["Invoice no", inv.invoiceNumber],
+    ["Invoice date", inv.issuedOn],
+    ["Customer", inv.customerName],
+    ["Service", inv.serviceName],
+    ["Date", inv.dateLabel],
+    ["Time", inv.timeLabel],
+    ["Booking type", inv.bookingTypeLabel],
+    ...(inv.vehicleName ? [["Vehicle", inv.vehicleName]] : []),
+    ...(inv.carNumber ? [["Car plate", inv.carNumber]] : []),
+    ["Paid by", inv.paymentMethod],
+  ]
+    .map(([label, value]) => detailRow(label, value))
+    .join("");
+
+  const lineRows = inv.lines
+    .map(
+      (l) => `<tr>
+        <td style="padding:9px 0;border-bottom:1px solid #eef0f2;color:#374151;font-size:14px;">${l.description}</td>
+        <td style="padding:9px 0;border-bottom:1px solid #eef0f2;color:${l.amount < 0 ? BRAND_ACCENT : "#111827"};font-size:14px;text-align:right;">${formatInvoiceMoney(l.amount)}</td>
+      </tr>`,
+    )
+    .join("");
+
+  const brandKey = (inv.cardBrand ?? "").toLowerCase();
+  const brandChip = (() => {
+    const chip = (bg: string, label: string, extra = "") =>
+      `<span style="display:inline-block;padding:3px 9px;border-radius:4px;background:${bg};color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:800;letter-spacing:0.5px;${extra}">${label}</span>`;
+    // How they paid comes first: Apple Pay / Google Pay / Link beat the card brand.
+    if (inv.methodLabel === "Apple Pay") return chip("#000000", "Apple Pay", "border-radius:999px;padding:3px 11px;");
+    if (inv.methodLabel === "Google Pay") return chip("#3c4043", "G Pay", "border-radius:999px;padding:3px 11px;");
+    if (inv.methodLabel === "Link") return chip("#00d66f", "Link", "color:#04361d;border-radius:999px;padding:3px 11px;");
+    if (brandKey === "visa") return chip("#1a1f71", "VISA", "font-style:italic;");
+    if (brandKey === "mastercard") return chip("#eb001b", "MASTERCARD");
+    if (brandKey === "amex" || brandKey === "american express") return chip("#006fcf", "AMEX");
+    return "";
+  })();
+  const dashed = "border-top:1px dashed #cfd4dc;";
+
+  // A little paper document: coloured top edge, ruled sections, one big link.
+  const receiptSection = inv.receiptUrl
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px;"><tr><td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:420px;background:#ffffff;border:1px solid #d9dde3;border-top:5px solid ${BRAND_ACCENT};border-radius:4px;box-shadow:3px 3px 0 #eceef1;">
+          <tr>
+            <td style="padding:16px 18px 10px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+                <td style="font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:800;color:#111827;letter-spacing:0.6px;">&#128196;&nbsp; PAYMENT RECEIPT</td>
+              </tr></table>
+            </td>
+          </tr>
+          <tr><td style="padding:0 18px;"><div style="${dashed}font-size:0;line-height:0;">&nbsp;</div></td></tr>
+          <tr>
+            <td style="padding:12px 18px 4px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#374151;">
+                <tr><td style="padding:3px 0;color:#9ca3af;">Amount paid</td><td align="right" style="padding:3px 0;font-weight:700;color:#111827;">${formatInvoiceMoney(inv.total)}</td></tr>
+                <tr><td style="padding:3px 0;color:#9ca3af;">Paid with</td><td align="right" style="padding:3px 0;font-weight:700;color:#111827;">${brandChip}${brandChip ? "&nbsp;" : ""}${inv.cardLast4 ? `&bull;&bull;&bull;&bull; ${inv.cardLast4}` : brandChip ? "" : "Online payment"}</td></tr>
+                <tr><td style="padding:3px 0;color:#9ca3af;">Invoice</td><td align="right" style="padding:3px 0;font-weight:700;color:#111827;">${inv.invoiceNumber}</td></tr>
+              </table>
+            </td>
+          </tr>
+          <tr><td style="padding:6px 18px 0;"><div style="${dashed}font-size:0;line-height:0;">&nbsp;</div></td></tr>
+          <tr>
+            <td align="center" style="padding:16px 18px 6px;">
+              <a href="${inv.receiptUrl}" style="display:inline-block;padding:12px 26px;background:${BRAND_ACCENT};color:#ffffff;text-decoration:none;border-radius:999px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;">For receipt, click me &rarr;</a>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:0 18px 16px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#9ca3af;">Opens your official payment receipt from Stripe</td>
+          </tr>
+        </table>
+      </td></tr></table>`
+    : "";
+
+  const html = renderEmailLayout({
+    businessName: biz.name,
+    businessAddress: biz.addressLines.join(", "),
+    businessPhone: biz.phone,
+    eyebrow: "Tax Invoice",
+    title: "Your Tax Invoice",
+    bodyHtml: `
+      ${introText(`Hi ${inv.customerName}, thanks for your payment. Here is your tax invoice for your booking at <strong>${biz.name}</strong>. A PDF copy is attached.`)}
+      <p style="margin:0 0 14px;color:#6b7280;font-size:12px;">${biz.name} &middot; ABN ${biz.abn}</p>
+      <table style="width:100%;border-collapse:collapse;">${tableRows}</table>
+      <table style="width:100%;border-collapse:collapse;margin-top:18px;">
+        ${lineRows}
+        <tr>
+          <td style="padding:12px 0 4px;color:#111827;font-size:15px;font-weight:700;">Total paid</td>
+          <td style="padding:12px 0 4px;color:#111827;font-size:15px;font-weight:700;text-align:right;">${formatInvoiceMoney(inv.total)}</td>
+        </tr>
+        <tr>
+          <td style="padding:2px 0;color:#6b7280;font-size:12px;">Total includes GST of</td>
+          <td style="padding:2px 0;color:#6b7280;font-size:12px;text-align:right;">${formatInvoiceMoney(inv.gst)}</td>
+        </tr>
+      </table>
+      ${receiptSection}
+    `,
+  });
+
+  return sendEmail(
+    inv.customerEmail,
+    `Tax Invoice ${inv.invoiceNumber} - ${biz.name}`,
+    html,
+    false,
+    undefined,
+    [],
+    [{ filename: `${inv.invoiceNumber}.pdf`, content: pdf.toString("base64"), contentType: "application/pdf" }],
+  );
 }
 
 export async function sendBookingRescheduledEmails(

@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   onBookingCreated,
+  onBookingPaidInvoice,
   onBookingPaymentExpired,
   onBookingPaymentFailed,
   onBookingPaymentPending,
@@ -107,6 +108,10 @@ async function handleBookingPaid(session: Stripe.Checkout.Session, stripe: Strip
     bookingTime: row.booking_time,
     price: row.price,
   });
+
+  // Tax invoice + Stripe receipt link. Runs only on the one pending -> paid
+  // transition (the early return above), so it is sent once per booking.
+  await onBookingPaidInvoice(row.booking_id);
 }
 
 async function handleGiftCardPaid(session: Stripe.Checkout.Session, stripe: Stripe) {

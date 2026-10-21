@@ -366,6 +366,28 @@ export async function countBookingsByEmail(email: string): Promise<number> {
   return (data as number) ?? 0;
 }
 
+export interface IncompleteBooking {
+  serviceName: string | null;
+  date: string;
+  time: string;
+}
+
+/** The booking this customer left unpaid in the last 24 hours, if any. */
+export async function getIncompleteBooking(
+  email: string,
+  phone: string,
+): Promise<IncompleteBooking | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_incomplete_booking", {
+    p_email: email,
+    p_phone: phone,
+  });
+  if (error) return null; // never block a booking over this courtesy notice
+  const row = (data as { service_name: string | null; booking_date: string; booking_time: string }[] | null)?.[0];
+  if (!row) return null;
+  return { serviceName: row.service_name, date: row.booking_date, time: row.booking_time.slice(0, 5) };
+}
+
 export interface CreateBookingInput {
   service_id: string;
   vehicle_type: string;

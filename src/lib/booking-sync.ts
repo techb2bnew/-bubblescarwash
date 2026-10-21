@@ -14,8 +14,16 @@ import {
   sendBookingPaymentFailedEmails,
   sendBookingPaymentPendingEmail,
   sendBookingRescheduledEmails,
+  sendTaxInvoiceEmail,
   type BookingEmailDetails,
 } from "@/lib/email";
+import { getStripeClient } from "@/lib/stripe";
+import {
+  buildTaxInvoice,
+  renderTaxInvoicePdf,
+  type InvoiceRow,
+  type PaymentMethodInfo,
+} from "@/lib/tax-invoice";
 
 export interface BookingNotificationInput {
   bookingId: string;
@@ -280,6 +288,44 @@ export async function onBookingCreated(
     }
   } catch (err) {
     console.error("[booking-sync] onBookingCreated failed:", err);
+  }
+}
+
+/** Asks Stripe how the customer paid (card, Apple Pay, Google Pay, Link). Best effort. */
+async function lookupPaymentMethod(paymentIntentId: string | null | undefined): Promise<PaymentMethodInfo> {
+  const none: PaymentMethodInfo = { type: null, wallet: null };
+  const stripe = getStripeClient();
+  if (!stripe || !paymentIntentId) return none;
+  try {
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ["latest_charge"] });
+    const charge = typeof pi.latest_charge === "string" ? null : pi.latest_charge;
+    const details = charge?.payment_method_details;
+    return { type: details?.type ?? null, wallet: details?.card?.wallet?.type ?? null };
+  } catch (err) {
+    console.error("[booking-sync] payment method lookup failed:", err);
+    return none;
+  }
+}
+
+/**
+ * Called once, right after a booking is marked paid: emails the customer a tax
+ * invoice (PDF attached) with a link to their Stripe payment receipt. Never
+ * throws — a failed invoice must not undo a successful payment.
+ */
+export async function onBookingPaidInvoice(bookingId: string): Promise<void> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("get_booking_invoice", { p_booking_id: bookingId });
+    if (error || !data) {
+      console.error("[booking-sync] get_booking_invoice failed:", error);
+      return;
+    }
+    const row = data as InvoiceRow;
+    const invoice = buildTaxInvoice(row, new Date(), await lookupPaymentMethod(row.stripe_payment_intent_id));
+    const pdf = await renderTaxInvoicePdf(invoice);
+    await sendTaxInvoiceEmail(invoice, pdf);
+  } catch (err) {
+    console.error("[booking-sync] onBookingPaidInvoice failed:", err);
   }
 }
 
