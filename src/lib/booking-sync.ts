@@ -72,7 +72,7 @@ async function fetchService(serviceId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("services")
-    .select("name, duration_minutes, price")
+    .select("name, duration_minutes")
     .eq("id", serviceId)
     .single();
   return data;
@@ -266,7 +266,7 @@ export async function onBookingCreated(
       car_number: input.carNumber ?? null,
       booking_date: input.bookingDate,
       booking_time: input.bookingTime,
-      price: input.price ?? service?.price ?? null,
+      price: input.price ?? null,
       google_event_id: null,
       services: service
         ? { name: service.name, duration_minutes: service.duration_minutes }
