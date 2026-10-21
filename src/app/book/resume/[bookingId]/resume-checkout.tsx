@@ -1,7 +1,7 @@
 "use client";
 
 import { loadStripe } from "@stripe/stripe-js";
-import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
+import StripeCheckoutFrame from "../../stripe-checkout-frame";
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -15,9 +15,5 @@ export default function ResumeCheckout({ clientSecret }: { clientSecret: string 
       </p>
     );
   }
-  return (
-    <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret }}>
-      <EmbeddedCheckout />
-    </EmbeddedCheckoutProvider>
-  );
+  return <StripeCheckoutFrame stripePromise={stripePromise} clientSecret={clientSecret} />;
 }

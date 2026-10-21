@@ -654,7 +654,12 @@ export async function cancelUnpaidBooking(bookingId: string): Promise<void> {
   const stripe = getStripeClient();
   if (stripe && typeof sessionId === "string" && sessionId) {
     try {
-      await stripe.checkout.sessions.expire(sessionId);
+      const expired = await stripe.checkout.sessions.expire(sessionId);
+      // Tried a card, it failed, then closed the window: that's a failed payment
+      // worth showing the admin, unlike a plain abandon.
+      if (expired.payment_intent) {
+        await supabase.rpc("mark_booking_payment_attempted", { p_booking_id: bookingId });
+      }
     } catch {
       // already completed or expired
     }

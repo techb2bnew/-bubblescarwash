@@ -10,6 +10,8 @@ export default async function AdminPaymentsPage() {
       .select(
         "id, customer_name, customer_email, price, payment_status, booking_type, card_brand, card_last4, receipt_url, created_at, services(name)",
       )
+      // Hide checkouts that were just abandoned; keep failed ones where a payment was tried.
+      .or("payment_status.neq.failed,payment_attempted.eq.true")
       .order("created_at", { ascending: false }),
     supabase
       .from("gift_cards")

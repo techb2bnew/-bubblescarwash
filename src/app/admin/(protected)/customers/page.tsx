@@ -79,7 +79,12 @@ export default async function AdminCustomersPage() {
   const supabase = await createClient();
   const [{ data: customerRows }, { data: bookings }, role, permissions] = await Promise.all([
     supabase.from("customers").select("*").order("name"),
-    supabase.from("bookings").select("*, services(*)").order("booking_date", { ascending: false }),
+    supabase
+      .from("bookings")
+      .select("*, services(*)")
+      // Hide checkouts that were just abandoned; keep failed ones where a payment was tried.
+      .or("payment_status.neq.failed,payment_attempted.eq.true")
+      .order("booking_date", { ascending: false }),
     getAdminRole(),
     getStaffPermissions(),
   ]);

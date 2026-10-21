@@ -182,6 +182,8 @@ export async function handleFailed(
     eventType === "checkout.session.async_payment_failed" ||
     Boolean(getPaymentIntentId(session));
   if (paymentWasAttempted) {
+    // Remember it so the admin list shows this one (abandoned checkouts are hidden).
+    await supabase.rpc("mark_booking_payment_attempted", { p_booking_id: row.booking_id });
     await onBookingPaymentFailed(row);
   } else {
     await onBookingPaymentExpired(row);

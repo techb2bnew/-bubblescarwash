@@ -126,7 +126,7 @@ export default function SiteHeader() {
               className="h-20 w-auto sm:h-24"
             />
           </Link>
-          <nav className="hidden items-center gap-9 text-base font-bold text-gray-700 md:flex">
+          <nav className="hidden items-center gap-9 text-base font-bold text-gray-700 lg:flex">
             {siteNavLinks
               .filter((link) => link.label !== "Book")
               .map((link) => {
@@ -174,7 +174,7 @@ export default function SiteHeader() {
             </a>
             <Link
               href="/book"
-              className="flex items-center rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:shadow-md md:hidden"
+              className="flex items-center rounded-full bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:shadow-md lg:hidden"
             >
               Book Now
             </Link>
@@ -183,7 +183,7 @@ export default function SiteHeader() {
               onClick={() => setMenuOpen((open) => !open)}
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-gray-700 ring-1 ring-gray-200 transition hover:bg-gray-50 md:hidden"
+              className="flex h-10 w-10 items-center justify-center rounded-full text-gray-700 ring-1 ring-gray-200 transition hover:bg-gray-50 lg:hidden"
             >
               {menuOpen ? (
                 <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
@@ -200,7 +200,7 @@ export default function SiteHeader() {
 
         {/* Mobile dropdown menu */}
         {menuOpen && (
-          <nav className="flex flex-col gap-1 border-t border-gray-100 bg-white px-4 py-3 text-base font-bold text-gray-700 md:hidden">
+          <nav className="flex flex-col gap-1 border-t border-gray-100 bg-white px-4 py-3 text-base font-bold text-gray-700 lg:hidden">
             {siteNavLinks
               .filter((link) => link.label !== "Book")
               .map((link) => (

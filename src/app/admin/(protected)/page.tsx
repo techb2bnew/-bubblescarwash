@@ -87,8 +87,16 @@ export default async function AdminDashboardPage() {
       .from("bookings")
       .select("booking_date, services(name)")
       .neq("status", "cancelled"),
-    supabase.from("bookings").select("*", { count: "exact", head: true }),
-    supabase.from("bookings").select("customer_email"),
+    supabase
+      .from("bookings")
+      .select("*", { count: "exact", head: true })
+      // Hide checkouts that were just abandoned; keep failed ones where a payment was tried.
+      .or("payment_status.neq.failed,payment_attempted.eq.true"),
+    supabase
+      .from("bookings")
+      .select("customer_email")
+      // Hide checkouts that were just abandoned; keep failed ones where a payment was tried.
+      .or("payment_status.neq.failed,payment_attempted.eq.true"),
     supabase.from("blocked_dates").select("*", { count: "exact", head: true }),
     supabase.from("gift_cards").select("*", { count: "exact", head: true }),
     getAdminRole(),

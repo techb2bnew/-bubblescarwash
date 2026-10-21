@@ -21,6 +21,8 @@ export default async function AdminBookingsPage() {
     supabase
       .from("bookings")
       .select("*, services(*, inclusions(*)), booking_extras(id, booking_id, extra_id, name, price, created_at)")
+      // Hide checkouts that were just abandoned; keep failed ones where a payment was tried.
+      .or("payment_status.neq.failed,payment_attempted.eq.true")
       .order("created_at", { ascending: false }),
     supabase.from("blocked_dates").select("*"),
     supabase.from("business_settings").select("*").eq("id", 1).single(),

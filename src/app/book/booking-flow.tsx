@@ -31,7 +31,7 @@ import type { PaymentMode } from "@/lib/payment-mode";
 import { mostPopularIndex, normalizeTitleCase } from "@/lib/format";
 import { loadStripe } from "@stripe/stripe-js";
 import { arrivedViaHistory, clearJustConfirmed, hasJustConfirmed } from "./after-booking";
-import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
+import StripeCheckoutFrame from "./stripe-checkout-frame";
 import {
   cancelUnpaidBooking,
   countBookingsByEmail,
@@ -2630,12 +2630,10 @@ export default function BookingFlow({
               </button>
             </div>
             <div className="p-4 sm:p-6">
-            <EmbeddedCheckoutProvider
-              stripe={stripePromise}
-              options={{ clientSecret: checkout.clientSecret }}
-            >
-              <EmbeddedCheckout />
-            </EmbeddedCheckoutProvider>
+            <StripeCheckoutFrame
+              stripePromise={stripePromise}
+              clientSecret={checkout.clientSecret}
+            />
             </div>
           </div>
         </div>
