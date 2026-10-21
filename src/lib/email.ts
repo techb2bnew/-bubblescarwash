@@ -629,6 +629,7 @@ export async function sendBookingExpiredEmail(
 export async function sendBookingPaymentFailedEmails(
   details: BookingEmailDetails,
   adminEmail: string,
+  { customer = true }: { customer?: boolean } = {},
 ): Promise<void> {
   const customerHtml = renderEmailLayout({
     businessName: details.businessName,
@@ -658,17 +659,80 @@ export async function sendBookingPaymentFailedEmails(
   });
 
   await Promise.all([
-    sendEmail(
-      details.customerEmail,
-      `Payment Unsuccessful — ${details.businessName}`,
-      customerHtml,
-    ),
+    customer
+      ? sendEmail(
+          details.customerEmail,
+          `Payment Unsuccessful — ${details.businessName}`,
+          customerHtml,
+        )
+      : Promise.resolve(true),
     sendEmail(
       adminEmail,
       `Payment Failed: ${details.customerName} — ${formatDate(details.bookingDate)}`,
       adminHtml,
     ),
   ]);
+}
+
+/**
+ * A card attempt was declined but the checkout is still open: tell the
+ * customer, and give them a one-tap way back to try again before the slot
+ * is released.
+ */
+export async function sendPaymentRetryEmail(
+  details: BookingEmailDetails,
+  holdUntilLabel: string,
+): Promise<void> {
+  const customerHtml = renderEmailLayout({
+    businessName: details.businessName,
+    businessAddress: details.businessAddress,
+    businessPhone: details.businessPhone,
+    eyebrow: "Payment Unsuccessful",
+    title: "Your Payment Didn't Go Through",
+    bodyHtml: `
+      ${introText(`Hi ${details.customerName}, your payment for the booking below at <strong>${details.businessName}</strong> didn't go through, so it isn't confirmed yet.`)}
+      ${buildBookingDetailsHtml(details, { withCalendar: false })}
+      <p style="margin:20px 0 0;color:#374151;font-size:14px;line-height:1.6;">Good news: we're still holding your slot until <strong>${holdUntilLabel}</strong>. Please try again, with the same card or a different one.</p>
+      <p style="margin:12px 0 0;color:#6b7280;font-size:13px;line-height:1.6;">No money has been taken for this booking. If anything was deducted from your account, it will be returned to you automatically. If you keep having trouble, just reply to this email or give us a call.</p>
+    `,
+    cta: {
+      heading: "Ready to try again?",
+      subtext: "Tap below to go straight back to your payment — your slot and details are saved.",
+      buttonText: "Try Payment Again",
+      href: `${getPublicSiteUrl()}/book/resume/${details.bookingId}`,
+    },
+  });
+
+  await sendEmail(
+    details.customerEmail,
+    `Action needed: your payment didn't go through — ${details.businessName}`,
+    customerHtml,
+  );
+}
+
+/** The bank is still processing a payment Stripe has received: reassure, and say not to pay again. */
+export async function sendPaymentProcessingEmail(
+  details: BookingEmailDetails,
+): Promise<void> {
+  const customerHtml = renderEmailLayout({
+    businessName: details.businessName,
+    businessAddress: details.businessAddress,
+    businessPhone: details.businessPhone,
+    eyebrow: "Payment Processing",
+    title: "We're Confirming Your Payment",
+    bodyHtml: `
+      ${introText(`Hi ${details.customerName}, thanks &mdash; we've received your payment for the booking below at <strong>${details.businessName}</strong>, and your bank is still processing it.`)}
+      ${buildBookingDetailsHtml(details, { withCalendar: false })}
+      <p style="margin:20px 0 0;color:#374151;font-size:14px;line-height:1.6;"><strong>Please don't pay again.</strong> As soon as the payment clears we'll email your booking confirmation and tax invoice. This normally takes a few minutes.</p>
+      <p style="margin:12px 0 0;color:#6b7280;font-size:13px;line-height:1.6;">If you haven't heard from us within a few hours, reply to this email or give us a call and we'll sort it out.</p>
+    `,
+  });
+
+  await sendEmail(
+    details.customerEmail,
+    `We're confirming your payment — ${details.businessName}`,
+    customerHtml,
+  );
 }
 
 export async function sendBookingPaymentPendingEmail(

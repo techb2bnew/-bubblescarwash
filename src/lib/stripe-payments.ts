@@ -5,6 +5,8 @@ import {
   onBookingPaidInvoice,
   onBookingPaymentExpired,
   onBookingPaymentFailed,
+  onBookingPaymentProcessing,
+  onBookingPaymentRetryNeeded,
   onBookingPaymentPending,
   type PaymentFailedBooking,
   type PendingPaymentBooking,
@@ -189,20 +191,76 @@ export async function handleFailed(
   if (paymentWasAttempted) {
     // Remember it so the admin list shows this one (abandoned checkouts are hidden).
     await supabase.rpc("mark_booking_payment_attempted", { p_booking_id: row.booking_id });
-    await onBookingPaymentFailed(row);
+    // If they were already told "your payment didn't go through" while the
+    // checkout was open, this is the final cancellation, not a second failure notice.
+    const { data: told } = await supabase.rpc("payment_failed_notice_was_sent", {
+      p_booking_id: row.booking_id,
+    });
+    await onBookingPaymentFailed(row, { customerAlreadyTold: told === true });
   } else {
     await onBookingPaymentExpired(row);
   }
 }
 
-/** A Checkout Session lives ~32 minutes; anything still pending after this has outlived it. */
-const PENDING_GRACE_MS = 34 * 60 * 1000;
+/** Paid in full, or a $0 checkout (100% discount / gift card) that needs no payment. */
+export function isSettled(session: Stripe.Checkout.Session): boolean {
+  return session.payment_status === "paid" || session.payment_status === "no_payment_required";
+}
 
 /**
- * Safety net for a Stripe webhook that never arrived (Stripe retries, but only
- * after a delay): look up every booking still "pending" past its checkout's
- * lifetime and settle it from Stripe's own record — paid becomes paid, an
- * expired session releases the slot. Uses the same handlers as the webhook, so
+ * Checkout is complete but the money hasn't cleared yet (the bank is still
+ * processing): tell the customer once, and not to pay again. The booking is
+ * confirmed later, by async_payment_succeeded or the catch-up job.
+ */
+export async function handleProcessing(session: Stripe.Checkout.Session) {
+  if (session.metadata?.type === "gift_card") return;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("claim_payment_processing_notice", {
+    p_stripe_checkout_session_id: session.id,
+  });
+  if (error) {
+    console.error("[stripe-webhook] claim_payment_processing_notice failed:", error);
+    return;
+  }
+  const row = (data as PaymentFailedBooking[] | null)?.[0];
+  if (row) await onBookingPaymentProcessing(row);
+}
+
+/**
+ * A card attempt was declined (payment_intent.payment_failed). The checkout is
+ * still open, so the slot stays held: email the customer a link to try again,
+ * once. The final cancellation still happens when the checkout expires.
+ */
+export async function handlePaymentAttemptFailed(
+  paymentIntent: Stripe.PaymentIntent,
+  stripe: Stripe,
+) {
+  const sessions = await stripe.checkout.sessions.list({ payment_intent: paymentIntent.id, limit: 1 });
+  const session = sessions.data[0];
+  if (!session || session.metadata?.type === "gift_card") return;
+  if (session.status !== "open") return; // expired/complete: the other handlers cover it
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("claim_payment_failed_notice", {
+    p_stripe_checkout_session_id: session.id,
+  });
+  if (error) {
+    console.error("[stripe-webhook] claim_payment_failed_notice failed:", error);
+    return;
+  }
+  const row = (data as PaymentFailedBooking[] | null)?.[0];
+  if (row) await onBookingPaymentRetryNeeded(row, new Date((session.expires_at ?? 0) * 1000));
+}
+
+/** Bookings still pending this long after checkout opened are checked against Stripe. */
+const PENDING_GRACE_MS = 2 * 60 * 1000;
+
+/**
+ * Safety net for a Stripe webhook that is late or never arrived: look up every
+ * booking still "pending" a couple of minutes after checkout opened and settle
+ * it from Stripe's own record — paid becomes paid (so a customer who paid is
+ * confirmed in minutes, not half an hour), a still-clearing payment gets the
+ * "we're confirming it" notice, an expired session releases the slot. Uses the same handlers as the webhook, so
  * it is idempotent and safe to run on every admin page load.
  */
 export async function reconcilePendingPayments(
@@ -220,16 +278,20 @@ export async function reconcilePendingPayments(
       .eq("payment_status", "pending")
       .not("stripe_checkout_session_id", "is", null)
       .lte("created_at", cutoff)
+      .order("created_at", { ascending: true })
       .limit(20);
 
     for (const row of rows ?? []) {
       const sessionId = row.stripe_checkout_session_id as string;
       const session = await stripe.checkout.sessions.retrieve(sessionId);
-      if (session.payment_status === "paid") {
+      if (isSettled(session)) {
         await handlePaid(session, stripe);
+      } else if (session.status === "complete") {
+        await handleProcessing(session);
       } else if (session.status === "expired") {
         await handleFailed(session, "checkout.session.expired");
       }
+      // still "open": the customer is still on the payment form — leave it.
     }
   } catch (err) {
     console.error("[stripe-payments] reconcilePendingPayments failed:", err);

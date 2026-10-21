@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { handleFailed, handlePaid } from "@/lib/stripe-payments";
+import {
+  handleFailed,
+  handlePaid,
+  handlePaymentAttemptFailed,
+  handleProcessing,
+  isSettled,
+} from "@/lib/stripe-payments";
 import { getStripeClient } from "@/lib/stripe";
 
 export const runtime = "nodejs";
@@ -30,8 +36,19 @@ export async function POST(request: Request) {
   try {
     switch (event.type) {
       case "checkout.session.completed":
+        // Completed does not always mean paid: a payment still clearing at the
+        // bank is "unpaid" until async_payment_succeeded arrives.
+        if (isSettled(event.data.object)) {
+          await handlePaid(event.data.object, stripe);
+        } else {
+          await handleProcessing(event.data.object);
+        }
+        break;
       case "checkout.session.async_payment_succeeded":
         await handlePaid(event.data.object, stripe);
+        break;
+      case "payment_intent.payment_failed":
+        await handlePaymentAttemptFailed(event.data.object, stripe);
         break;
       case "checkout.session.expired":
       case "checkout.session.async_payment_failed":

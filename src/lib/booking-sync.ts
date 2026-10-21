@@ -14,6 +14,8 @@ import {
   sendBookingPaymentFailedEmails,
   sendBookingPaymentPendingEmail,
   sendBookingRescheduledEmails,
+  sendPaymentProcessingEmail,
+  sendPaymentRetryEmail,
   sendTaxInvoiceEmail,
   type BookingEmailDetails,
 } from "@/lib/email";
@@ -486,6 +488,7 @@ export async function onBookingPaymentExpired(
 
 export async function onBookingPaymentFailed(
   row: PaymentFailedBooking,
+  { customerAlreadyTold = false }: { customerAlreadyTold?: boolean } = {},
 ): Promise<void> {
   try {
     const business = await fetchBusinessSettings();
@@ -513,9 +516,50 @@ export async function onBookingPaymentFailed(
       business,
       null,
     );
+    if (customerAlreadyTold) {
+      // They already got "your payment didn't go through"; now the slot is gone,
+      // so the customer gets the plain "cancelled" notice and admin the failure copy.
+      await Promise.all([
+        sendBookingExpiredEmail(details),
+        sendBookingPaymentFailedEmails(details, adminEmail, { customer: false }),
+      ]);
+      return;
+    }
     await sendBookingPaymentFailedEmails(details, adminEmail);
   } catch (err) {
     console.error("[booking-sync] onBookingPaymentFailed failed:", err);
+  }
+}
+
+function holdUntilLabelFor(holdUntil: Date): string {
+  return new Intl.DateTimeFormat("en-AU", {
+    timeStyle: "short",
+    timeZone: getBusinessTimezone(),
+  }).format(holdUntil);
+}
+
+/** A card attempt was declined while the checkout is still open: tell the customer, with a retry link. */
+export async function onBookingPaymentRetryNeeded(
+  row: PaymentFailedBooking,
+  holdUntil: Date,
+): Promise<void> {
+  try {
+    const business = await fetchBusinessSettings();
+    if (!business) return;
+    await sendPaymentRetryEmail(emailDetailsForFailedRow(row, business), holdUntilLabelFor(holdUntil));
+  } catch (err) {
+    console.error("[booking-sync] onBookingPaymentRetryNeeded failed:", err);
+  }
+}
+
+/** Stripe has the payment but the bank hasn't cleared it: reassure the customer. */
+export async function onBookingPaymentProcessing(row: PaymentFailedBooking): Promise<void> {
+  try {
+    const business = await fetchBusinessSettings();
+    if (!business) return;
+    await sendPaymentProcessingEmail(emailDetailsForFailedRow(row, business));
+  } catch (err) {
+    console.error("[booking-sync] onBookingPaymentProcessing failed:", err);
   }
 }
 

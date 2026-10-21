@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getStripeClient, getStripeCurrency } from "@/lib/stripe";
 import { getPaymentMode, type PaymentMode } from "@/lib/payment-mode";
 import { onBookingCreated } from "@/lib/booking-sync";
+import { handlePaid, handleProcessing, isSettled } from "@/lib/stripe-payments";
 import { getSiteOrigin } from "@/lib/site-origin";
 import { getBusinessTimezone } from "@/lib/google-calendar";
 import type { PaymentStatus } from "@/lib/types";
@@ -632,14 +633,42 @@ export interface BookingPaymentStatus {
   carNumber: string | null;
 }
 
+/** Best-effort: settle a pending booking from Stripe's own record. Never throws. */
+async function settleFromStripe(bookingId: string): Promise<void> {
+  try {
+    const stripe = getStripeClient();
+    if (!stripe) return;
+    const supabase = await createClient();
+    const { data } = await supabase.rpc("get_booking_resume", { p_booking_id: bookingId }).single();
+    const sessionId = (data as { stripe_checkout_session_id: string | null } | null)?.stripe_checkout_session_id;
+    if (!sessionId) return;
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (isSettled(session)) await handlePaid(session, stripe);
+    else if (session.status === "complete") await handleProcessing(session);
+  } catch (err) {
+    console.error("[book] settleFromStripe failed:", err);
+  }
+}
+
 export async function getBookingPaymentStatus(
   bookingId: string,
 ): Promise<BookingPaymentStatus | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .rpc("get_booking_payment_status", { p_booking_id: bookingId })
     .single();
   if (error || !data) return null;
+
+  // Still pending while the customer is looking at this page: the Stripe
+  // webhook may simply be late, so ask Stripe directly instead of waiting for
+  // it. Idempotent — the webhook arriving later finds nothing left to do.
+  if ((data as { payment_status: string }).payment_status === "pending") {
+    await settleFromStripe(bookingId);
+    ({ data, error } = await supabase
+      .rpc("get_booking_payment_status", { p_booking_id: bookingId })
+      .single());
+    if (error || !data) return null;
+  }
 
   const row = data as {
     status: string;
